@@ -1,7 +1,6 @@
 require("dotenv").config();
 const { Payment } = require("../models"); // Aquí usamos el modelo Vehicle
 const axios = require("axios");
-const tuuDevelopers = require("@api/tuu-developers");
 const logger = require("../../config/logger"); // Logger para seguimiento
 
 const TUU_API_URL = "https://integrations.payment.haulmer.com/PaymentRequest/Create"; // URL oficial

@@ -1,0 +1,230 @@
+2025-01-06 14:13:07 error: TripController->store:Error al asociar trabajadores al viaje: El array de trabajadores no puede estar vacío
+2025-01-06 14:18:53 error: TripController->store:Error al asociar trabajadores al viaje: Incorrect integer value: '[object Object]' for column 'worker_id' at row 1
+2025-01-06 14:21:31 error: TripController->store:Error al asociar trabajadores al viaje: El array de trabajadores no puede estar vacío
+2025-01-06 14:22:22 error: TripController->store:Error al asociar trabajadores al viaje: Incorrect integer value: '[object Object]' for column 'worker_id' at row 1
+2025-01-06 15:37:51 error: Validation error in POST /api/trip - Body: {"route_id":1,"vehicle_id":1,"schedule":"00:20","workers":[{"worker_id":1}],"date":"2025-01-06T20:37:51.606Z","branch_id":3} - Errors: El campo schedule debe tener el formato 00:00:00
+2025-01-07 12:22:31 error: TripController->getRouteVehicleBranch:Vehicle is not defined
+2025-01-07 14:32:47 error: Validation error in POST /api/trip - Body: {"branch_id":3} - Errors: El campo vehicle_id es obligatorio, El campo route_id es obligatorio, El campo date es obligatorio
+2025-01-07 14:33:03 error: Validation error in POST /api/trip - Body: {"branch_id":3} - Errors: El campo vehicle_id es obligatorio, El campo route_id es obligatorio, El campo date es obligatorio
+2025-01-07 20:19:40 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Debito","quantity":"2","price":"10000","total":15000,"minors":"1","date":"2025-01-08T01:19:40.007Z","branch_id":3} - Errors: El campo method debe ser uno de los siguientes valores: Efectivo, Tarjeta, El campo seats es obligatorio
+2025-01-07 20:24:39 error: TicketController->store: Los asientos ya están reservados: 1
+2025-01-07 20:27:34 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"3","price":"10000","total":20000,"adults":"2","date":"2025-01-08T01:27:34.830Z","branch_id":3} - Errors: El campo seats es obligatorio
+2025-01-07 20:28:24 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"3","price":"10000","total":20000,"adults":"2","date":"2025-01-08T01:28:24.846Z","branch_id":3} - Errors: El campo seats es obligatorio
+2025-01-07 20:29:56 error: Validation error in PUT /api/trip - Body: {"total":5000,"adults":"1","id":16} - Errors: "total" is not allowed, "adults" is not allowed
+2025-01-07 20:32:00 error: Validation error in PUT /api/trip - Body: {"total":5000,"adults":"1","id":16} - Errors: "total" is not allowed, "adults" is not allowed
+2025-01-07 20:33:42 error: TicketController->update:Error al verificar asientos reservados
+2025-01-07 20:47:45 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Efectivo","quantity":"2","price":"10000","total":15000,"adults":"1","seats":[{"seat":2},{"seat":3}],"date":"2025-01-08T01:47:45.760Z","branch_id":3} - Errors: "seats[0]" must be a number, "seats[1]" must be a number
+2025-01-07 20:49:42 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"2","price":"10000","total":15000,"adults":"1","seats":false,"date":"2025-01-08T01:49:42.076Z","branch_id":3} - Errors: El campo seats debe ser un arreglo
+2025-01-07 20:51:52 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"2","price":"10000","total":15000,"adults":"1","seats":{},"date":"2025-01-08T01:51:52.112Z","branch_id":3} - Errors: El campo seats debe ser un arreglo
+2025-01-07 20:57:50 error: TicketController->update:Error al verificar asientos reservados
+2025-01-07 21:03:52 error: TicketController->update:Error al verificar asientos reservados
+2025-01-07 21:04:58 error: TicketController->update: Sucursal no encontrada con ID undefined
+2025-01-07 21:05:26 error: TicketController->update: Sucursal no encontrada con ID undefined
+2025-01-07 21:24:48 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Efectivo","quantity":"2","price":"10000","total":15000,"minors":"1","date":"2025-01-08T02:24:48.522Z","branch_id":3} - Errors: El campo seats es obligatorio
+2025-01-07 21:30:29 error: Validation error in PUT /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"2","price":"10000","total":15000,"adults":"1","id":""} - Errors: El campo id debe ser un número entero
+2025-01-07 21:35:47 error: Validation error in PUT /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"2","price":"10000","total":15000,"seats":[],"adults":"1","id":""} - Errors: El campo id debe ser un número entero
+2025-01-07 21:42:02 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Tarjeta","quantity":"2","price":"10000","total":15000,"minors":"1","seats":{"0":6,"1":7},"date":"2025-01-08T02:42:02.436Z","branch_id":3} - Errors: El campo seats debe ser un arreglo
+2025-01-07 21:47:24 error: Validation error in POST /api/ticket - Body: {"total":15000,"minors":"1","date":"2025-01-08","branch_id":3} - Errors: El campo trip_id es obligatorio, El campo method es obligatorio, El campo quantity es obligatorio, El campo price es obligatorio, El campo seats es obligatorio
+2025-01-07 21:49:13 error: TicketController->update:Error al verificar asientos reservados
+2025-01-07 21:49:41 error: TicketController->update:Error al verificar asientos reservados
+2025-01-07 22:19:17 error: TripController->getRouteVehicleBranch:id is not defined
+2025-01-07 22:19:27 error: TripController->getRouteVehicleBranch:id is not defined
+2025-01-07 22:20:05 error: TripController->getRouteVehicleBranch:id is not defined
+2025-01-07 22:22:10 error: TripController->getRouteVehicleBranch:id is not defined
+2025-01-08 07:49:22 error: TripController->getTripDate: La columna 'route.price' en field list es desconocida
+2025-01-08 09:49:17 error: TripController->getTripDate: Cannot read properties of undefined (reading 'id')
+2025-01-08 10:17:08 error: Error creando el ticket: notNull Violation: Ticket.total cannot be null
+2025-01-08 10:17:08 error: TicketController->store:Error creando el ticket
+2025-01-08 10:26:32 error: Error creando el ticket: notNull Violation: Ticket.total cannot be null
+2025-01-08 10:26:32 error: TicketController->store:Error creando el ticket
+2025-01-08 11:18:23 error: Validation error in POST /api/get-tickets-date - Body: {} - Errors: El campo id es obligatorio
+2025-01-08 11:18:29 error: Validation error in POST /api/get-tickets-date - Body: {} - Errors: El campo id es obligatorio
+2025-01-08 11:18:42 error: Validation error in POST /api/get-tickets-date - Body: {} - Errors: El campo id es obligatorio
+2025-01-08 11:26:11 error: Validation error in POST /api/get-tickets-date - Body: {} - Errors: El campo id es obligatorio
+2025-01-08 11:26:13 error: Validation error in POST /api/get-tickets-date - Body: {} - Errors: El campo id es obligatorio
+2025-01-08 11:30:53 error: TicketController->getTicketDate: ticket.date.toISOString is not a function
+2025-01-09 14:30:32 error: Validation error in POST /api/worker - Body: {"name":"aaaaa","user":"aaaa","email":"aaaaa@aaa.aa","phone":"+56932564879","password":"aaaaa","rut":"23.321.654-9","address":"sadsadasdasd","role_id":"4","user_id":""} - Errors: "email" must be a valid email
+2025-01-13 07:38:53 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:39:09 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:40:27 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:41:10 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:43:11 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:45:54 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:47:01 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:48:21 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:49:22 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:51:13 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:52:06 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:52:40 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:53:25 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:54:36 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:56:12 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:57:28 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 07:57:56 error: Validation error in POST /api/update-password - Body: {"id":1,"currentPassword":"fsdfdsfsdf","newPassword":"admin"} - Errors: La nueva contraseña debe tener al menos 8 caracteres.
+2025-01-13 13:11:33 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:11:36 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:11:48 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:12:15 error: Validation error in POST /api/branch-workers - Body: {"branch_id":""} - Errors: El campo id debe ser un número entero
+2025-01-13 13:12:24 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:12:24 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:24:05 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:24:09 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:24:10 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:24:23 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:24:47 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:27:31 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:29:06 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:29:06 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:29:08 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:29:08 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:29:27 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:31:47 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:31:47 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:31 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:31 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:33 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:33 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:41 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:41 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:41 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:41 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:43 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:43 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:33:55 error: Validation error in POST /api/branch-workers - Body: {} - Errors: El campo id es obligatorio
+2025-01-13 13:39:58 error: BranchWorkerController->index: Cannot read properties of undefined (reading 'id')
+2025-01-13 13:39:58 error: BranchWorkerController->index: Cannot read properties of undefined (reading 'id')
+2025-01-13 13:42:17 error: BranchWorkerController->index: Cannot read properties of undefined (reading 'id')
+2025-01-13 14:17:41 error: BranchWorkerController->getBranchWorkersRole:WHERE parameter "branch_id" has invalid "undefined" value
+2025-01-13 14:26:52 error: Validation error in POST /api/branch-worker - Body: {"branch_id":3,"type":"Sucursal","worker_id":7,"role_id":2} - Errors: "type" is not allowed
+2025-01-13 14:27:57 error: Validation error in POST /api/branch-worker - Body: {"branch_id":3,"type":"Sucursal","worker_id":7,"role_id":2} - Errors: "type" is not allowed
+2025-01-13 16:15:47 error: BranchVehicleController->destroy: BranchVehicle is not defined
+2025-01-13 16:16:59 error: BranchVehicleController->store: branch_id is not defined
+2025-01-14 08:34:37 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 08:35:54 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 08:35:54 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 08:36:49 error: Error al obtener los totales: Sequelize is not defined
+2025-01-14 08:36:49 error: TripController->index: Sequelize is not defined
+2025-01-14 08:36:49 error: Error al obtener los totales: Sequelize is not defined
+2025-01-14 10:02:55 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 10:03:15 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 10:03:16 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 10:03:19 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 10:27:22 error: BranchRouteController->branch_routes: Sucursal no encontrada con ID 1
+2025-01-14 10:27:41 error: BranchVehicleController->branch_vehicles: Sucursal no encontrada con ID 1
+2025-01-14 10:27:45 error: Validation error in POST /api/branch-vehicles - Body: {"vehicle_id":1} - Errors: El campo id es obligatorio, "vehicle_id" is not allowed
+2025-01-14 10:27:49 error: Validation error in POST /api/branch-vehicles - Body: {} - Errors: El campo id es obligatorio
+2025-01-14 10:27:57 error: Validation error in POST /api/branch-vehicles - Body: {} - Errors: El campo id es obligatorio
+2025-01-14 10:28:12 error: Validation error in POST /api/branch-vehicles - Body: {} - Errors: El campo id es obligatorio
+2025-01-14 10:28:41 error: Validation error in POST /api/branch-vehicles - Body: {"vehicle_id":1} - Errors: El campo id es obligatorio, "vehicle_id" is not allowed
+2025-01-14 10:28:46 error: Validation error in POST /api/branch-vehicles - Body: {"vehicle_id":1} - Errors: El campo id es obligatorio, "vehicle_id" is not allowed
+2025-01-14 10:28:50 error: Validation error in POST /api/branch-vehicles - Body: {"vehicle_id":1} - Errors: El campo id es obligatorio, "vehicle_id" is not allowed
+2025-01-14 10:29:43 error: Validation error in POST /api/branch-vehicles - Body: {"vehicle_id":1} - Errors: El campo id es obligatorio, "vehicle_id" is not allowed
+2025-01-14 10:30:30 error: VehicleWorkerController->vehicle_workers: VehicleWorkerRepository.findByBranch is not a function
+2025-01-14 10:46:33 error: VehicleWorkerController->store: notNull Violation: Vehicle.rut cannot be null
+2025-01-14 10:47:52 error: VehicleWorkerController->destroy: vehicleWorker.destroy is not a function
+2025-01-14 10:48:43 error: Validation error in PUT /api/vehicle-worker - Body: {"worker_id":7,"id":""} - Errors: "id" must be a number
+2025-01-14 13:33:37 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:33:43 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:33:45 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:35:22 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:35:27 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:35:30 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:35:33 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 13:38:20 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 14:40:34 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 14:40:36 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 14:40:39 error: TripController->getTripDate: Sucursal no encontrada con ID 1
+2025-01-14 14:41:33 error: TicketController->store:Error al generar los códigos del ticket: Ticket no encontrado o no se pudo actualizar
+2025-01-14 14:48:46 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 15:24:01 error: Validation error in POST /api/ticket - Body: {"trip_id":7,"method":"Efectivo","quantity":"1","price":"10000.00","total":5000,"adults":"1","date":"2025-01-14T20:24:01.440Z","branch_id":3} - Errors: El campo seats es obligatorio
+2025-01-14 15:25:42 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 15:26:56 error: Error eliminando el ticket: The "path" argument must be of type string. Received undefined
+2025-01-14 15:26:56 error: TicketController->destroy:Error eliminando el ticket
+2025-01-14 15:28:16 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 15:29:42 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 15:41:58 error: TicketController->update:t is not defined
+2025-01-14 15:46:39 error: Error al generar los códigos del ticket: ticket.update is not a function
+2025-01-14 15:46:39 error: TicketController->update:ticket.update is not a function
+2025-01-14 15:50:07 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 16:52:19 error: Validation error in PUT /api/ticket - Body: {"total":20000,"seats":[8,9],"adults":"","id":40,"trip_id":7} - Errors: El campo adults debe ser un número entero
+2025-01-14 16:55:39 error: TicketController->update:Assignment to constant variable.
+2025-01-14 16:56:22 error: TicketController->update:Assignment to constant variable.
+2025-01-14 16:57:11 error: TicketController->update:Assignment to constant variable.
+2025-01-14 17:07:38 error: Error actualizando el ticket: Incorrect integer value: '' for column 'adults' at row 1
+2025-01-14 17:11:25 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-14 17:16:42 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 17:16:45 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 17:16:47 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-14 17:16:48 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-16 09:10:19 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-16 09:10:36 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-16 09:10:37 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-16 09:10:41 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-16 09:11:04 error: TripController->getTicketDate: Sucursal no encontrada con ID 1
+2025-01-16 09:13:14 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-16 09:13:28 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-16 09:13:30 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-16 09:13:33 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-01-16 09:14:15 error: TripController->store:Cannot read properties of undefined (reading 'length')
+2025-01-16 09:15:29 error: TripController->store:Cannot read properties of undefined (reading 'length')
+2025-01-16 09:16:48 error: TripController->store:Cannot read properties of undefined (reading 'length')
+2025-01-16 10:25:05 error: Error actualizando el ticket: Incorrect integer value: '' for column 'adults' at row 1
+2025-01-16 10:25:05 error: TicketController->update:Error actualizando el ticket
+2025-01-16 10:26:19 error: Error actualizando el ticket: Incorrect integer value: '' for column 'adults' at row 1
+2025-01-16 10:26:19 error: TicketController->update:Error actualizando el ticket
+2025-01-16 10:27:30 error: Error actualizando el ticket: Incorrect integer value: '' for column 'adults' at row 1
+2025-01-16 10:27:30 error: TicketController->update:Error actualizando el ticket
+2025-01-16 10:28:15 error: Error actualizando el ticket: Incorrect integer value: '' for column 'adults' at row 1
+2025-01-16 10:28:15 error: TicketController->update:Error actualizando el ticket
+2025-01-16 10:34:05 error: Error actualizando el ticket: Incorrect integer value: '' for column 'adults' at row 1
+2025-01-16 10:34:05 error: TicketController->update:Error actualizando el ticket
+2025-01-16 11:17:57 error: TripController->store:Cannot read properties of undefined (reading 'length')
+2025-01-16 11:22:22 error: TripController->store:Cannot read properties of undefined (reading 'length')
+2025-01-16 14:39:47 error: Error actualizando trip workers:
+2025-01-16 14:41:11 error: Error actualizando trip workers:
+2025-01-16 14:42:04 error: Error actualizando trip workers: WHERE parameter "date" has invalid "undefined" value
+2025-01-16 14:45:57 error: Error actualizando trip workers: Assignment to constant variable.
+2025-01-20 08:26:53 error: Validation error in PUT /api/permission - Body: {"name":"aaaa","description":"aaaaaa","module":"aaaaa","id":null} - Errors: "id" must be a number
+2025-01-20 08:28:44 error: Validation error in PUT /api/permission - Body: {"name":"aaaaaa","description":"aaaaaa","module":"aaaaa","id":null} - Errors: "id" must be a number
+2025-01-20 09:41:48 error: PermissionRoleController->store: la relación permiso rol ya existe con ID null
+2025-01-22 08:29:08 error: Validation error in POST /api/tuu - Body: {"ticket_id":41,"amount":5000,"device":"ABC123456","description":"Pago de servicios","dteType":48,"idempotencyKey":"123e4567-e89b-12d3-a456-426614174000","exemptAmount":null,"customFields":[{"name":"Campo Personalizado 1","value":"Valor 1","print":true},{"name":"Campo Personalizado 2","value":"Valor 2","print":false}]} - Errors: El monto exento debe ser un número.
+2025-01-22 08:31:07 error: Error al guardar el pago: notNull Violation: Payment.status cannot be null
+2025-01-22 08:31:07 error: Error en TuuController->store: Error desconocido
+2025-01-22 08:33:27 error: Validation error in POST /api/tuu - Body: {"ticket_id":41,"amount":5000,"device":"ABC123456","status":true,"description":"Pago de servicios","dteType":48,"idempotencyKey":"123e4567-e89b-12d3-a456-426614174000","exemptAmount":null,"customFields":[{"name":"Campo Personalizado 1","value":"Valor 1","print":true},{"name":"Campo Personalizado 2","value":"Valor 2","print":false}]} - Errors: "status" is not allowed
+2025-01-22 08:36:10 error: Validation error in POST /api/tuu - Body: {"ticket_id":41,"amount":5000,"device":"ABC123456","status":true,"description":"Pago de servicios","dteType":48,"idempotencyKey":"123e4567-e89b-12d3-a456-426614174000","exemptAmount":null,"customFields":[{"name":"Campo Personalizado 1","value":"Valor 1","print":true},{"name":"Campo Personalizado 2","value":"Valor 2","print":false}]} - Errors: El estado de la solicitud debe ser un texto.
+2025-01-22 08:36:31 error: Error al guardar el pago: notNull Violation: Payment.status cannot be null
+2025-01-22 08:36:31 error: Error en TuuController->store: Error desconocido
+2025-01-22 08:49:03 error: Error al obtener los pagos: La columna 'deviceId' en field list es desconocida
+2025-01-22 08:49:03 error: Error en TuuController->getPaymentsByTicketId: La columna 'deviceId' en field list es desconocida
+2025-01-22 08:50:24 error: Validation error in POST /api/tuu - Body: {"id":41,"amount":5000,"device":"ABC123456","status":"aprobada","description":"Pago de servicios","dteType":48,"idempotencyKey":"123e4567-e89b-12d3-a456-426614174000","exemptAmount":null,"customFields":[{"name":"Campo Personalizado 1","value":"Valor 1","print":true},{"name":"Campo Personalizado 2","value":"Valor 2","print":false}]} - Errors: El campo ticket_id es obligatorio, "id" is not allowed
+2025-01-22 08:50:29 error: Error al guardar el pago: Incorrect integer value: 'ABC123456' for column 'device' at row 1
+2025-01-22 08:50:29 error: Error en TuuController->store: Error desconocido
+2025-02-07 07:59:06 error: Validation error in POST /api/tuu-payment - Body: {"amount":1000,"device":"TJ44243320217","description":"Compra de materiales de oficina","dteType":48,"idempotencyKey":"123e4567-e89b-12d3-a456-426614174000","exemptAmount":null,"status":"pending","customFields":[{"name":"Proyecto","value":"Renovación de infraestructura","print":true},{"name":"Responsable","value":"Juan Pérez","print":false}]} - Errors: "Amount" is required, "Device" is required, "Description" is required, "DteType" is required, "extraData" is required, "amount" is not allowed, "device" is not allowed, "description" is not allowed, "dteType" is not allowed, "idempotencyKey" is not allowed, "exemptAmount" is not allowed, "status" is not allowed, "customFields" is not allowed
+2025-02-07 07:59:51 error: Validation error in POST /api/tuu-payment - Body: {"amount":1000,"device":"TJ44243320217","description":"Compra de materiales de oficina","dteType":48,"idempotencyKey":"123e4567-e89b-12d3-a456-426614174000","exemptAmount":null,"status":"pending","customFields":[{"name":"Proyecto","value":"Renovación de infraestructura","print":true},{"name":"Responsable","value":"Juan Pérez","print":false}]} - Errors: "Amount" is required, "Device" is required, "Description" is required, "DteType" is required, "extraData" is required, "amount" is not allowed, "device" is not allowed, "description" is not allowed, "dteType" is not allowed, "idempotencyKey" is not allowed, "exemptAmount" is not allowed, "status" is not allowed, "customFields" is not allowed
+2025-02-07 08:00:22 error: Error al configurar la solicitud:
+2025-02-07 08:00:22 error: Error en TuuController->index: Error al configurar la solicitud
+2025-02-07 08:03:02 error: Error al configurar la solicitud: Unauthorized
+2025-02-07 08:03:02 error: Error en TuuController->createPayment: Error al configurar la solicitud
+2025-02-07 08:03:21 error: Error al configurar la solicitud: Unauthorized
+2025-02-07 08:03:21 error: Error en TuuController->createPayment: Error al configurar la solicitud
+2025-02-07 08:07:20 error: Error al configurar la solicitud: Unauthorized
+2025-02-07 08:07:20 error: Error en TuuController->createPayment: Error al configurar la solicitud
+2025-02-07 08:13:03 error: Error al configurar la solicitud: Unauthorized
+2025-02-07 08:13:03 error: Error en TuuController->createPayment: Error al configurar la solicitud
+2025-02-07 08:23:44 error: Error en la respuesta del servidor: Invalid API Key
+2025-02-07 08:23:44 error: Error en TuuController->createPayment: Invalid API Key
+2025-02-07 08:24:45 error: Error en la respuesta del servidor: Invalid API Key
+2025-02-07 08:24:45 error: Error en TuuController->createPayment: Invalid API Key
+2025-02-07 08:26:09 error: Error en la respuesta del servidor: The request contains invalid data.
+2025-02-07 08:26:09 error: Error en TuuController->createPayment: The request contains invalid data.
+2025-02-07 08:30:12 error: Error en la respuesta del servidor: Device for API-Key doesn't exist
+2025-02-07 08:30:12 error: Error en TuuController->createPayment: Device for API-Key doesn't exist
+2025-02-10 09:01:07 error: TripController->index_branch_date: Sucursal no encontrada con ID 1
+2025-02-11 09:06:10 error: Validation error in POST /api/login - Body: {"email":null,"password":null} - Errors: "email" must be a string, "password" must be a string
+2025-02-12 09:15:39 error: Error al loguear usuario: BranchWorker is not defined
+2025-02-12 09:16:12 error: Error al loguear usuario: Assignment to constant variable.
+2025-02-12 13:39:21 error: Validation error in POST /api/get-tickets-date - Body: {"branch_id":null} - Errors: El campo id debe ser un número entero
+2025-02-13 10:52:27 error: Validation error in PUT /api/role - Body: {"seats":[1,2,3,4,5],"seatMap":[[{"label":"1","disabled":false,"selected":true},{"label":"2","disabled":false,"selected":true},{"label":null,"disabled":false,"selected":false},{"label":null,"disabled":false,"selected":false}],[{"label":"3","disabled":false,"selected":true},{"label":"4","disabled":false,"selected":true},{"label":"5","disabled":false,"selected":true},{"label":null,"disabled":false,"selected":false}],[{"label":null,"disabled":false,"selected":false},{"label":null,"disabled":false,"selected":false},{"label":null,"disabled":false,"selected":false},{"label":null,"disabled":false,"selected":false}]],"id":2} - Errors: "seats" is not allowed, "seatMap" is not allowed
+2025-02-13 12:44:30 error: VehicleController->index:Structure is not defined
+2025-02-13 12:44:38 error: VehicleController->index:Structure is not defined
+2025-02-13 12:44:41 error: VehicleController->index:Structure is not defined

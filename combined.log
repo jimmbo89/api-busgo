@@ -1,0 +1,88 @@
+2025-02-13 15:44:24 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:44:24 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:44:28 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:44:28 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:44:34 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:44:34 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:44:54 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:44:54 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:44:59 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:44:59 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:45:06 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:45:50 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:45:50 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:45:52 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:45:52 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:45:53 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:46:55 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:46:55 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:46:58 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:46:59 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:47:00 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:48:02 info: juan.perez - Entra a buscar los vehículos
+2025-02-13 15:48:06 info: juan.perez - Accediendo a la lista de estructuras
+2025-02-13 15:48:15 info: juan.perez - Actualiza el vehículo con ID 9
+2025-02-13 15:48:15 info: Datos recibidos al editar un vehículo
+2025-02-13 15:48:15 info: {"seats":"12","structure_id":"3","id":"9"}
+2025-02-13 15:48:15 info: Vehículo actualizado exitosamente (ID: 9)
+2025-02-13 15:48:15 info: juan.perez - Entra a buscar los vehículos
+2025-02-13 15:48:21 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:48:22 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
+2025-02-13 15:48:28 info: juan.perez - Entra a la ruta unificada de viajes
+2025-02-13 15:48:43 info: juan.perez - Entra a buscar los vehículos
+2025-02-13 15:48:46 info: juan.perez - Accediendo a la lista de estructuras
+2025-02-13 15:48:52 info: juan.perez - Actualiza el vehículo con ID 2
+2025-02-13 15:48:52 info: Datos recibidos al editar un vehículo
+2025-02-13 15:48:52 info: {"seats":"12","structure_id":"3","id":"2"}
+2025-02-13 15:48:52 info: Vehículo actualizado exitosamente (ID: 2)
+2025-02-13 15:48:52 info: juan.perez - Entra a buscar los vehículos
+2025-02-13 15:48:57 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:48:57 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
+2025-02-13 15:49:01 info: juan.perez - Entra a la ruta unificada de viajes
+2025-02-13 15:49:05 info: juan.perez - Actualiza el viaje con ID 9
+2025-02-13 15:49:05 info: datos recibidos al editar un viaje
+2025-02-13 15:49:05 info: {"vehicle_id":2,"id":9}
+2025-02-13 15:49:05 info: Viaje actualizado exitosamente (ID: 9)
+2025-02-13 15:49:05 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
+2025-02-13 15:49:08 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:49:08 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:49:11 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:50:48 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:50:48 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:50:52 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:50:52 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:51:00 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:51:33 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:53:09 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:53:09 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:53:12 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:53:12 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:53:22 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:56:27 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:56:50 info: juan.perez - Crea un nuevo ticket
+2025-02-13 15:56:50 info: Datos recibidos al crear un ticket
+2025-02-13 15:56:50 info: {"trip_id":7,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-13T20:56:50.201Z","branch_id":3}
+2025-02-13 15:56:50 info: Ticket creado exitosamente (ID: 44)
+2025-02-13 15:56:50 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:56:56 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:57:12 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:57:13 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
+2025-02-13 15:57:14 info: juan.perez - Entra a la ruta unificada de viajes
+2025-02-13 15:57:43 info: juan.perez - Crea un nuevo viaje
+2025-02-13 15:57:43 info: datos recibidos al crear un viaje
+2025-02-13 15:57:43 info: {"route_id":1,"vehicle_id":2,"schedule":"09:00","arrival":"08:20","price":"20000","workers":[{"worker_id":7}],"date":"2025-02-13T20:57:43.053Z","branch_id":3}
+2025-02-13 15:57:43 info: Viaje creado exitosamente (ID: 17)
+2025-02-13 15:57:43 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
+2025-02-13 15:57:59 info: juan.perez - Entra a buscar las sucursales
+2025-02-13 15:57:59 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:58:01 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 15:58:45 info: juan.perez - Crea un nuevo ticket
+2025-02-13 15:58:45 info: Datos recibidos al crear un ticket
+2025-02-13 15:58:45 info: {"trip_id":17,"branch_id":3,"method":"Efectivo","quantity":"5","price":"20000.00","total":100000,"adults":"3","minors":null,"seats":[1,2,3,4,5],"date":"2025-02-13T20:58:45.767Z"}
+2025-02-13 15:58:46 info: Ticket creado exitosamente (ID: 45)
+2025-02-13 15:58:46 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
+2025-02-13 15:58:52 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 16:06:44 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 16:07:06 info: juan.perez - Entra a buscar los viajes de una fecha dada
+2025-02-13 16:23:05 info: juan.perez - Cierra sessión
+2025-02-13 16:23:08 info: Entra a buscar las sucursales en el login

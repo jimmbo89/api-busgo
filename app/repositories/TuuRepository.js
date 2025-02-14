@@ -124,7 +124,7 @@ const TuuRepository = {
       return payment;
     } catch (err) {
       logger.error("Error al guardar el pago:", err);
-      throw error;
+      throw err;
     }
   },
 

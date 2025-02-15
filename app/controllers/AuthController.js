@@ -254,16 +254,36 @@ const AuthController = {
             { name: req.body.email }, // O puede ser el nombre de usuario
           ],
         },
-        include: {
+        include: [{
           model: Worker,
           as: "worker",
           attributes: ["id", "name", "email", "image", "role_id"],
-          include: {
-            model: Role,
-            as: "role",
-            attributes: ["id", "name"],
-          },
+          include: [
+            {
+              model: Role,
+              as: "role",
+              attributes: ["id", "name"],
+            },
+            {
+              model: BranchWorker,
+              as: "branchWorkers",
+              include: {
+                model: Branch,
+                as: "branch",
+                include: {
+                  model: Company,
+                  as: "company",
+                },
+              },
+            },
+          ],
         },
+        {
+          model: Company,
+          as: "companies",
+          attributes: ["id", "name", "image"],
+        }
+      ],
       });
       if (!user) {
         return res.status(204).json({ msg: "Usuario no encontrado" });
@@ -303,6 +323,11 @@ const AuthController = {
         expires_at: expiresAt,
       });
 
+      let branchData = [];
+      if (user.worker.branchWorkers) {
+        branchData = user.worker.branchWorkers[0]?.branch;
+      }
+
       // Respuesta exitosa
       res.status(201).json({
         id: user.id,
@@ -314,6 +339,7 @@ const AuthController = {
         image: user.worker.image,
         roleId: user.worker.role_id,
         nameRole: user.worker.role.name,
+        branch: branchData
       });
     } catch (error) {
       const errorMsg = error.details

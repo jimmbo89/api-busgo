@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Structure } = require('../models'); // Aquí usamos el modelo Structure
+const { Structure, Sequelize } = require('../models'); // Aquí usamos el modelo Structure
 const logger = require('../../config/logger'); // Logger para seguimiento
 
 const StructureRepository = {
@@ -8,6 +8,35 @@ const StructureRepository = {
     return await Structure.findAll({
       attributes: ['id', 'name', 'description', 'seatCount', 'seats', 'seatMap'],
     });
+  },
+
+  async findAllPaginated(limit = 10, cursor = null) {
+    try {
+      const whereCondition = {};
+
+      if (cursor) {
+        whereCondition.createdAt = { [Sequelize.Op.lt]: new Date(cursor) };
+      }
+
+      const structures = await Structure.findAll({
+        where: whereCondition,
+        attributes: ['id', 'name', 'description', 'seatCount', 'seats', 'seatMap', 'createdAt'],
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit) + 1, // +1 para determinar si hay más
+      });
+
+      const hasMore = structures.length > limit;
+      if (hasMore) structures.pop(); // Quitar la extra
+
+      const nextCursor = hasMore
+        ? structures[structures.length - 1].createdAt.toISOString()
+        : null;
+
+      return { structures, hasMore, nextCursor };
+    } catch (error) {
+      console.error("Error en findAllPaginated:", error);
+      throw error;
+    }
   },
 
   // Buscar una estructura por ID

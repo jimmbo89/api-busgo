@@ -43,14 +43,12 @@ const storeTicketSchema = Joi.object({
     "array.base": "El campo seats debe ser un arreglo",
     "any.required": "El campo seats es obligatorio",
   }),
-  adults: Joi.number().integer().allow(null).optional().empty("")
-  .messages({
-      "number.base": "El campo adults debe ser un número entero",
-    }),
-  minors: Joi.number().integer().allow(null).optional().empty("")
-    .messages({
-      "number.base": "El campo minors debe ser un número entero",
-    }),
+  adults: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo adults debe ser un número entero",
+  }),
+  minors: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo minors debe ser un número entero",
+  }),
   pay: Joi.number().precision(2).allow(null).empty("").optional().messages({
     "number.base": "El campo pay debe ser un número entero",
   }),
@@ -96,14 +94,12 @@ const updateTicketSchema = Joi.object({
     .messages({
       "array.base": "El campo seats debe ser un arreglo",
     }),
-  adults: Joi.number().integer().allow(null).optional().empty("")
-  .messages({
-      "number.base": "El campo adults debe ser un número entero",
-    }),
-  minors: Joi.number().integer().allow(null).optional().empty("")
-    .messages({
-      "number.base": "El campo minors debe ser un número entero",
-    }),
+  adults: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo adults debe ser un número entero",
+  }),
+  minors: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo minors debe ser un número entero",
+  }),
   pay: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo pay debe ser un número entero",
   }),
@@ -130,9 +126,31 @@ const branchTicketTripSchema = Joi.object({
     "number.base": "El campo ticket_id debe ser un número entero",
   }),
 });
+
+const monthlySalesSchema = Joi.object({
+  month: Joi.string()
+    .pattern(/^\d{4}-\d{2}$/) // Expresión regular para validar el formato YYYY-MM
+    .required()
+    .messages({
+      "string.pattern.base": "El formato del mes debe ser YYYY-MM",
+      "any.required": "El mes es un campo requerido",
+    }),
+  branch_id: Joi.number().integer().allow(null).optional().messages({
+    "number.base": "El campo branch_id debe ser un número entero",
+  }),
+  type: Joi.string()
+    .valid("Sucursal", "Negocio")
+    .allow(null)
+    .required()
+    .messages({
+      "string.base": "El campo type debe ser un texto",
+    }),
+});
+
 module.exports = {
   storeTicketSchema,
   updateTicketSchema,
   idTicketSchema,
   branchTicketTripSchema,
+  monthlySalesSchema,
 };

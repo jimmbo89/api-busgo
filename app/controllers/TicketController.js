@@ -376,6 +376,90 @@ const TicketController = {
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },
+
+  async getMonthlySales(req, res) {
+    try {
+      const { month, type, branch_id } = req.body;
+      if (branch_id) {
+        // Verificar si la sucursal existe
+        const branch = await BranchRepository.findById(branch_id);
+        if (!branch) {
+            logger.error(`TicketController->getMonthlySales: Sucursal no encontrada con ID ${branch_id}`);
+            return res.status(404).json({ msg: 'BranchNotFound' });
+        }    
+        }
+      const { ticketsVendidos, ingresoGenerado } = await TicketRepository.getMonthlySales(month, type, branch_id);
+      const occupancyRate = await TicketRepository.getOccupancyRate(month, type, branch_id);
+      // Obtener las ganancias anuales por meses
+      const yearlyEarnings = await TicketRepository.getYearlyEarnings(month, type, branch_id);
+
+      const trips = await TicketRepository.getTripsWithDetails(month, type, branch_id);
+
+      const formattedTrips = trips.map((trip) => {
+        // Concatenar información del vehículo
+        const vehicle = trip.vehicle;
+
+        const tickets = trip.tickets || [];
+
+        // Concatenar origen y destino
+        const routeInfo = `${trip.route.origin.address} - ${trip.route.destination.address}`;
+
+       // Calcular el horario
+       let horario;
+       if (trip.end) {
+         // Si hay hora de finalización, usar start y end
+         horario = `${trip.start} - ${trip.end}`;
+       } else if (trip.start) {
+         // Si hay hora de inicio, sumar estimated a start
+         const estimatedTime = TicketController.addMinutesToTime(trip.start, trip.route.estimated);
+         horario = `${trip.start} - ${estimatedTime}`;
+       } else {
+         // Si no hay hora de inicio, sumar estimated a schedule
+         const estimatedTime = TicketController.addMinutesToTime(trip.schedule, trip.route.estimated);
+         horario = `${trip.schedule} - ${estimatedTime}`;
+       }
+        // Calcular asientos vendidos y dinero generado
+        const asientosVendidos = tickets.reduce((sum, ticket) => sum + ticket.quantity, 0);
+        const dineroGenerado = tickets.reduce((sum, ticket) => sum + parseFloat(ticket.total), 0);
+
+        return {
+          id: trip.id,
+          date: trip.date,
+          vehicleImage: vehicle.image,
+          vehiclePlate: vehicle.plate,
+          vehicleBrand: vehicle.brand,
+          route: routeInfo, // Origen y destino concatenados
+          horario: horario, // Horario dinámico
+          capacidad: trip.vehicle.seats, // Capacidad del vehículo
+          asientosVendidos, // Asientos vendidos
+          dineroGenerado, // Dinero generado
+        };
+      });
+
+
+      const data = [
+        { title: 'Boletos Vendidos', value: Number(ticketsVendidos), color: '#1976D2', icon: 'mdi-ticket' },
+        { title: 'Ingreso Generado', value: Number(ingresoGenerado), color: '#4CAF50', icon: 'mdi-cash-multiple' },
+        { title: 'Incidentes', value: 30, color: '#F44336', icon: 'mdi-alert' },
+        { title: 'Tasa de Ocupación', value: occupancyRate, color: '#FF9800', icon: 'mdi-account-group' },/*Tasa de ocupación: Promedio de pasajeros por viaje */
+      ];
+
+      res.status(200).json({sales: data, salesYear: yearlyEarnings, trips: formattedTrips});
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+
+      logger.error("TicketController->getMonthlySales:" + errorMsg);
+      return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+  addMinutesToTime(time, minutes) {
+    const [hours, mins] = time.split(":").map(Number); // Convertir la hora y los minutos a números
+    const date = new Date();
+    date.setHours(hours, mins + minutes, 0); // Sumar los minutos
+    return date.toTimeString().slice(0, 5); // Devolver la hora en formato HH:mm
+  }
 };
 
 module.exports = TicketController;

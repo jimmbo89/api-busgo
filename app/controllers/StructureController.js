@@ -32,6 +32,40 @@ const StructureController = {
     }
   },
 
+  async index_cursor(req, res) {
+    logger.info(`${req.user.name} - Accediendo a la lista de estructuras`);
+
+    try {
+      const { limit = 12, cursor } = req.body;
+
+      const { structures, hasMore, nextCursor } = await StructureRepository.findAllPaginated(
+        limit,
+        cursor
+      );
+
+      // Mapeo de las estructuras para asegurarnos que `seats` y `seatMap` sean tratados como arrays
+      const mappedStructures = structures.map((structure) => {
+        return {
+          ...structure.dataValues, // Copiar todos los valores originales
+          seats: Array.isArray(structure.seats)
+                    ? structure.seats // Si ya es un array, lo usas directamente
+                    : JSON.parse(structure.seats),
+          seatMap: Array.isArray(structure.seatMap)
+                    ? structure.seatMap // Si ya es un array, lo usas directamente
+                    : JSON.parse(structure.seatMap), // Lo mismo para seatMap
+        };
+      });
+
+      res.status(200).json({ structures: mappedStructures, hasMore, nextCursor });
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+      logger.error("Error en StructureController->index_cursor: " + errorMsg);
+      res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
   // Crear una nueva estructura
   async store(req, res) {
     logger.info(`${req.user.name} - Creando una nueva estructura`);

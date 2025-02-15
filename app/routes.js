@@ -47,7 +47,7 @@ const { storeBranchVehicleSchema, updateBranchVehicleSchema, idBranchVehicleSche
 const { storeVehicleWorkerSchema, updateVehicleWorkerSchema, idVehicleWorkerSchema, vehicle_idWorkerSchema } = require('./middlewares/validations/vehicleworkerValidation');
 const { storeTripSchema, updateTripSchema, idTripSchema, branch_idTripSchema } = require('./middlewares/validations/tripValidation');
 const { storeTripWorkerSchema, updateTripWorkerSchema, idTripWorkerSchema, assignTripWorkersSchema } = require('./middlewares/validations/tripworkerValidation');
-const { storeTicketSchema, updateTicketSchema, idTicketSchema, branchTicketTripSchema } = require('./middlewares/validations/ticketValidation');
+const { storeTicketSchema, updateTicketSchema, idTicketSchema, branchTicketTripSchema, monthlySalesSchema } = require('./middlewares/validations/ticketValidation');
 const { paymentSchema, paymentDataSchema } = require('./middlewares/validations/tuuValidation');
 const { storeStructureSchema, updateStructureSchema, idStructureSchema } = require('./middlewares/validations/structureValidation');
 
@@ -220,6 +220,7 @@ router.post('/ticket-show', validateSchema(idTicketSchema), TicketController.sho
 router.put('/ticket', validateSchema(updateTicketSchema), TicketController.update);
 router.post('/ticket-destroy', validateSchema(idTicketSchema), TicketController.destroy);
 router.post('/get-tickets-date', validateSchema(branch_idTripSchema), TicketController.getTicketsDate);
+router.post("/monthly-sales", validateSchema(monthlySalesSchema), TicketController.getMonthlySales);
 
 //Api Tuu
 router.post('/tuu', validateSchema(paymentSchema), TuuController.store);
@@ -227,6 +228,7 @@ router.post('/ticket-tuus', validateSchema(idTicketSchema), TuuController.getPay
 
 //Rutas Structure
 router.get('/structure', StructureController.index);
+router.post('/structure-cursor', StructureController.index_cursor);
 router.post('/structure', validateSchema(storeStructureSchema), StructureController.store);
 router.post('/structure-show', validateSchema(idStructureSchema), StructureController.show);
 router.put('/structure', validateSchema(updateStructureSchema), StructureController.update);

@@ -4,6 +4,7 @@ const {
   TicketRepository,
   TripRepository,
   BranchRepository,
+  CompanyRepository,
 } = require("../repositories");
 
 const TicketController = {
@@ -88,9 +89,9 @@ const TicketController = {
         quantity: ticket.quantity,
         price: ticket.price,
         total: ticket.total,
-        seats: Array.isArray(ticket.seats) 
-        ? ticket.seats // Si ya es un array, úsalo directamente
-        : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
+        seats: Array.isArray(ticket.seats)
+          ? ticket.seats // Si ya es un array, úsalo directamente
+          : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
         adults: ticket.adults,
         minors: ticket.minors,
         qr: ticket.qr,
@@ -141,11 +142,20 @@ const TicketController = {
     const t = await sequelize.transaction(); // Inicia la transacción
     try {
       // Verifica los asientos reservados
-      const conflictingSeats = await TicketRepository.checkReservedSeats(trip_id, seats);
+      const conflictingSeats = await TicketRepository.checkReservedSeats(
+        trip_id,
+        seats
+      );
 
       if (conflictingSeats.length > 0) {
-        logger.error( `TicketController->store: Los asientos ya están reservados: ${conflictingSeats.join(", ")}`);
-        return res.status(400).json({ msg: "Hacientos seleccionados ya han sido reservados" });
+        logger.error(
+          `TicketController->store: Los asientos ya están reservados: ${conflictingSeats.join(
+            ", "
+          )}`
+        );
+        return res
+          .status(400)
+          .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
 
       // Verificar si el viaje, usuario y sucursal existen
@@ -165,8 +175,7 @@ const TicketController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
-      let ticket = await TicketRepository.create(req.body, { transaction: t });      
-
+      let ticket = await TicketRepository.create(req.body, { transaction: t });
 
       ticketMaped = await TicketRepository.findById(ticket.id);
       const mappedTicket = {
@@ -193,7 +202,7 @@ const TicketController = {
       const { qrCodePath, barcodePath } =
         await TicketRepository.generateTicketCodes(mappedTicket, ticket);
 
-       await t.commit();
+      await t.commit();
       res.status(201).json({ ticket: ticket });
     } catch (error) {
       if (!t.finished) {
@@ -274,48 +283,47 @@ const TicketController = {
     } = req.body;
 
     const ticket = await TicketRepository.findById(id);
-      if (!ticket) {
-        return res.status(400).json({ msg: "TicketNotFound" });
-      }
+    if (!ticket) {
+      return res.status(400).json({ msg: "TicketNotFound" });
+    }
 
-      const conflictingSeats = await TicketRepository.checkReservedSeats(
-        trip_id,
-        seats,
-        id
+    const conflictingSeats = await TicketRepository.checkReservedSeats(
+      trip_id,
+      seats,
+      id
+    );
+
+    if (conflictingSeats.length > 0) {
+      logger.error(
+        `TicketController->update: Los asientos ya están reservados: ${conflictingSeats.join(
+          ", "
+        )}`
       );
+      return res.status(400).json({ msg: "SeatsReserved" });
+    }
 
-      if (conflictingSeats.length > 0) {
+    // Verificar si el viaje, usuario y sucursal existen
+    if (trip_id) {
+      const trip = await TripRepository.findById(trip_id);
+      if (!trip) {
         logger.error(
-          `TicketController->update: Los asientos ya están reservados: ${conflictingSeats.join(
-            ", "
-          )}`
+          `TicketController->update: Viaje no encontrado con ID ${trip_id}`
         );
-        return res.status(400).json({ msg: "SeatsReserved" });
+        return res.status(400).json({ msg: "TripNotFound" });
       }
+    }
 
-      // Verificar si el viaje, usuario y sucursal existen
-      if (trip_id) {
-        const trip = await TripRepository.findById(trip_id);
-        if (!trip) {
-          logger.error(
-            `TicketController->update: Viaje no encontrado con ID ${trip_id}`
-          );
-          return res.status(400).json({ msg: "TripNotFound" });
-        }
+    if (branch_id) {
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `TicketController->update: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(400).json({ msg: "BranchNotFound" });
       }
+    }
 
-      if (branch_id) {
-        const branch = await BranchRepository.findById(branch_id);
-        if (!branch) {
-          logger.error(
-            `TicketController->update: Sucursal no encontrada con ID ${branch_id}`
-          );
-          return res.status(400).json({ msg: "BranchNotFound" });
-        }
-      }
-
-    try {      
-
+    try {
       const updatedTicket = await TicketRepository.update(ticket, req.body);
 
       let ticketMaped = await TicketRepository.findById(ticket.id);
@@ -384,16 +392,31 @@ const TicketController = {
         // Verificar si la sucursal existe
         const branch = await BranchRepository.findById(branch_id);
         if (!branch) {
-            logger.error(`TicketController->getMonthlySales: Sucursal no encontrada con ID ${branch_id}`);
-            return res.status(404).json({ msg: 'BranchNotFound' });
-        }    
+          logger.error(
+            `TicketController->getMonthlySales: Sucursal no encontrada con ID ${branch_id}`
+          );
+          return res.status(404).json({ msg: "BranchNotFound" });
         }
-      const { ticketsVendidos, ingresoGenerado } = await TicketRepository.getMonthlySales(month, type, branch_id);
-      const occupancyRate = await TicketRepository.getOccupancyRate(month, type, branch_id);
+      }
+      const { ticketsVendidos, ingresoGenerado } =
+        await TicketRepository.getMonthlySales(month, type, branch_id);
+      const occupancyRate = await TicketRepository.getOccupancyRate(
+        month,
+        type,
+        branch_id
+      );
       // Obtener las ganancias anuales por meses
-      const yearlyEarnings = await TicketRepository.getYearlyEarnings(month, type, branch_id);
+      const yearlyEarnings = await TicketRepository.getYearlyEarnings(
+        month,
+        type,
+        branch_id
+      );
 
-      const trips = await TicketRepository.getTripsWithDetails(month, type, branch_id);
+      const trips = await TicketRepository.getTripsWithDetails(
+        month,
+        type,
+        branch_id
+      );
 
       const formattedTrips = trips.map((trip) => {
         // Concatenar información del vehículo
@@ -404,23 +427,35 @@ const TicketController = {
         // Concatenar origen y destino
         const routeInfo = `${trip.route.origin.address} - ${trip.route.destination.address}`;
 
-       // Calcular el horario
-       let horario;
-       if (trip.end) {
-         // Si hay hora de finalización, usar start y end
-         horario = `${trip.start} - ${trip.end}`;
-       } else if (trip.start) {
-         // Si hay hora de inicio, sumar estimated a start
-         const estimatedTime = TicketController.addMinutesToTime(trip.start, trip.route.estimated);
-         horario = `${trip.start} - ${estimatedTime}`;
-       } else {
-         // Si no hay hora de inicio, sumar estimated a schedule
-         const estimatedTime = TicketController.addMinutesToTime(trip.schedule, trip.route.estimated);
-         horario = `${trip.schedule} - ${estimatedTime}`;
-       }
+        // Calcular el horario
+        let horario;
+        if (trip.end) {
+          // Si hay hora de finalización, usar start y end
+          horario = `${trip.start} - ${trip.end}`;
+        } else if (trip.start) {
+          // Si hay hora de inicio, sumar estimated a start
+          const estimatedTime = TicketController.addMinutesToTime(
+            trip.start,
+            trip.route.estimated
+          );
+          horario = `${trip.start} - ${estimatedTime}`;
+        } else {
+          // Si no hay hora de inicio, sumar estimated a schedule
+          const estimatedTime = TicketController.addMinutesToTime(
+            trip.schedule,
+            trip.route.estimated
+          );
+          horario = `${trip.schedule} - ${estimatedTime}`;
+        }
         // Calcular asientos vendidos y dinero generado
-        const asientosVendidos = tickets.reduce((sum, ticket) => sum + ticket.quantity, 0);
-        const dineroGenerado = tickets.reduce((sum, ticket) => sum + parseFloat(ticket.total), 0);
+        const asientosVendidos = tickets.reduce(
+          (sum, ticket) => sum + ticket.quantity,
+          0
+        );
+        const dineroGenerado = tickets.reduce(
+          (sum, ticket) => sum + parseFloat(ticket.total),
+          0
+        );
 
         return {
           id: trip.id,
@@ -436,15 +471,33 @@ const TicketController = {
         };
       });
 
-
       const data = [
-        { title: 'Boletos Vendidos', value: Number(ticketsVendidos), color: '#1976D2', icon: 'mdi-ticket' },
-        { title: 'Ingreso Generado', value: Number(ingresoGenerado), color: '#4CAF50', icon: 'mdi-cash-multiple' },
-        { title: 'Incidentes', value: 30, color: '#F44336', icon: 'mdi-alert' },
-        { title: 'Tasa de Ocupación', value: occupancyRate, color: '#FF9800', icon: 'mdi-account-group' },/*Tasa de ocupación: Promedio de pasajeros por viaje */
+        {
+          title: "Boletos Vendidos",
+          value: Number(ticketsVendidos),
+          color: "#1976D2",
+          icon: "mdi-ticket",
+        },
+        {
+          title: "Ingreso Generado",
+          value: Number(ingresoGenerado),
+          color: "#4CAF50",
+          icon: "mdi-cash-multiple",
+        },
+        { title: "Incidentes", value: 30, color: "#F44336", icon: "mdi-alert" },
+        {
+          title: "Tasa de Ocupación",
+          value: occupancyRate,
+          color: "#FF9800",
+          icon: "mdi-account-group",
+        } /*Tasa de ocupación: Promedio de pasajeros por viaje */,
       ];
 
-      res.status(200).json({sales: data, salesYear: yearlyEarnings, trips: formattedTrips});
+      res.status(200).json({
+        sales: data,
+        salesYear: yearlyEarnings,
+        trips: formattedTrips,
+      });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -459,7 +512,94 @@ const TicketController = {
     const date = new Date();
     date.setHours(hours, mins + minutes, 0); // Sumar los minutos
     return date.toTimeString().slice(0, 5); // Devolver la hora en formato HH:mm
-  }
+  },
+
+  async getTicketsSoldDate(req, res) {
+    logger.info(
+      `${req.user.name} - Entra a buscar los datos de los pasajes de una fecha dada`
+    );
+    logger.info("Datos recibidos al obtener los pasajes de una fecha dada");
+    logger.info(JSON.stringify(req.body));
+    try {
+      const { type, id, date } = req.body;
+
+      // Validar si la sucursal o compañía existe
+      if (type === "Sucursal") {
+        const branch = await BranchRepository.findById(id);
+        if (!branch) {
+          logger.error(
+            `TicketController->getTicketsSoldDate: Sucursal no encontrada con ID ${id}`
+          );
+          return res.status(404).json({ msg: "BranchNotFound" });
+        }
+      } else {
+        const company = await CompanyRepository.findById(id);
+        if (!company) {
+          logger.error(
+            `TicketController->getTicketsSoldDate: Compañía no encontrada con ID ${id}`
+          );
+          return res.status(404).json({ msg: "CompanyNotFound" });
+        }
+      }
+
+      // Obtener los tickets vendidos en la fecha dada
+      const tickets = await TicketRepository.getTicketsSoldDate(type, id, date);
+
+      // Inicializar las variables para calcular los totales
+      const totalsByMethod = {}; // Objeto para almacenar los totales por método de pago
+      let totalGeneral = 0; // Variable para almacenar el total general en dinero
+      let totalPasajesVendidos = 0; // Variable para almacenar el total general de pasajes vendidos
+      let reimpresiones = 0;
+      // Procesar los tickets
+      tickets.forEach((ticket) => {
+        const method = ticket.method.toUpperCase(); // Convertir a mayúsculas para consistencia
+        const total = parseFloat(ticket.total); // Convertir a número
+        const quantity = parseInt(ticket.quantity, 10); // Convertir a número entero
+
+        if (!totalsByMethod[method]) {
+          totalsByMethod[method] = {
+            total: 0, // Total en dinero
+            cantidad: 0, // Cantidad de pasajes
+          };
+        }
+
+        totalsByMethod[method].total += total; // Sumar el total en dinero
+        //totalsByMethod[method].cantidad += quantity; // Sumar la cantidad de pasajes
+        totalsByMethod[method].cantidad += 1; // Sumar la cantidad de pasajes
+        totalGeneral += total; // Sumar al total general en dinero
+        //totalPasajesVendidos += quantity; // Sumar al total general de pasajes
+        totalPasajesVendidos++; // Sumar al total general de pasajes
+      });
+
+      // Convertir el objeto totalsByMethod en un array
+      const totalsByMethodArray = Object.keys(totalsByMethod).map((method) => ({
+        metodo: method,
+        total: totalsByMethod[method].total, // Total en dinero
+        cantidad: totalsByMethod[method].cantidad, // Cantidad de pasajes
+      }));
+
+      // Obtener el nombre de la entidad (Company o Branch)
+      const entityName =
+        type === "Company"
+          ? tickets[0]?.branch?.company?.name // Usar el alias correcto
+          : tickets[0]?.branch?.name;
+
+      // Formatear la respuesta
+      const response = {
+        nombre: entityName,
+        fecha: date,
+        "Pasajes emitidos": totalPasajesVendidos, // Total de pasajes vendidos
+        Reimpresiones: reimpresiones,
+        totalesPorMetodo: totalsByMethodArray, // Array de totales por método de pago
+        TOTALES: totalGeneral, // Total general en dinero
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error("Error en el controlador:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
 };
 
 module.exports = TicketController;

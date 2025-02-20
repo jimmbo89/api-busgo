@@ -47,7 +47,7 @@ const { storeBranchVehicleSchema, updateBranchVehicleSchema, idBranchVehicleSche
 const { storeVehicleWorkerSchema, updateVehicleWorkerSchema, idVehicleWorkerSchema, vehicle_idWorkerSchema } = require('./middlewares/validations/vehicleworkerValidation');
 const { storeTripSchema, updateTripSchema, idTripSchema, branch_idTripSchema } = require('./middlewares/validations/tripValidation');
 const { storeTripWorkerSchema, updateTripWorkerSchema, idTripWorkerSchema, assignTripWorkersSchema } = require('./middlewares/validations/tripworkerValidation');
-const { storeTicketSchema, updateTicketSchema, idTicketSchema, branchTicketTripSchema, monthlySalesSchema } = require('./middlewares/validations/ticketValidation');
+const { storeTicketSchema, updateTicketSchema, idTicketSchema, branchTicketTripSchema, monthlySalesSchema, ticketSoldDateSchema } = require('./middlewares/validations/ticketValidation');
 const { paymentSchema, paymentDataSchema } = require('./middlewares/validations/tuuValidation');
 const { storeStructureSchema, updateStructureSchema, idStructureSchema } = require('./middlewares/validations/structureValidation');
 
@@ -221,6 +221,7 @@ router.put('/ticket', validateSchema(updateTicketSchema), TicketController.updat
 router.post('/ticket-destroy', validateSchema(idTicketSchema), TicketController.destroy);
 router.post('/get-tickets-date', validateSchema(branch_idTripSchema), TicketController.getTicketsDate);
 router.post("/monthly-sales", validateSchema(monthlySalesSchema), TicketController.getMonthlySales);
+router.post("/ticket-sold-date", validateSchema(ticketSoldDateSchema), TicketController.getTicketsSoldDate);
 
 //Api Tuu
 router.post('/tuu', validateSchema(paymentSchema), TuuController.store);

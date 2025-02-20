@@ -11,6 +11,7 @@ const {
   Location,
   Route,
   Vehicle,
+  Company,
   sequelize,
 } = require("../models");
 const ImageService = require("../services/ImageService");
@@ -510,41 +511,41 @@ const TicketRepository = {
           ), // Filtrar viajes del mes actual
         ],
       };
-  
+
       // Si type es "Sucursal", agregar la condición de branch_id
       if (type === "Sucursal" && branchId) {
         whereClause[Op.and].push({ branch_id: branchId });
       }
-  
+
       // Obtener todos los viajes que cumplen con las condiciones
       const trips = await Trip.findAll({
         where: whereClause,
         include: [
           {
             model: Ticket,
-            as: 'tickets',
-            attributes: ['quantity'], // Incluir la columna quantity de los tickets
+            as: "tickets",
+            attributes: ["quantity"], // Incluir la columna quantity de los tickets
             required: false, // Permitir viajes sin tickets
           },
         ],
       });
-  
+
       // Calcular el total de viajes y el total de pasajeros manualmente
       let totalTrips = 0;
       let totalPassengers = 0;
-  
-      trips.forEach(trip => {
+
+      trips.forEach((trip) => {
         totalTrips += 1; // Cada viaje cuenta como 1
         if (trip.tickets && trip.tickets.length > 0) {
-          trip.tickets.forEach(ticket => {
+          trip.tickets.forEach((ticket) => {
             totalPassengers += ticket.quantity || 0; // Sumar la cantidad de pasajeros de cada ticket
           });
         }
       });
-  
+
       // Calcular la tasa de ocupación (promedio de pasajeros por viaje)
       const occupancyRate = totalTrips > 0 ? totalPassengers / totalTrips : 0;
-  
+
       return Number(occupancyRate.toFixed(2)); // Redondear a 2 decimales
     } catch (error) {
       logger.error("Error al calcular la tasa de ocupación:", error);
@@ -554,7 +555,7 @@ const TicketRepository = {
   async getYearlyEarnings(month, type, branchId) {
     try {
       const year = month.split("-")[0]; // Extraer el año del parámetro month
-  
+
       // Condiciones base
       const whereClause = {
         [Op.and]: [
@@ -562,12 +563,12 @@ const TicketRepository = {
           //{ pay: 1 }, // Solo tickets pagados
         ],
       };
-  
+
       // Si type es "Sucursal", agregar la condición de branch_id
       if (type === "Sucursal" && branchId) {
         whereClause[Op.and].push({ branch_id: branchId });
       }
-  
+
       // Obtener las ganancias agrupadas por mes
       const earningsByMonth = await Ticket.findAll({
         attributes: [
@@ -578,16 +579,17 @@ const TicketRepository = {
         group: [sequelize.fn("MONTH", sequelize.col("date"))], // Agrupar por mes
         raw: true,
       });
-  
+
       // Crear un array para almacenar las ganancias de cada mes (inicializado con 0)
       const monthlyEarnings = new Array(12).fill(0);
-  
+
       // Rellenar el array con las ganancias obtenidas (convertidas a enteros)
       earningsByMonth.forEach((item) => {
         const monthIndex = item.month - 1; // Los meses en SQL van de 1 a 12, en JavaScript de 0 a 11
-        monthlyEarnings[monthIndex] = Math.round(parseFloat(item.totalEarnings)) || 0; // Convertir a entero
+        monthlyEarnings[monthIndex] =
+          Math.round(parseFloat(item.totalEarnings)) || 0; // Convertir a entero
       });
-  
+
       return monthlyEarnings;
     } catch (error) {
       logger.error("Error al obtener las ganancias anuales:", error);
@@ -604,12 +606,12 @@ const TicketRepository = {
         ), // Filtrar viajes del mes actual
       ],
     };
-  
+
     // Si type es "Sucursal", agregar la condición de branch_id
     if (type === "Sucursal" && branchId) {
       whereClause[Op.and].push({ branch_id: branchId });
     }
-  
+
     return await Trip.findAll({
       attributes: [
         "id",
@@ -659,9 +661,37 @@ const TicketRepository = {
           required: false,
           //where: {pay: 1}
         },
-      ]
+      ],
     });
-  }
+  },
+
+  async getTicketsSoldDate(type, id, date) {
+    const whereClause = { date };
+
+    if (type === "Company") {
+      whereClause["$branch.company_id$"] = id;
+    } else if (type === "Sucursal") {
+      whereClause.branch_id = id;
+    }
+
+    const tickets = await Ticket.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          include: [
+            {
+              model: Company,
+              as: "company",
+            },
+          ],
+        },
+      ],
+    });
+
+    return tickets;
+  },
 };
 
 module.exports = TicketRepository;

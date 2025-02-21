@@ -10,6 +10,7 @@ const {
   BranchWorkerRepository,
   TripWorkerRepository,
   TicketRepository,
+  CompanyRepository,
 } = require("../repositories");
 
 const TripController = {
@@ -569,6 +570,134 @@ const TripController = {
 
       logger.error("TripController->getRouteVehicleBranch:" + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
+  async getTripsTicketsDate(req, res) {
+    logger.info(
+      `${req.user.name} - Entra a buscar los datos de los viajes y pasajes de una fecha dada`
+    );
+    logger.info(
+      "Datos recibidos al obtener los viajes y pasajes de una fecha dada"
+    );
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      const { type, id, date, endDate } = req.body;
+
+      // Validar si la sucursal o compañía existe
+      if (type === "Sucursal") {
+        const branch = await BranchRepository.findById(id);
+        if (!branch) {
+          logger.error(
+            `TtripController->getTripsDate: Sucursal no encontrada con ID ${id}`
+          );
+          return res.status(404).json({ msg: "BranchNotFound" });
+        }
+      } else {
+        const company = await CompanyRepository.findById(id);
+        if (!company) {
+          logger.error(
+            `TtripController->getTripsDate: Compañía no encontrada con ID ${id}`
+          );
+          return res.status(404).json({ msg: "CompanyNotFound" });
+        }
+      }
+
+      // Obtener los trips con sus tickets asociados
+      const trips = await TripRepository.getTripsDate(type, id, date, endDate);
+
+      // Inicializar las variables para calcular los totales
+      const totalsByMethod = {}; // Objeto para almacenar los totales por método de pago
+      let totalGeneral = 0; // Total general en dinero
+      let totalPasajesVendidos = 0; // Total general de pasajes vendidos
+      let reimpresiones = 0; // Total de reimpresiones
+
+      // Procesar los trips y sus tickets
+      const tripsSummary = trips.map((trip) => {
+        const origin = trip.route.origin;
+        const destination = trip.route.destination;
+        const tripName = origin.address + "-" + destination.address;
+        const tripTickets = trip.tickets || [];
+
+        // Inicializar los totales por método de pago para este trip
+        const tripTotalsByMethod = {};
+        let tripTotal = 0;
+        let tripPasajesVendidos = 0;
+
+        // Procesar los tickets del trip
+        tripTickets.forEach((ticket) => {
+          const method = ticket.method.toUpperCase(); // Convertir a mayúsculas para consistencia
+          const total = parseFloat(ticket.total); // Convertir a número
+          const quantity = parseInt(ticket.quantity, 10); // Convertir a número entero
+
+          // Sumar al total general
+          totalGeneral += total;
+          totalPasajesVendidos += 1; // Contar cada ticket como un pasaje vendido
+
+          // Sumar al total por método de pago
+          if (!totalsByMethod[method]) {
+            totalsByMethod[method] = {
+              total: 0,
+              cantidad: 0,
+            };
+          }
+          totalsByMethod[method].total += total;
+          totalsByMethod[method].cantidad += 1;
+
+          // Sumar al total del trip
+          if (!tripTotalsByMethod[method]) {
+            tripTotalsByMethod[method] = {
+              total: 0,
+              cantidad: 0,
+            };
+          }
+          tripTotalsByMethod[method].total += total;
+          tripTotalsByMethod[method].cantidad += 1;
+          tripTotal += total;
+          tripPasajesVendidos += 1;
+        });
+
+        // Formatear la información del trip
+        return {
+          nombre: tripName,
+          totalPasajes: tripPasajesVendidos,
+          totalTramo: tripTotal,
+          totalesPorMetodo: Object.keys(tripTotalsByMethod).map((method) => ({
+            metodo: method,
+            total: tripTotalsByMethod[method].total,
+            cantidad: tripTotalsByMethod[method].cantidad,
+          })),
+        };
+      });
+
+      // Convertir el objeto totalsByMethod en un array
+      const totalsByMethodArray = Object.keys(totalsByMethod).map((method) => ({
+        metodo: method,
+        total: totalsByMethod[method].total,
+        cantidad: totalsByMethod[method].cantidad,
+      }));
+
+      // Obtener el nombre de la entidad (Company o Branch)
+      const entityName = type === "Company"
+      ? trips[0]?.branch?.company?.name // Usar el alias correcto
+      : trips[0]?.branch?.name;
+
+      // Formatear la respuesta
+      const response = {
+        nombre: entityName,
+        fecha: endDate && endDate.trim() !== "" ? `${date} - ${endDate}` : date,
+        "Pasajes emitidos": totalPasajesVendidos,
+        Reimpresiones: reimpresiones,
+        totalesPorMetodo: totalsByMethodArray,
+        TOTALES: totalGeneral,
+        TRAMOS: tripsSummary,
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error("Error en el controlador TripController:", error);
+      res.status(500).json({ error: error.message });
     }
   },
 };

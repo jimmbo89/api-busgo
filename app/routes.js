@@ -204,6 +204,7 @@ router.post('/trip-show', validateSchema(idTripSchema), TripController.show);
 router.put('/trip', validateSchema(updateTripSchema), TripController.update);
 router.post('/trip-destroy', validateSchema(idTripSchema), TripController.destroy);
 router.post('/get-routes-vehicle-workers', validateSchema(branch_idTripSchema), TripController.getRouteVehicleBranch);
+router.post("/trips-tickets-date", validateSchema(ticketSoldDateSchema), TripController.getTripsTicketsDate);
 
 //Rutas Trip
 router.get('/trip-worker', TripWorkerController.index);

@@ -8,7 +8,8 @@ const {
   TripWorker,
   Worker,
   Ticket,
-  Structure
+  Structure,
+  Company,
 } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 
@@ -37,12 +38,12 @@ const TripRepository = {
           model: Vehicle,
           as: "vehicle",
           attributes: ["id", "plate", "seats", "image"],
-          include:[
+          include: [
             {
               model: Structure,
-              as: "structure"
-            }
-          ]
+              as: "structure",
+            },
+          ],
         },
         {
           model: Route,
@@ -97,12 +98,12 @@ const TripRepository = {
           model: Vehicle,
           as: "vehicle",
           attributes: ["id", "plate", "seats", "image"],
-          include:[
+          include: [
             {
               model: Structure,
-              as: "structure"
-            }
-          ]
+              as: "structure",
+            },
+          ],
         },
         {
           model: Route,
@@ -154,12 +155,12 @@ const TripRepository = {
           model: Vehicle,
           as: "vehicle",
           attributes: ["id", "plate", "image"],
-          include:[
+          include: [
             {
               model: Structure,
-              as: "structure"
-            }
-          ]
+              as: "structure",
+            },
+          ],
         },
         {
           model: Route,
@@ -351,6 +352,68 @@ const TripRepository = {
       logger.info("Trip workers actualizado correctamente.");
     } catch (error) {
       logger.error("Error actualizando trip workers:", error);
+    }
+  },
+
+  async getTripsDate(type, id, date, endDate) {
+    try {
+      const whereClause = {};
+      if (endDate && endDate.trim() !== "") {
+        whereClause.date = {
+          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+        };
+      } else {
+        // Filtrar por una sola fecha si no se proporciona endDate
+        whereClause.date = date;
+      }
+
+      if (type === "Company") {
+        whereClause["$branch.company_id$"] = id;
+      } else if (type === "Sucursal") {
+        whereClause.branch_id = id;
+      }
+
+      const trips = await Trip.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Branch,
+            as: "branch",
+            include: [
+              {
+                model: Company,
+                as: "company",
+              },
+            ],
+          },
+          {
+            model: Ticket,
+            as: "tickets",
+          },
+          {
+            model: Route,
+            as: "route",
+            attributes: ["id", "name"],
+            include: [
+              {
+                model: Location, // Relación con el modelo de origen
+                as: "origin",
+                attributes: ["id", "address", "image"], // Atributos a incluir de la tabla de origen
+              },
+              {
+                model: Location, // Relación con el modelo de destino
+                as: "destination",
+                attributes: ["id", "address", "image"], // Atributos a incluir de la tabla de destino
+              },
+            ],
+          },
+        ],
+      });
+
+      return trips;
+    } catch (error) {
+      logger.error("Error al obtener los viajes y tickets:", error);
+      throw error; // Re-lanzar el error para que pueda ser manejado en el nivel superior
     }
   },
 };

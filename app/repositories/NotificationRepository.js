@@ -95,7 +95,7 @@ const NotificationRepository = {
         userId: notification.user_id,
         branchId: notification.branch_id,
         nameBranch: notification.branch.name,
-        image: notification.home.image,
+        image: notification.branch.image,
         data: JSON.parse(notification.data),
         title: notification.title,
         description: notification.description,

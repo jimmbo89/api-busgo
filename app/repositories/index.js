@@ -17,6 +17,7 @@ const VehicleWorkerRepository = require('./VehicleWorkerRepository');
 const PermissionRoleRepository = require('./PermissionRoleRepository');
 const TuuRepository = require('./TuuRepository');
 const StructureRepository = require('./StructureRepository');
+const IncidentRepository = require('./IncidentRepository');
 
 module.exports = {
     DeviceRepository,
@@ -37,5 +38,6 @@ module.exports = {
     VehicleWorkerRepository,
     PermissionRoleRepository,
     TuuRepository,
-    StructureRepository
+    StructureRepository,
+    IncidentRepository
 };

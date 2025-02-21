@@ -687,11 +687,11 @@ const TripController = {
       const response = {
         nombre: entityName,
         fecha: endDate && endDate.trim() !== "" ? `${date} - ${endDate}` : date,
-        "Pasajes emitidos": totalPasajesVendidos,
-        Reimpresiones: reimpresiones,
+        pasajesEmitidos: totalPasajesVendidos,
+        reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray,
-        TOTALES: totalGeneral,
-        TRAMOS: tripsSummary,
+        totales: totalGeneral,
+        tramos: tripsSummary,
       };
 
       res.json(response);

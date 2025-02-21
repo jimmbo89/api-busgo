@@ -5,6 +5,7 @@ const {
   TripRepository,
   BranchRepository,
   CompanyRepository,
+  IncidentRepository,
 } = require("../repositories");
 
 const TicketController = {
@@ -418,6 +419,8 @@ const TicketController = {
         branch_id
       );
 
+      const { totalIncidents, incidents } = await IncidentRepository.getIncidentsByBranchMonth(month, type, branch_id);
+
       const formattedTrips = trips.map((trip) => {
         // Concatenar información del vehículo
         const vehicle = trip.vehicle;
@@ -484,7 +487,7 @@ const TicketController = {
           color: "#4CAF50",
           icon: "mdi-cash-multiple",
         },
-        { title: "Incidentes", value: 30, color: "#F44336", icon: "mdi-alert" },
+        { title: "Incidentes", value: Number(totalIncidents), color: "#F44336", icon: "mdi-alert" },
         {
           title: "Tasa de Ocupación",
           value: occupancyRate,
@@ -593,10 +596,10 @@ const TicketController = {
       const response = {
         nombre: entityName,
         fecha: fecha,
-        "Pasajes emitidos": totalPasajesVendidos, // Total de pasajes vendidos
-        Reimpresiones: reimpresiones,
+        pasajesEmitidos: totalPasajesVendidos, // Total de pasajes vendidos
+        reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray, // Array de totales por método de pago
-        TOTALES: totalGeneral, // Total general en dinero
+        totales: totalGeneral, // Total general en dinero
       };
 
       res.json(response);

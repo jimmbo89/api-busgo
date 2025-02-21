@@ -31,6 +31,8 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       User.hasMany(models.Ticket, { foreignKey: 'user_id', as: 'tickets' });
+      User.hasMany(models.Incident, { foreignKey: 'user_id', as: 'incidents' });
+      User.hasMany(models.Notification, { foreignKey: 'user_id', as: 'notifications' });
     }
   }
   User.init({

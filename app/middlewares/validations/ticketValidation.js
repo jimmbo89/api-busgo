@@ -149,29 +149,32 @@ const monthlySalesSchema = Joi.object({
 
 const ticketSoldDateSchema = Joi.object({
   type: Joi.string()
-    .valid('Company', 'Sucursal') // Valores permitidos para el campo "type"
+    .valid("Company", "Sucursal") // Valores permitidos para el campo "type"
     .required()
     .messages({
-      'string.base': 'El campo type debe ser un texto',
-      'any.only': 'El campo type debe ser "Company" o "Sucursal"',
-      'any.required': 'El campo type es requerido',
+      "string.base": "El campo type debe ser un texto",
+      "any.only": 'El campo type debe ser "Company" o "Sucursal"',
+      "any.required": "El campo type es requerido",
     }),
-  id: Joi.number()
-    .integer()
-    .positive()
-    .required()
-    .messages({
-      'number.base': 'El campo id debe ser un número entero',
-      'number.integer': 'El campo id debe ser un número entero',
-      'number.positive': 'El campo id debe ser un número positivo',
-      'any.required': 'El campo id es requerido',
-    }),
-    date: Joi.string()
+  id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo id debe ser un número entero",
+    "number.integer": "El campo id debe ser un número entero",
+    "number.positive": "El campo id debe ser un número positivo",
+    "any.required": "El campo id es requerido",
+  }),
+  date: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/) // Expresión regular para validar el formato YYYY-MM-DD
     .required()
     .messages({
-      'string.pattern.base': 'El formato de la fecha debe ser YYYY-MM-DD',
-      'any.required': 'El campo date es requerido',
+      "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
+      "any.required": "El campo date es requerido",
+    }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD
+    .allow("", null) // Permitir vacío o null
+    .optional() // Campo opcional
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
     }),
 });
 module.exports = {
@@ -180,5 +183,5 @@ module.exports = {
   idTicketSchema,
   branchTicketTripSchema,
   monthlySalesSchema,
-  ticketSoldDateSchema
+  ticketSoldDateSchema,
 };

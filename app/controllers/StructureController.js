@@ -32,15 +32,19 @@ const StructureController = {
     }
   },
 
-  async index_cursor(req, res) {
+  /*async index_cursor(req, res) {
     logger.info(`${req.user.name} - Accediendo a la lista de estructuras`);
-
+    logger.info(JSON.stringify(req.body));
     try {
-      const { limit = 12, cursor } = req.body;
-
-      const { structures, hasMore, nextCursor } = await StructureRepository.findAllPaginated(
+      const { limit = 10, cursor, search, page } = req.body;
+      // Validar que limit y page sean números válidos
+    const parsedLimit = parseInt(limit, 10);
+    const parsedPage = parseInt(page, 10);
+      const { structures, hasMore, total, nextCursor } = await StructureRepository.findAllPaginated(
         limit,
-        cursor
+        cursor,
+        page,
+        search
       );
 
       // Mapeo de las estructuras para asegurarnos que `seats` y `seatMap` sean tratados como arrays
@@ -56,7 +60,46 @@ const StructureController = {
         };
       });
 
-      res.status(200).json({ structures: mappedStructures, hasMore, nextCursor });
+      res.status(200).json({ structures: mappedStructures, hasMore, total, nextCursor });
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+      logger.error("Error en StructureController->index_cursor: " + errorMsg);
+      res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },*/
+
+  async index_cursor(req, res) {
+    logger.info(`${req.user.name} - Accediendo a la lista de estructuras`);
+    logger.info(JSON.stringify(req.body));
+  
+    try {
+      const { limit = 10, cursor = null, page = 1, search = '' } = req.body;
+  
+      // Validar que limit y page sean números válidos
+      const parsedLimit = parseInt(limit, 10);
+      const parsedPage = parseInt(page, 10);
+  
+      // Obtener los datos paginados
+      const { structures, total, nextCursor } = await StructureRepository.findAllPaginated(
+        parsedLimit,
+        cursor,
+        parsedPage,
+        search
+      );
+  
+      // Mapear las estructuras para asegurarnos de que seats y seatMap sean arrays
+      const mappedStructures = structures.map((structure) => {
+        return {
+          ...structure.dataValues,
+          seats: Array.isArray(structure.seats) ? structure.seats : JSON.parse(structure.seats),
+          seatMap: Array.isArray(structure.seatMap) ? structure.seatMap : JSON.parse(structure.seatMap),
+        };
+      });
+  
+      // Devolver la respuesta
+      res.status(200).json({ structures: mappedStructures, total, nextCursor });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -65,7 +108,6 @@ const StructureController = {
       res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },
-
   // Crear una nueva estructura
   async store(req, res) {
     logger.info(`${req.user.name} - Creando una nueva estructura`);

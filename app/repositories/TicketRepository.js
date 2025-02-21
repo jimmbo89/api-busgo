@@ -665,8 +665,16 @@ const TicketRepository = {
     });
   },
 
-  async getTicketsSoldDate(type, id, date) {
-    const whereClause = { date };
+  async getTicketsSoldDate(type, id, date, endDate) {
+    const whereClause = {};
+    if (endDate && endDate.trim() !== ""){
+      whereClause.date = {
+          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+      };
+  } else {
+      // Filtrar por una sola fecha si no se proporciona endDate
+      whereClause.date = date;
+  }
 
     if (type === "Company") {
       whereClause["$branch.company_id$"] = id;

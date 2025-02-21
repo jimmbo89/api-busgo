@@ -521,7 +521,7 @@ const TicketController = {
     logger.info("Datos recibidos al obtener los pasajes de una fecha dada");
     logger.info(JSON.stringify(req.body));
     try {
-      const { type, id, date } = req.body;
+      const { type, id, date, endDate } = req.body;
 
       // Validar si la sucursal o compañía existe
       if (type === "Sucursal") {
@@ -543,7 +543,7 @@ const TicketController = {
       }
 
       // Obtener los tickets vendidos en la fecha dada
-      const tickets = await TicketRepository.getTicketsSoldDate(type, id, date);
+      const tickets = await TicketRepository.getTicketsSoldDate(type, id, date, endDate);
 
       // Inicializar las variables para calcular los totales
       const totalsByMethod = {}; // Objeto para almacenar los totales por método de pago
@@ -583,11 +583,16 @@ const TicketController = {
         type === "Company"
           ? tickets[0]?.branch?.company?.name // Usar el alias correcto
           : tickets[0]?.branch?.name;
-
+      let fecha = null;
+      if(endDate && endDate.trim() !== ""){
+        fecha = date +'-' +endDate;
+      }else{
+        fecha = date
+      }
       // Formatear la respuesta
       const response = {
         nombre: entityName,
-        fecha: date,
+        fecha: fecha,
         "Pasajes emitidos": totalPasajesVendidos, // Total de pasajes vendidos
         Reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray, // Array de totales por método de pago

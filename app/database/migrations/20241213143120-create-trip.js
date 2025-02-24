@@ -52,11 +52,11 @@ module.exports = {
         allowNull: false
       },
       start: {
-        type: Sequelize.DATE,
+        type: Sequelize.STRING,
         allowNull: true
       },
       end: {
-        type: Sequelize.DATE,
+        type: Sequelize.STRING,
         allowNull: true
       },
       price: {

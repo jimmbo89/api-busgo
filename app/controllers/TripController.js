@@ -11,6 +11,7 @@ const {
   TripWorkerRepository,
   TicketRepository,
   CompanyRepository,
+  IncidentRepository,
 } = require("../repositories");
 
 const TripController = {
@@ -465,6 +466,85 @@ const TripController = {
         }
       }
 
+      // Función para convertir HH:MM a minutos
+      const timeToMinutes = (time) => {
+        // Validar si time es null, undefined o una cadena vacía
+        if (!time || typeof time !== "string" || time.trim() === "") {
+          return null;
+        }
+
+        // Validar el formato HH:MM usando una expresión regular
+        const timePattern = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/; // Formato 24 horas
+        if (!timePattern.test(time)) {
+          logger.info(`Formato de hora inválido: ${time}`);
+          return null;
+        }
+
+        // Convertir la hora a minutos
+        const [hours, minutes] = time.split(":").map(Number);
+        return hours * 60 + minutes;
+      };
+
+      // Validar y convertir las horas a minutos solo si existen y no están vacías
+      const startMinutes = start ? timeToMinutes(start) : null;
+      const scheduleMinutes = trip.schedule
+        ? timeToMinutes(trip.schedule)
+        : null;
+      const endMinutes = end ? timeToMinutes(end) : null;
+      const arrivalMinutes = trip.arrival ? timeToMinutes(trip.arrival) : null;
+
+      // Comparar start y schedule solo si start existe y no es null
+      if (
+        startMinutes !== null &&
+        scheduleMinutes !== null &&
+        startMinutes > scheduleMinutes
+      ) {
+        const difference = startMinutes - scheduleMinutes;
+        logger.info(`Start es mayor que Schedule por ${difference} minutos`);
+        const incidentBody = {
+          branch_id: trip.branch_id, // ID de la sucursal
+          user_id: req.user.id, // ID del usuario que realiza la acción
+          title: "Retraso en la salida del viaje",
+          description: `Realizó la salida del viaje ${trip.id} con un retrazo de (${difference}) minutos.`,
+          details: {
+            start,
+            schedule,
+            arrival,
+            difference: startMinutes - scheduleMinutes,
+          },
+          date: new Date(), // Fecha actual
+        };
+
+        // Llamar al método create del IncidentRepository
+        await IncidentRepository.create(incidentBody);
+      }
+
+      // Comparar end y arrival solo si end existe y no es null
+      if (
+        endMinutes !== null &&
+        arrivalMinutes !== null &&
+        endMinutes > arrivalMinutes
+      ) {
+        const difference = endMinutes - arrivalMinutes;
+        logger.info(`End es mayor que Arrival por ${difference} minutos`);
+        const incidentBody = {
+          branch_id: trip.branch_id, // ID de la sucursal
+          user_id: req.user.id, // ID del usuario que realiza la acción
+          title: "Retraso en la llegada del viaje",
+          description: `Hizo la llegada del viaje ${trip.id} (${difference}) minutos más tardes.`,
+          details: {
+            start,
+            schedule,
+            arrival,
+            difference: endMinutes - arrivalMinutes,
+          },
+          date: new Date(), // Fecha actual
+        };
+
+        // Llamar al método create del IncidentRepository
+        await IncidentRepository.create(incidentBody);
+      }
+
       const updatedTrip = await TripRepository.update(trip, req.body);
 
       if (req.body.workers) {
@@ -679,9 +759,10 @@ const TripController = {
       }));
 
       // Obtener el nombre de la entidad (Company o Branch)
-      const entityName = type === "Company"
-      ? trips[0]?.branch?.company?.name // Usar el alias correcto
-      : trips[0]?.branch?.name;
+      const entityName =
+        type === "Company"
+          ? trips[0]?.branch?.company?.name // Usar el alias correcto
+          : trips[0]?.branch?.name;
 
       // Formatear la respuesta
       const response = {

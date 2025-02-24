@@ -109,6 +109,11 @@ module.exports = (sequelize, DataTypes) => {
     barcode: {
       type: DataTypes.STRING,
       allowNull: true
+    },
+    print: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1
     }
   }, {
     sequelize,

@@ -170,12 +170,17 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
+        "print"
       ],
       include: [
         {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
+          include: [{model: Company,
+            as: 'company',
+            attributes: ['id', 'name', 'rut', 'image', 'address']
+          }],
         },
         {
           model: User,
@@ -667,14 +672,14 @@ const TicketRepository = {
 
   async getTicketsSoldDate(type, id, date, endDate) {
     const whereClause = {};
-    if (endDate && endDate.trim() !== ""){
+    if (endDate && endDate.trim() !== "") {
       whereClause.date = {
-          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+        [Op.between]: [date, endDate], // Rango de fechas (inclusive)
       };
-  } else {
+    } else {
       // Filtrar por una sola fecha si no se proporciona endDate
       whereClause.date = date;
-  }
+    }
 
     if (type === "Company") {
       whereClause["$branch.company_id$"] = id;

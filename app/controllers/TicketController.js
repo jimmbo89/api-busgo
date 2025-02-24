@@ -229,11 +229,17 @@ const TicketController = {
         return res.status(404).json({ msg: "TicketNotFound" });
       }
 
-      const mappedTicket = {
+      let mappedTicket = [];
+      if (ticket.print < 2) {
+        // Incrementar el contador de impresiones
+        mappedTicket = {
         id: ticket.id,
         branchId: ticket.branch_id,
+        branch_id: ticket.branch_id,
+        user_id: ticket.user_id,
         userId: ticket.user_id,
         tripId: ticket.trip_id,
+        trip_id: ticket.trip_id,
         method: ticket.method,
         status: ticket.status,
         quantity: ticket.quantity,
@@ -241,16 +247,47 @@ const TicketController = {
         total: ticket.total,
         seats: ticket.seats,
         date: ticket.date,
+        print: ticket.print + 1,
         adults: ticket.adults,
         minors: ticket.minors,
+        time: await TicketController.getCurrentTime(),
         qr: ticket.qr,
         barcode: ticket.barcode,
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
+        companyName: ticket.branch.company.name,
+        companyRut: ticket.branch.company.rut,
+        companyAddress: ticket.branch.company.address,
+        companyPhone: ticket.branch.company.phone,
         userName: ticket.user.name, // Incluir los datos del usuario asociado
         tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
         tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
         tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
       };
+    }
+    
+    ticket.print += 1;
+    await ticket.save();
+
+      logger.info(`Agregando incidencia de reimpresión`);
+      const incidentBody = {
+        branch_id: ticket.branch_id, // ID de la sucursal
+        user_id: req.user.id, // ID del usuario que realiza la acción
+        title: "Reimpresión de ticket",
+        description: `${req.user.name} solicitó la reimpresión del ticket: ${ticket.id} por ${ticket.print} ocasión`,
+        details: {
+          print: ticket.print,
+          ticket_id: ticket.id,
+          method: ticket.method,
+          quantity: ticket.quantity,
+          price: ticket.price,
+          total: ticket.total,
+          trip_id: ticket.trip_id,
+        },
+        date: new Date(), // Fecha actual
+      };
+
+      // Llamar al método create del IncidentRepository
+      await IncidentRepository.create(incidentBody);
 
       res.status(200).json({ ticket: mappedTicket });
     } catch (error) {
@@ -261,6 +298,13 @@ const TicketController = {
       logger.error("TicketController->show:" + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
+  },
+
+  async getCurrentTime() {
+    const now = new Date();
+    const hours = String(now.getHours()).padStart(2, '0'); // Asegura dos dígitos
+    const minutes = String(now.getMinutes()).padStart(2, '0'); // Asegura dos dígitos
+    return `${hours}:${minutes}`;
   },
 
   // Actualizar un ticket
@@ -419,7 +463,12 @@ const TicketController = {
         branch_id
       );
 
-      const { totalIncidents, incidents } = await IncidentRepository.getIncidentsByBranchMonth(month, type, branch_id);
+      const { totalIncidents, incidents } =
+        await IncidentRepository.getIncidentsByBranchMonth(
+          month,
+          type,
+          branch_id
+        );
 
       const formattedTrips = trips.map((trip) => {
         // Concatenar información del vehículo
@@ -487,7 +536,12 @@ const TicketController = {
           color: "#4CAF50",
           icon: "mdi-cash-multiple",
         },
-        { title: "Incidentes", value: Number(totalIncidents), color: "#F44336", icon: "mdi-alert" },
+        {
+          title: "Incidentes",
+          value: Number(totalIncidents),
+          color: "#F44336",
+          icon: "mdi-alert",
+        },
         {
           title: "Tasa de Ocupación",
           value: occupancyRate,
@@ -546,7 +600,12 @@ const TicketController = {
       }
 
       // Obtener los tickets vendidos en la fecha dada
-      const tickets = await TicketRepository.getTicketsSoldDate(type, id, date, endDate);
+      const tickets = await TicketRepository.getTicketsSoldDate(
+        type,
+        id,
+        date,
+        endDate
+      );
 
       // Inicializar las variables para calcular los totales
       const totalsByMethod = {}; // Objeto para almacenar los totales por método de pago
@@ -587,10 +646,10 @@ const TicketController = {
           ? tickets[0]?.branch?.company?.name // Usar el alias correcto
           : tickets[0]?.branch?.name;
       let fecha = null;
-      if(endDate && endDate.trim() !== ""){
-        fecha = date +'-' +endDate;
-      }else{
-        fecha = date
+      if (endDate && endDate.trim() !== "") {
+        fecha = date + "-" + endDate;
+      } else {
+        fecha = date;
       }
       // Formatear la respuesta
       const response = {

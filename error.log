@@ -228,3 +228,14 @@
 2025-02-13 12:44:30 error: VehicleController->index:Structure is not defined
 2025-02-13 12:44:38 error: VehicleController->index:Structure is not defined
 2025-02-13 12:44:41 error: VehicleController->index:Structure is not defined
+2025-02-21 13:58:16 error: Validation error in PUT /api/trip - Body: {"id":7,"star":"09:00"} - Errors: "star" is not allowed
+2025-02-21 13:58:29 error: Error actualizando el viaje: Incorrect datetime value: '09:00' for column 'start' at row 1
+2025-02-21 13:58:29 error: TripController->update:Error actualizando el viaje
+2025-02-21 13:58:49 error: Validation error in PUT /api/trip - Body: {"id":7,"start":"09:00:00"} - Errors: El campo start debe tener el formato YYYY-MM-DD HH:mm:ss
+2025-02-21 14:16:52 error: Error en IncidentRepository->create: notNull Violation: Incident.branch_id cannot be null
+2025-02-21 14:16:52 error: TripController->update:notNull Violation: Incident.branch_id cannot be null
+2025-02-21 14:18:14 error: Error en IncidentRepository->create: notNull Violation: Incident.branch_id cannot be null
+2025-02-21 14:18:14 error: TripController->update:notNull Violation: Incident.branch_id cannot be null
+2025-02-21 14:19:33 error: TripController->update:req is not defined
+2025-02-21 14:19:42 error: Error en IncidentRepository->create: notNull Violation: Incident.branch_id cannot be null
+2025-02-21 14:19:42 error: TripController->update:notNull Violation: Incident.branch_id cannot be null

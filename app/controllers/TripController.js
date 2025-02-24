@@ -165,9 +165,11 @@ const TripController = {
                     : JSON.parse(ticket.seats); // Si es un string JSON, lo parseas
                 })
             : [];
-          const seatMap = Array.isArray(trip.vehicle.structure.seatMap)
-            ? trip.vehicle.structure.seatMap // Si ya es un array, lo usas directamente
-            : JSON.parse(trip.vehicle.structure.seatMap);
+            const seatMap = trip.vehicle?.structure?.seatMap
+            ? Array.isArray(trip.vehicle.structure.seatMap)
+              ? trip.vehicle.structure.seatMap // Si ya es un array, lo usas directamente
+              : JSON.parse(trip.vehicle.structure.seatMap) // Si es un string, lo parseas a array
+            : []; // Si no existe structure.seatMap, devuelves un array vacío
           return {
             id: trip.id,
             trip_id: trip.id,

@@ -15,7 +15,7 @@ const storeTicketSchema = Joi.object({
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
     "any.required": "El campo date es obligatorio",
   }),
-  method: Joi.string().valid("Efectivo", "Tarjeta").required().messages({
+  method: Joi.string().valid("Efectivo", "Credito", "Debito").required().messages({
     "string.base": "El campo method debe ser un texto",
     "any.required": "El campo method es obligatorio",
     "any.only":
@@ -67,7 +67,7 @@ const updateTicketSchema = Joi.object({
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
   }),
   method: Joi.string()
-    .valid("Efectivo", "Tarjeta")
+    .valid("Efectivo", "Credito", "Debito")
     .allow(null)
     .optional()
     .messages({

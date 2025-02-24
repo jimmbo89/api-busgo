@@ -2,7 +2,10 @@ const Joi = require('joi');
 
 // Esquema para las validaciones
 const paymentSchema = Joi.object({
-
+ticket_id: Joi.number().integer().required().messages({
+    "number.base": "El campo ticket_id debe ser un número entero",
+    "any.required": "El campo ticket_id es obligatorio",
+  }),
   amount: Joi.number().integer().min(100).max(99999999).required()
     .messages({
       'number.base': 'El monto debe ser un número.',

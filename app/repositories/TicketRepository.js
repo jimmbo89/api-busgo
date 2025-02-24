@@ -81,9 +81,11 @@ const TicketRepository = {
     });
   },
 
-  async findAllDate(branchId) {
+  async findAllDate(branchId, date = null) {
     const today = new Date();
-    const formattedToday = today.toISOString().split("T")[0];
+    const formattedToday = today.toISOString().split('T')[0];
+    const searchDate = date || formattedToday;
+
     return await Ticket.findAll({
       attributes: [
         "id",
@@ -101,11 +103,12 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
+        "print"
       ],
       where: {
         branch_id: branchId, // Filtra por branch_id
         date: {
-          [Op.eq]: formattedToday, // Filtra solo los viajes cuyo campo 'date' sea igual a la fecha de hoy
+          [Op.eq]: searchDate, // Filtra solo los viajes cuyo campo 'date' sea igual a la fecha de hoy
         },
       },
       include: [

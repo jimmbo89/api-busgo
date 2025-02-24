@@ -41,7 +41,7 @@ const { storePermissionRoleSchema, updatePermissionRoleSchema, idPermissionRoleS
 const { storeVehicleSchema, updateVehicleSchema, idVehicleSchema } = require('./middlewares/validations/vehicleValidation');
 const { storeLocationSchema, updateLocationSchema, idLocationSchema } = require('./middlewares/validations/locationValidation');
 const { storeRouteSchema, updateRouteSchema, idRouteSchema } = require('./middlewares/validations/routeValidation');
-const { storeDeviceSchema, updateDeviceSchema, idDeviceSchema, branchIdDeviceSchema } = require('./middlewares/validations/deviceValidation');
+const { storeDeviceSchema, updateDeviceSchema, idDeviceSchema, branchIdDeviceSchema, deviceCompanySchema } = require('./middlewares/validations/deviceValidation');
 const { storeBranchRouteSchema, updateBranchRouteSchema, idBranchRouteSchema } = require('./middlewares/validations/branchrouteValidation');
 const { storeBranchVehicleSchema, updateBranchVehicleSchema, idBranchVehicleSchema } = require('./middlewares/validations/branchvehicleValidation');
 const { storeVehicleWorkerSchema, updateVehicleWorkerSchema, idVehicleWorkerSchema, vehicle_idWorkerSchema } = require('./middlewares/validations/vehicleworkerValidation');
@@ -83,6 +83,7 @@ router.get('/images/:foldername/:filename', (req, res) => {
 
 
 router.post('/tuu-payment', TuuController.createPayment);
+router.post('/device-company', validateSchema(deviceCompanySchema), DeviceController.isDeviceAssociatedWithCompany);
 //rutas protegidas 
 router.use(auth);
 router.get('/logout', AuthController.logout);
@@ -220,7 +221,7 @@ router.post('/ticket', validateSchema(storeTicketSchema), TicketController.store
 router.post('/ticket-show', validateSchema(idTicketSchema), TicketController.show);
 router.put('/ticket', validateSchema(updateTicketSchema), TicketController.update);
 router.post('/ticket-destroy', validateSchema(idTicketSchema), TicketController.destroy);
-router.post('/get-tickets-date', validateSchema(branch_idTripSchema), TicketController.getTicketsDate);
+router.post('/get-tickets-date', validateSchema(branchTicketTripSchema), TicketController.getTicketsDate);
 router.post("/monthly-sales", validateSchema(monthlySalesSchema), TicketController.getMonthlySales);
 router.post("/ticket-sold-date", validateSchema(ticketSoldDateSchema), TicketController.getTicketsSoldDate);
 

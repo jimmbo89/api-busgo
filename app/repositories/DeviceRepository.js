@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Device, Branch } = require('../models');
+const { Device, Branch, Company } = require('../models');
 const logger = require('../../config/logger'); // Logger para seguimiento
 const ImageService = require('../services/ImageService');
 
@@ -14,6 +14,53 @@ const  DeviceRepository = {
                 attributes: ['id', 'name'],
             },
         });
+    },
+
+    async isDeviceAssociatedWithCompany(mac, serial, companyId = null) {
+        try {
+            // Construir dinámicamente el objeto `where`
+            const whereClause = {};
+            if (mac) {
+                whereClause.mac = mac;
+            }
+            if (serial) {
+                whereClause.serial = serial;
+            }
+
+            // Si no hay ningún filtro (mac y serial son null), retornar false
+            if (Object.keys(whereClause).length === 0) {
+                return false;
+            }
+
+            // Construir dinámicamente el objeto `include`
+            const includeClause = [
+                {
+                    model: Branch,
+                    as: 'branch',
+                    include: [],
+                },
+            ];
+
+            // Si companyId está presente, agregar el filtro de compañía
+            if (companyId) {
+                includeClause[0].include.push({
+                    model: Company,
+                    as: 'company',
+                    where: { id: companyId },
+                });
+            }
+
+            // Buscar el dispositivo
+            const device = await Device.findOne({
+                where: whereClause,
+                include: includeClause,
+            });
+
+            // Si se encuentra el dispositivo, retornar true
+            return !!device;
+        } catch (error) {
+            throw new Error(`Error en DeviceRepository->isDeviceAssociatedWithCompany: ${error.message}`);
+        }
     },
 
     async findById(id) {

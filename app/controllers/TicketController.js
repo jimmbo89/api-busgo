@@ -61,7 +61,7 @@ const TicketController = {
       `${req.user.name} - Entra a buscar los tickets de una sucursal en el dia `
     );
 
-    const { branch_id } = req.body;
+    const { branch_id, date } = req.body;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -71,7 +71,7 @@ const TicketController = {
     }
 
     try {
-      const tickets = await TicketRepository.findAllDate(branch_id);
+      const tickets = await TicketRepository.findAllDate(branch_id, date);
 
       if (!tickets.length) {
         return res.status(204).json({ msg: "TicketsNotFound" });
@@ -93,8 +93,8 @@ const TicketController = {
         seats: Array.isArray(ticket.seats)
           ? ticket.seats // Si ya es un array, úsalo directamente
           : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
-        adults: ticket.adults,
-        minors: ticket.minors,
+        adults: ticket.adults ? ticket.adults : 0,
+        minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
         barcode: ticket.barcode,
         date: ticket.date,

@@ -125,6 +125,10 @@ const branchTicketTripSchema = Joi.object({
   ticket_id: Joi.number().allow(null).empty("").optional().messages({
     "number.base": "El campo ticket_id debe ser un número entero",
   }),
+  date: Joi.date().allow(null).optional().messages({
+    "date.base":
+      "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
+  }),
 });
 
 const monthlySalesSchema = Joi.object({

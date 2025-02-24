@@ -78,6 +78,30 @@ const DeviceController = {
         }
     },
 
+    async isDeviceAssociatedWithCompany(req, res) {
+        logger.info(`${req.body.mac??req.body.serial } - Verifica si un dispositivo está asociado a una compañía`);
+    
+        const { mac, serial, companyId } = req.body;
+    
+        try {
+            // Verificar si la compañía existe
+            /*const company = await CompanyRepository.findById(companyId);
+            if (!company) {
+                logger.error(`DeviceController->isDeviceAssociatedWithCompany: Compañía no encontrada con ID ${companyId}`);
+                return res.status(400).json({ msg: 'CompanyNotFound' });
+            }*/
+    
+            // Verificar si el dispositivo está asociado a la compañía
+            const isAssociated = await DeviceRepository.isDeviceAssociatedWithCompany(mac, serial, companyId);
+    
+            // Respuesta
+            res.status(200).json({ isAssociated });
+        } catch (error) {
+            logger.error('DeviceController->isDeviceAssociatedWithCompany: ' + error.message);
+            res.status(500).json({ error: 'ServerError', details: error.message });
+        }
+    },
+
     // Crear un nuevo dispositivo
     async store(req, res) {
         logger.info(`${req.user.name} - Crea un nuevo dispositivo`);

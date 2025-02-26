@@ -7,6 +7,7 @@ const {
   Branch,
   Role,
   Company,
+  Permission,
   sequelize,
 } = require("../models"); // Importamos sequelize desde db
 const bcrypt = require("bcrypt");
@@ -127,38 +128,59 @@ const AuthController = {
             { name: req.body.email }, // O puede ser el nombre de usuario
           ],
         },
-        include: [{
-          model: Worker,
-          as: "worker",
-          attributes: ["id", "name", "email", "image", "role_id"],
-          include: [
-            {
-              model: Role,
-              as: "role",
-              attributes: ["id", "name"],
-            },
-            {
-              model: BranchWorker,
-              as: "branchWorkers",
-              include: {
-                model: Branch,
-                as: "branch",
-                attributes: ["id", "name", "image"],
-                include: {
-                  model: Company,
-                  as: "company",
-                  attributes: ["id", "name", "image"],
-                },
+        include: [
+          {
+            model: Worker,
+            as: "worker",
+            attributes: ["id", "name", "email", "image", "role_id"],
+            include: [
+              {
+                model: Role,
+                as: "role",
+                attributes: ["id", "name"],
+                include: [
+                  {
+                    model: Permission,
+                    as: "permissions", // Asumiendo que la relación se llama "permissions"
+                    attributes: ["name", "module"], // Incluir el nombre y la descripción del permiso
+                    through: { attributes: [] }, // Excluir la tabla intermedia si no necesitas sus atributos
+                  },
+                ],
               },
-            },
-          ],
-        },
-        {
-          model: Company,
-          as: "companies",
-          attributes: ["id", "name", "image"],
-        }
-      ],
+              {
+                model: BranchWorker,
+                as: "branchWorkers",
+                include: [
+                  {
+                    model: Branch,
+                    as: "branch",
+                    include: {
+                      model: Company,
+                      as: "company",
+                    },
+                  },
+                  {
+                    model: Role,
+                    as: "role", // Asumiendo que la relación se llama "permissions"
+                    include: [
+                      {
+                        model: Permission,
+                        as: "permissions", // Asumiendo que la relación se llama "permissions"
+                        attributes: ["name", "module"], // Incluir el nombre y la descripción del permiso
+                        through: { attributes: [] }, // Excluir la tabla intermedia si no necesitas sus atributos
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            model: Company,
+            as: "companies",
+            attributes: ["id", "name", "image"],
+          },
+        ],
       });
       if (!user) {
         return res.status(204).json({ msg: "Usuario no encontrado" });
@@ -174,6 +196,8 @@ const AuthController = {
       }
       let branchData = [];
       let companyData = [];
+      let roleName = "";
+      let role_id = "";
       if (req.body.branch_id) {
         branchData = user.worker.branchWorkers.find(
           (branchWorker) => branchWorker.branch.id === req.body.branch_id
@@ -184,15 +208,17 @@ const AuthController = {
             .status(400)
             .json({ msg: "No es usuario de esta Sucursal" });
         }
+        roleName = user.branchWorker.role.name;
+        role_id = user.branchWorker.role_id;
         companyData = branchData.company;
       } else {
         // Asignar la primera compañía a companyData
         companyData = user.companies ? user.companies[0] : [];
         if (!companyData) {
-          return res
-            .status(400)
-            .json({ msg: "No es usuario de esta Empresa" });
+          return res.status(400).json({ msg: "No es usuario de esta Empresa" });
         }
+        roleName = user.worker.role.name;
+        role_id = user.worker.role_id;
       }
       // Construimos el objeto del usuario con la estructura deseada
       const userNew = {
@@ -219,6 +245,27 @@ const AuthController = {
         expires_at: expiresAt,
       });
 
+      // Obtener los permisos del rol del sistema
+      const systemRolePermissions = user.worker.role.permissions.map(
+        (permission) => {
+          return `${permission.name}, ${permission.module}`;
+        }
+      );
+
+      // Obtener los permisos del rol en la relación con las branches
+      const branchRolePermissions = user.worker.branchWorkers.flatMap(
+        (branchWorker) => {
+          return branchWorker.role.permissions.map((permission) => {
+            return `${permission.name}, ${permission.module}`;
+          });
+        }
+      );
+
+      // Combinar los permisos y eliminar duplicados usando un Set
+      const allPermissions = [
+        ...new Set([...systemRolePermissions, ...branchRolePermissions]),
+      ];
+
       // Respuesta exitosa
       res.status(201).json({
         id: user.id,
@@ -228,10 +275,11 @@ const AuthController = {
         name: user.worker.name,
         workerId: user.worker.id,
         image: user.worker.image,
-        roleId: user.worker.role_id,
-        nameRole: user.worker.role.name,
+        roleId: role_id,
+        nameRole: roleName,
         branch: branchData,
         company: companyData,
+        permissions: allPermissions, // Permisos combinados y sin duplicados
       });
     } catch (error) {
       const errorMsg = error.details
@@ -254,36 +302,44 @@ const AuthController = {
             { name: req.body.email }, // O puede ser el nombre de usuario
           ],
         },
-        include: [{
-          model: Worker,
-          as: "worker",
-          attributes: ["id", "name", "email", "image", "role_id"],
-          include: [
-            {
-              model: Role,
-              as: "role",
-              attributes: ["id", "name"],
-            },
-            {
-              model: BranchWorker,
-              as: "branchWorkers",
-              include: {
-                model: Branch,
-                as: "branch",
-                include: {
-                  model: Company,
-                  as: "company",
-                },
+        include: [
+          {
+            model: Worker,
+            as: "worker",
+            attributes: ["id", "name", "email", "image", "role_id"],
+            include: [
+              {
+                model: Role,
+                as: "role",
+                attributes: ["id", "name"],
               },
-            },
-          ],
-        },
-        {
-          model: Company,
-          as: "companies",
-          attributes: ["id", "name", "image"],
-        }
-      ],
+              {
+                model: BranchWorker,
+                as: "branchWorkers",
+                include: [
+                  {
+                    model: Branch,
+                    as: "branch",
+                    include: {
+                      model: Company,
+                      as: "company",
+                    },
+                  },
+                  {
+                    model: Role,
+                    as: "role", // Asumiendo que la relación se llama "permissions"
+                    attributes: ["id", "name"],
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            model: Company,
+            as: "companies",
+            attributes: ["id", "name", "image"],
+          },
+        ],
       });
       if (!user) {
         return res.status(204).json({ msg: "Usuario no encontrado" });
@@ -324,8 +380,10 @@ const AuthController = {
       });
 
       let branchData = [];
+      let roleData = [];
       if (user.worker.branchWorkers) {
         branchData = user.worker.branchWorkers[0]?.branch;
+        roleData = user.worker.branchWorkers[0]?.role;
       }
 
       // Respuesta exitosa
@@ -337,9 +395,9 @@ const AuthController = {
         name: user.worker.name,
         workerId: user.worker.id,
         image: user.worker.image,
-        roleId: user.worker.role_id,
-        nameRole: user.worker.role.name,
-        branch: branchData
+        roleId: roleData ? roleData.id : user.worker.role_id,
+        nameRole: roleData ? roleData.name : user.worker.role.name,
+        branch: branchData,
       });
     } catch (error) {
       const errorMsg = error.details

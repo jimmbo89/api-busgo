@@ -2,7 +2,7 @@ const { Sequelize, Op } = require("sequelize");
 const QRCode = require("qrcode");
 const bwipjs = require("bwip-js");
 const fs = require("fs");
-const path = require("path");
+const crypto = require("crypto");
 const {
   Ticket,
   Branch,
@@ -83,7 +83,7 @@ const TicketRepository = {
 
   async findAllDate(branchId, date = null) {
     const today = new Date();
-    const formattedToday = today.toISOString().split('T')[0];
+    const formattedToday = today.toISOString().split("T")[0];
     const searchDate = date || formattedToday;
 
     return await Ticket.findAll({
@@ -103,7 +103,7 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
-        "print"
+        "print",
       ],
       where: {
         branch_id: branchId, // Filtra por branch_id
@@ -173,17 +173,20 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
-        "print"
+        "print",
       ],
       include: [
         {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
-          include: [{model: Company,
-            as: 'company',
-            attributes: ['id', 'name', 'rut', 'image', 'address']
-          }],
+          include: [
+            {
+              model: Company,
+              as: "company",
+              attributes: ["id", "name", "rut", "image", "address"],
+            },
+          ],
         },
         {
           model: User,
@@ -233,6 +236,11 @@ const TicketRepository = {
       minors,
       pay,
       total,
+      transactionStatus,
+      sequenceNumber,
+      extraData,
+      transactionTip,
+      transactionCashback,
     } = body;
 
     try {
@@ -250,6 +258,11 @@ const TicketRepository = {
         minors,
         pay,
         total,
+        transactionStatus,
+        sequenceNumber,
+        extraData,
+        transactionTip,
+        transactionCashback,
       });
 
       logger.info(`Ticket creado exitosamente (ID: ${ticket.id})`);
@@ -275,6 +288,11 @@ const TicketRepository = {
       "adults",
       "minors",
       "pay",
+      "transactionStatus",
+      "sequenceNumber",
+      "extraData",
+      "transactionTip",
+      "transactionCashback",
     ];
 
     const updatedData = Object.keys(body)
@@ -390,9 +408,16 @@ const TicketRepository = {
     try {
       // Datos que quieres incluir en el código QR y el código de barras
       const ticketInfo = JSON.stringify(ticketData); // Usa los datos del ticket
+      // Definir un string que se usará como clave base
+      const baseKey = "bulletin"; // Usa el string que desees
+
+      // Generar la clave de 32 bytes con SHA-256
+      const secretKey = crypto.createHash("sha256").update(baseKey).digest();
+      const qr = await this.encryptData(ticketData, secretKey);
+      const barcode = await this.generateUniqueBarcode();
 
       // Ruta para guardar los archivos generados
-      const qrCodesFolder = path.join(__dirname, "../../public", "qrscodes");
+      /*const qrCodesFolder = path.join(__dirname, "../../public", "qrscodes");
 
       // Si la carpeta no existe, créala
       if (!fs.existsSync(qrCodesFolder)) {
@@ -432,20 +457,62 @@ const TicketRepository = {
       });
 
       // Guardar el código de barras como imagen
-      fs.writeFileSync(barcodePath, barcodeData);
+      fs.writeFileSync(barcodePath, barcodeData);*/
       if (ticket) {
         await ticket.update({
-          qr: "qrscodes/" + ticketData.id + "Qr.png",
-          barcode: "qrscodes/" + ticketData.id + "Code.png",
+          qr: qr.toString(),  // Asegúrate de que se está pasando un string
+          barcode: barcode.toString()  // Asegúrate de que se está pasando un string
         });
       }
 
       // Retorna las rutas de los archivos generados
-      return { qrCodePath, barcodePath };
+      return { qr, barcode };
     } catch (error) {
       logger.error("Error al generar los códigos del ticket:", error);
       throw error;
     }
+  },
+
+ // Función para desencriptar
+  async decryptData(encryptedData, secretKey, iv) {
+    //const iv = crypto.randomBytes(16); // Vector de inicialización (IV)
+    //const iv = "2017111319891230"; // Vector de inicialización (IV)
+    const decipher = crypto.createDecipheriv(
+      "aes-256-cbc",
+      Buffer.from(secretKey),
+      Buffer.from(iv, "hex")
+    );
+    let decrypted = decipher.update(encryptedData, "hex", "utf8");
+    decrypted += decipher.final("utf8");
+    return JSON.parse(decrypted);
+  },
+  // Función para encriptar un objeto JSON
+  async encryptData(data, secretKey) {
+    const iv = "2017111319891230"; // IV fijo de 16 bytes
+    const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(secretKey), iv);
+    let encrypted = cipher.update(JSON.stringify(data), "utf8", "hex");
+    encrypted += cipher.final("hex");
+    return encrypted; // Retorna un string
+  },
+
+ 
+
+  async generateUniqueBarcode() {
+    let barcode;
+    let isUnique = false;
+  
+    while (!isUnique) {
+      // Genera un barcode único de 13 dígitos
+      barcode = Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
+      
+      // Verifica si el barcode ya existe en la base de datos
+      const existingTicket = await Ticket.findOne({ where: { barcode } });
+  
+      if (!existingTicket) {
+        isUnique = true;
+      }
+    }
+    return barcode; // Retorna el barcode como string
   },
 
   async getpassengers(tripId) {

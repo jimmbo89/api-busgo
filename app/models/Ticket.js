@@ -103,12 +103,32 @@ module.exports = (sequelize, DataTypes) => {
       defaultValue: 1
     },   
     qr: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true
     },    
     barcode: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: true
+    },
+    transactionStatus: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    sequenceNumber: {
+      type: DataTypes.STRING(12),
+      allowNull: true,
+    },
+    extraData: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
+    transactionTip: {
+      type: DataTypes.DECIMAL(16, 2),
+      allowNull: true,
+    },
+    transactionCashback: {
+      type: DataTypes.DECIMAL(16, 2),
+      allowNull: true,
     },
     print: {
       type: DataTypes.INTEGER,

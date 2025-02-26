@@ -15,12 +15,15 @@ const storeTicketSchema = Joi.object({
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
     "any.required": "El campo date es obligatorio",
   }),
-  method: Joi.string().valid("Efectivo", "Credito", "Debito").required().messages({
-    "string.base": "El campo method debe ser un texto",
-    "any.required": "El campo method es obligatorio",
-    "any.only":
-      "El campo method debe ser uno de los siguientes valores: Efectivo, Tarjeta",
-  }),
+  method: Joi.string()
+    .valid("Efectivo", "Credito", "Debito")
+    .required()
+    .messages({
+      "string.base": "El campo method debe ser un texto",
+      "any.required": "El campo method es obligatorio",
+      "any.only":
+        "El campo method debe ser uno de los siguientes valores: Efectivo, Tarjeta",
+    }),
   status: Joi.number().integer().default(0).optional().messages({
     "number.base": "El campo status debe ser un número entero",
     "any.required": "El campo status es obligatorio",
@@ -51,6 +54,106 @@ const storeTicketSchema = Joi.object({
   }),
   pay: Joi.number().precision(2).allow(null).empty("").optional().messages({
     "number.base": "El campo pay debe ser un número entero",
+  }),
+  transactionStatus: Joi.boolean()
+  .allow(null).optional().empty("") // Permite null
+    .messages({
+      "boolean.base": "El estado de la transacción debe ser un valor booleano.",
+    }),
+  sequenceNumber: Joi.string()
+    .length(12) // Longitud exacta de 12 caracteres
+    .pattern(/^\d+$/) // Solo dígitos
+    .allow(null).optional().empty("") // Permite null
+    .messages({
+      "string.base": "El número de secuencia debe ser una cadena de texto.",
+      "string.length":
+        "El número de secuencia debe tener exactamente 12 dígitos.",
+      "string.pattern.base":
+        "El número de secuencia debe contener solo dígitos.",
+    }),
+  extraData: Joi.object()
+  .allow(null).optional().empty("") // Permite null
+    .messages({
+      "object.base": "El campo extraData debe ser un objeto JSON.",
+    }),
+  transactionTip: Joi.number()
+    .precision(2) // Hasta 2 decimales
+    .min(0) // No puede ser negativo
+    .allow(null).optional().empty("") // Permite null
+    .messages({
+      "number.base": "La propina debe ser un número.",
+      "number.min": "La propina no puede ser negativa.",
+    }),
+  transactionCashback: Joi.number()
+    .precision(2) // Hasta 2 decimales
+    .min(0) // No puede ser negativo
+    .allow(null).optional().empty("") // Permite null
+    .messages({
+      "number.base": "El vuelto debe ser un número.",
+      "number.min": "El vuelto no puede ser negativo.",
+    }),
+});
+
+const storeTicketWebSchema = Joi.object({
+  branch_id: Joi.number().integer().required().messages({
+    "number.base": "El campo branch_id debe ser un número entero",
+    "any.required": "El campo branch_id es obligatorio",
+  }),
+  trip_id: Joi.number().integer().required().messages({
+    "number.base": "El campo trip_id debe ser un número entero",
+    "any.required": "El campo trip_id es obligatorio",
+  }),
+  date: Joi.date().required().messages({
+    "date.base":
+      "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
+    "any.required": "El campo date es obligatorio",
+  }),
+  method: Joi.string()
+    .valid("Efectivo", "Credito", "Debito")
+    .required()
+    .messages({
+      "string.base": "El campo method debe ser un texto",
+      "any.required": "El campo method es obligatorio",
+      "any.only":
+        "El campo method debe ser uno de los siguientes valores: Efectivo, Tarjeta",
+    }),
+  status: Joi.number().integer().default(0).optional().messages({
+    "number.base": "El campo status debe ser un número entero",
+    "any.required": "El campo status es obligatorio",
+    "any.only": "El campo status debe ser 0 (no pagado) o 1 (pagado)",
+  }),
+  quantity: Joi.number().integer().min(1).required().messages({
+    "number.base": "El campo quantity debe ser un número entero",
+    "any.required": "El campo quantity es obligatorio",
+    "number.min": "El campo quantity debe ser al menos 1",
+  }),
+  price: Joi.number().precision(2).required().messages({
+    "number.base": "El campo price debe ser un número",
+    "any.required": "El campo price es obligatorio",
+  }),
+  total: Joi.number().precision(2).optional().messages({
+    "number.base": "El campo total debe ser un número",
+    "any.required": "El campo total es obligatorio",
+  }),
+  seats: Joi.array().items(Joi.number().integer()).required().messages({
+    "array.base": "El campo seats debe ser un arreglo",
+    "any.required": "El campo seats es obligatorio",
+  }),
+  adults: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo adults debe ser un número entero",
+  }),
+  minors: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo minors debe ser un número entero",
+  }),
+  pay: Joi.number().precision(2).allow(null).empty("").optional().messages({
+    "number.base": "El campo pay debe ser un número entero",
+  }),
+  device: Joi.string()
+    .allow(null)
+    .optional("")
+  .messages({
+    "string.base": "El campo device debe ser un texto",
+    "any.required": "El campo method es obligatorio",
   }),
 });
 
@@ -107,6 +210,43 @@ const updateTicketSchema = Joi.object({
     "number.base": "El campo id debe ser un número entero",
     "any.required": "El campo id es obligatorio",
   }),
+  transactionStatus: Joi.boolean()
+  .allow(null).optional().empty("") // Permite null
+    .messages({
+      "boolean.base": "El estado de la transacción debe ser un valor booleano.",
+    }),
+  sequenceNumber: Joi.string()
+    .length(12) // Longitud exacta de 12 caracteres
+    .pattern(/^\d+$/) // Solo dígitos
+    .allow(null).optional().empty("") // Permite null
+    .messages({
+      "string.base": "El número de secuencia debe ser una cadena de texto.",
+      "string.length":
+        "El número de secuencia debe tener exactamente 12 dígitos.",
+      "string.pattern.base":
+        "El número de secuencia debe contener solo dígitos.",
+    }),
+  extraData: Joi.object()
+  .allow(null).optional().empty("") // Permite null
+    .messages({
+      "object.base": "El campo extraData debe ser un objeto JSON.",
+    }),
+  transactionTip: Joi.number()
+    .precision(2) // Hasta 2 decimales
+    .min(0) // No puede ser negativo
+    .allow(null).optional().empty("") // Permite null
+    .messages({
+      "number.base": "La propina debe ser un número.",
+      "number.min": "La propina no puede ser negativa.",
+    }),
+  transactionCashback: Joi.number()
+    .precision(2) // Hasta 2 decimales
+    .min(0) // No puede ser negativo
+    .allow(null).optional().empty("") // Permite null
+    .messages({
+      "number.base": "El vuelto debe ser un número.",
+      "number.min": "El vuelto no puede ser negativo.",
+    }),
 });
 
 // Esquema para validar el ID de un Ticket
@@ -188,4 +328,5 @@ module.exports = {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
+  storeTicketWebSchema
 };

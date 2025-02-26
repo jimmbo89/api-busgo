@@ -6,6 +6,7 @@ const {
   BranchRepository,
   CompanyRepository,
   IncidentRepository,
+  TuuRepository,
 } = require("../repositories");
 
 const TicketController = {
@@ -178,26 +179,16 @@ const TicketController = {
 
       let ticket = await TicketRepository.create(req.body, { transaction: t });
 
-      ticketMaped = await TicketRepository.findById(ticket.id);
       const mappedTicket = {
-        id: ticketMaped.id,
-        branchId: ticketMaped.branch_id,
-        userId: ticketMaped.user_id,
-        tripId: ticketMaped.trip_id,
-        method: ticketMaped.method,
-        status: ticketMaped.status,
-        quantity: ticketMaped.quantity,
-        price: ticketMaped.price,
-        total: ticketMaped.total,
-        seats: ticketMaped.seats,
-        adults: ticketMaped.adults,
-        minors: ticketMaped.minors,
-        date: ticketMaped.date,
-        branchName: ticketMaped.branch.name, // Incluir los datos de la sucursal asociada
-        userName: ticketMaped.user.name, // Incluir los datos del usuario asociado
-        tripName: ticketMaped.trip.route.name, // Incluir los detalles del viaje asociado
-        tripOrigin: ticketMaped.trip.route.origin.address, // Incluir los detalles del viaje asociado
-        tripDestination: ticketMaped.trip.route.destination.address, // Incluir los detalles del viaje asociado
+        id: ticket.id,
+        method: ticket.method,
+        quantity: ticket.quantity,
+        price: ticket.price,
+        total: ticket.total,
+        adults: ticket.adults,
+        minors: ticket.minors,
+        date: ticket.date,
+        sequenceNumber: ticket.sequenceNumber
       };
       //generar qr y codigo de barra
       const { qrCodePath, barcodePath } =
@@ -205,6 +196,127 @@ const TicketController = {
 
       await t.commit();
       res.status(201).json({ ticket: ticket });
+    } catch (error) {
+      if (!t.finished) {
+        await t.rollback();
+      }
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+
+      logger.error("TicketController->store:" + errorMsg);
+      return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
+  async store_web(req, res) {
+    logger.info(`${req.user.name} - Crea un nuevo ticket web`);
+    logger.info("Datos recibidos al crear un ticket web");
+    logger.info(JSON.stringify(req.body));
+
+    req.body.user_id = req.user.id;
+
+    const {
+      branch_id,
+      user_id,
+      trip_id,
+      method,
+      status,
+      quantity,
+      price,
+      total,
+      seats,
+      date,
+      adults,
+      minors,
+      pay,
+      device,
+    } = req.body;
+    let ticket = {};
+
+    const t = await sequelize.transaction(); // Inicia la transacción
+    try {
+      // Verifica los asientos reservados
+      const conflictingSeats = await TicketRepository.checkReservedSeats(
+        trip_id,
+        seats
+      );
+
+      if (conflictingSeats.length > 0) {
+        logger.error(
+          `TicketController->store_web: Los asientos ya están reservados: ${conflictingSeats.join(
+            ", "
+          )}`
+        );
+        return res
+          .status(400)
+          .json({ msg: "Hacientos seleccionados ya han sido reservados" });
+      }
+
+      // Verificar si el viaje, usuario y sucursal existen
+      const trip = await TripRepository.findById(trip_id);
+      if (!trip) {
+        logger.error(
+          `TicketController->store_web: Viaje no encontrado con ID ${trip_id}`
+        );
+        return res.status(400).json({ msg: "TripNotFound" });
+      }
+
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `TicketController->store_web: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(400).json({ msg: "BranchNotFound" });
+      }
+
+      const paymentData = {
+        amount: total,
+        device: device || "TJ44245N20440",
+        description: "Compra de tickets",
+        dteType: 48,
+        exemptAmount: 0,
+        customFields: [
+          {
+            name: "Contacto",
+            value: "9 51221345",
+            print: false,
+          },
+        ],
+      };
+      const result = await TuuRepository.createPayment(paymentData);
+      if (result.success) {
+        logger.log("Pago creado con éxito:", result.paymentRequestId);
+        req.body.transactionStatus = result.success;
+        req.body.sequenceNumber = result.paymentRequestId;
+        req.body.extraData = result.extraData;
+              
+      let ticket = await TicketRepository.create(req.body, { transaction: t });
+
+      const mappedTicket = {
+        id: ticket.id,
+        method: ticket.method,
+        quantity: ticket.quantity,
+        price: ticket.price,
+        total: ticket.total,
+        adults: ticket.adults,
+        minors: ticket.minors,
+        date: ticket.date,
+        sequenceNumber: ticket.sequenceNumber
+      };
+      //generar qr y codigo de barra
+      const { qrCodePath, barcodePath } =
+        await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+
+        
+      await t.commit();
+      res.status(201).json({ ticket: ticket });
+      } else {
+        logger.error("Error al crear el pago:", result.message);
+        await t.commit();
+      res.status(result.status || 500).json({ msg: result.message, ticket: [] });
+      }
+
     } catch (error) {
       if (!t.finished) {
         await t.rollback();
@@ -233,40 +345,40 @@ const TicketController = {
       if (ticket.print < 2) {
         // Incrementar el contador de impresiones
         mappedTicket = {
-        id: ticket.id,
-        branchId: ticket.branch_id,
-        branch_id: ticket.branch_id,
-        user_id: ticket.user_id,
-        userId: ticket.user_id,
-        tripId: ticket.trip_id,
-        trip_id: ticket.trip_id,
-        method: ticket.method,
-        status: ticket.status,
-        quantity: ticket.quantity,
-        price: ticket.price,
-        total: ticket.total,
-        seats: ticket.seats,
-        date: ticket.date,
-        print: ticket.print + 1,
-        adults: ticket.adults,
-        minors: ticket.minors,
-        time: await TicketController.getCurrentTime(),
-        qr: ticket.qr,
-        barcode: ticket.barcode,
-        branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-        companyName: ticket.branch.company.name,
-        companyRut: ticket.branch.company.rut,
-        companyAddress: ticket.branch.company.address,
-        companyPhone: ticket.branch.company.phone,
-        userName: ticket.user.name, // Incluir los datos del usuario asociado
-        tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
-        tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
-        tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
-      };
-    }
-    
-    ticket.print += 1;
-    await ticket.save();
+          id: ticket.id,
+          branchId: ticket.branch_id,
+          branch_id: ticket.branch_id,
+          user_id: ticket.user_id,
+          userId: ticket.user_id,
+          tripId: ticket.trip_id,
+          trip_id: ticket.trip_id,
+          method: ticket.method,
+          status: ticket.status,
+          quantity: ticket.quantity,
+          price: ticket.price,
+          total: ticket.total,
+          seats: ticket.seats,
+          date: ticket.date,
+          print: ticket.print + 1,
+          adults: ticket.adults,
+          minors: ticket.minors,
+          time: await TicketController.getCurrentTime(),
+          qr: ticket.qr,
+          barcode: ticket.barcode,
+          branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
+          companyName: ticket.branch.company.name,
+          companyRut: ticket.branch.company.rut,
+          companyAddress: ticket.branch.company.address,
+          companyPhone: ticket.branch.company.phone,
+          userName: ticket.user.name, // Incluir los datos del usuario asociado
+          tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+          tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
+          tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
+        };
+      }
+
+      ticket.print += 1;
+      await ticket.save();
 
       logger.info(`Agregando incidencia de reimpresión`);
       const incidentBody = {
@@ -302,8 +414,8 @@ const TicketController = {
 
   async getCurrentTime() {
     const now = new Date();
-    const hours = String(now.getHours()).padStart(2, '0'); // Asegura dos dígitos
-    const minutes = String(now.getMinutes()).padStart(2, '0'); // Asegura dos dígitos
+    const hours = String(now.getHours()).padStart(2, "0"); // Asegura dos dígitos
+    const minutes = String(now.getMinutes()).padStart(2, "0"); // Asegura dos dígitos
     return `${hours}:${minutes}`;
   },
 

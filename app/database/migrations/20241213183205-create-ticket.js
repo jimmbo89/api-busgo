@@ -84,11 +84,11 @@ module.exports = {
         defaultValue: 1
       },
       qr: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         allowNull: true
       },
       barcode: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         allowNull: true
       },
       print: {

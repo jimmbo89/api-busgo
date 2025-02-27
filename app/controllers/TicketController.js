@@ -269,54 +269,75 @@ const TicketController = {
         );
         return res.status(400).json({ msg: "BranchNotFound" });
       }
-
-      const paymentData = {
-        amount: total,
-        device: device || "TJ44245N20440",
-        description: "Compra de tickets",
-        dteType: 48,
-        exemptAmount: 0,
-        customFields: [
-          {
-            name: "Contacto",
-            value: "9 51221345",
-            print: false,
-          },
-        ],
-      };
-      const result = await TuuRepository.createPayment(paymentData);
-      if (result.success) {
-        logger.log("Pago creado con éxito:", result.paymentRequestId);
-        req.body.transactionStatus = result.success;
-        req.body.sequenceNumber = result.paymentRequestId;
-        req.body.extraData = result.extraData;
-              
-      let ticket = await TicketRepository.create(req.body, { transaction: t });
-
-      const mappedTicket = {
-        id: ticket.id,
-        method: ticket.method,
-        quantity: ticket.quantity,
-        price: ticket.price,
-        total: ticket.total,
-        adults: ticket.adults,
-        minors: ticket.minors,
-        date: ticket.date,
-        sequenceNumber: ticket.sequenceNumber
-      };
-      //generar qr y codigo de barra
-      const { qrCodePath, barcodePath } =
-        await TicketRepository.generateTicketCodes(mappedTicket, ticket);
-
-        
-      await t.commit();
-      res.status(201).json({ ticket: ticket });
-      } else {
-        logger.error("Error al crear el pago:", result.message);
+      if (method === "Efectivo") {
+        let ticket = await TicketRepository.create(req.body, { transaction: t });
+        const mappedTicket = {
+          id: ticket.id,
+          method: ticket.method,
+          quantity: ticket.quantity,
+          price: ticket.price,
+          total: ticket.total,
+          adults: ticket.adults,
+          minors: ticket.minors,
+          date: ticket.date,
+          sequenceNumber: ticket.sequenceNumber
+        };
+        //generar qr y codigo de barra
+        const { qrCodePath, barcodePath } =
+          await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+  
+          
         await t.commit();
-      res.status(result.status || 500).json({ msg: result.message, ticket: [] });
+        res.status(201).json({ ticket: ticket });
       }
-
+      else{
+        const paymentData = {
+          amount: total,
+          device: device || "TJ44245N20440",
+          description: "Compra de tickets",
+          dteType: 48,
+          exemptAmount: 0,
+          customFields: [
+            {
+              name: "Contacto",
+              value: "9 51221345",
+              print: false,
+            },
+          ],
+        };
+        const result = await TuuRepository.createPayment(paymentData);
+        if (result.success) {
+          logger.log("Pago creado con éxito:", result.paymentRequestId);
+          req.body.transactionStatus = result.success;
+          req.body.sequenceNumber = result.paymentRequestId;
+          req.body.extraData = result.extraData;
+                
+        let ticket = await TicketRepository.create(req.body, { transaction: t });
+  
+        const mappedTicket = {
+          id: ticket.id,
+          method: ticket.method,
+          quantity: ticket.quantity,
+          price: ticket.price,
+          total: ticket.total,
+          adults: ticket.adults,
+          minors: ticket.minors,
+          date: ticket.date,
+          sequenceNumber: ticket.sequenceNumber
+        };
+        //generar qr y codigo de barra
+        const { qrCodePath, barcodePath } =
+          await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+  
+          
+        await t.commit();
+        res.status(201).json({ ticket: ticket });
+        } else {
+          logger.error("Error al crear el pago:", result.message);
+          await t.commit();
+        res.status(result.status || 500).json({ msg: result.message, ticket: [] });
+        }
+      }
     } catch (error) {
       if (!t.finished) {
         await t.rollback();
@@ -325,7 +346,7 @@ const TicketController = {
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
 
-      logger.error("TicketController->store:" + errorMsg);
+      logger.error("TicketController->store_web:" + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },

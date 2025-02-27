@@ -155,6 +155,36 @@ const branch_idTripSchema = Joi.object({
     "number.base": "El campo id debe ser un número entero",
     "any.required": "El campo id es obligatorio",
   }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD
+    .allow("", null) // Permitir vacío o null
+    .optional() // Campo opcional
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
+});
+
+const tripWorkerDateSchema = Joi.object({
+  branch_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo branch_id debe ser un número entero",
+    "number.integer": "El campo branch_id debe ser un número entero",
+    "number.positive": "El campo branch_id debe ser un número positivo",
+    "any.required": "El campo branch_id es requerido",
+  }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Expresión regular para validar el formato YYYY-MM-DD
+    .required()
+    .messages({
+      "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
+      "any.required": "El campo date es requerido",
+    }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD
+    .allow("", null) // Permitir vacío o null
+    .optional() // Campo opcional
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
 });
 
 module.exports = {
@@ -162,4 +192,5 @@ module.exports = {
   updateTripSchema,
   idTripSchema,
   branch_idTripSchema,
+  tripWorkerDateSchema
 };

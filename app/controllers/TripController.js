@@ -127,7 +127,7 @@ const TripController = {
       `${req.user.name} - Entra a buscar los viajes de una fecha dada`
     );
 
-    const { ticket_id, branch_id } = req.body;
+    const { ticket_id, branch_id, date } = req.body;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -147,7 +147,7 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(req.body.branch_id);
+      const trips = await TripRepository.findDate(req.body.branch_id, date);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
@@ -165,7 +165,7 @@ const TripController = {
                     : JSON.parse(ticket.seats); // Si es un string JSON, lo parseas
                 })
             : [];
-            const seatMap = trip.vehicle?.structure?.seatMap
+          const seatMap = trip.vehicle?.structure?.seatMap
             ? Array.isArray(trip.vehicle.structure.seatMap)
               ? trip.vehicle.structure.seatMap // Si ya es un array, lo usas directamente
               : JSON.parse(trip.vehicle.structure.seatMap) // Si es un string, lo parseas a array
@@ -780,6 +780,54 @@ const TripController = {
       res.json(response);
     } catch (error) {
       logger.error("Error en el controlador TripController:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getTripsByBranchAndWorker(req, res) {
+    const { branch_id, date, endDate } = req.body;
+    const worker_id = req.worker.id;
+    // Validar si la sucursal o compañía existe
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `TripController->getTripsByBranchAndWorker: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(404).json({ msg: "BranchNotFound" });
+      }
+
+   try {
+       // Obtener los tickets vendidos en la fecha dada
+    const trips = await TripRepository.findTripsByBranchAndWorker(
+      branch_id,
+      date,
+      endDate,
+      worker_id
+    );
+    const mappedTrips = trips.map((trip) => {
+      // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
+      const passenger = trip.tickets.reduce((sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0), 0);
+    
+      return {
+        id: trip.id,
+        date: trip.date,
+        start: trip.start,
+        end: trip.end,
+        vehicleName: trip.vehicle.plate,
+        vehicleImage: trip.vehicle.image,
+        name: trip.route.name,
+        origin: trip.route.origin.address,
+        originImage: trip.route.origin.image,
+        destination: trip.route.destination.address,
+        destinationImage: trip.route.destination.image,
+        passenger, // Usar la suma calculada
+      };
+    });
+    
+
+      res.status(200).json({trips: mappedTrips});
+    } catch (error) {
+      logger.error("Error en TripController->getTripsByBranchAndWorker:", error);
       res.status(500).json({ error: error.message });
     }
   },

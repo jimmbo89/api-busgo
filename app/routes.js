@@ -116,6 +116,7 @@ const {
   updateTripSchema,
   idTripSchema,
   branch_idTripSchema,
+  tripWorkerDateSchema,
 } = require("./middlewares/validations/tripValidation");
 const {
   storeTripWorkerSchema,
@@ -130,7 +131,7 @@ const {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
-  storeTicketWebSchema
+  storeTicketWebSchema,
 } = require("./middlewares/validations/ticketValidation");
 const {
   paymentSchema,
@@ -602,8 +603,9 @@ router.post(
   validateSchema(idTripWorkerSchema),
   TripWorkerController.destroy
 );
+router.post("/trips-worker-date", validateSchema(tripWorkerDateSchema), TripController.getTripsByBranchAndWorker);
 
-//Rutas Trip
+//Rutas Ticket
 router.get("/ticket", TicketController.index);
 router.post(
   "/ticket-web",

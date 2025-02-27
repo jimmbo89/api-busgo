@@ -1,4 +1,4 @@
-const { Op } = require("sequelize");
+const { Sequelize, Op } = require("sequelize");
 const {
   Trip,
   Branch,
@@ -10,6 +10,7 @@ const {
   Ticket,
   Structure,
   Company,
+  sequelize,
 } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 
@@ -66,9 +67,10 @@ const TripRepository = {
     });
   },
 
-  async findDate(branchId) {
+  async findDate(branchId, date = null) {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
+    const searchDate = date || formattedToday;
     return await Trip.findAll({
       attributes: [
         "id",
@@ -85,7 +87,7 @@ const TripRepository = {
       where: {
         branch_id: branchId, // Filtra por branch_id
         /*date: {
-          [Op.eq]: formattedToday, // Filtra solo los viajes cuyo campo 'date' sea igual a la fecha de hoy
+          [Op.eq]: searchDate, // Filtra solo los viajes cuyo campo 'date' sea igual a la fecha de hoy
         },*/
       },
       include: [
@@ -415,6 +417,60 @@ const TripRepository = {
       logger.error("Error al obtener los viajes y tickets:", error);
       throw error; // Re-lanzar el error para que pueda ser manejado en el nivel superior
     }
+  },
+
+  async findTripsByBranchAndWorker(branchId, date, endDate, workerId) {
+    const whereClause = {
+      branch_id: branchId, // Siempre filtramos por branch_id
+    };
+    if (endDate && endDate.trim() !== "") {
+      whereClause.date = {
+        [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+      };
+    } else {
+      // Filtrar por una sola fecha si no se proporciona endDate
+      whereClause.date = date;
+    }
+    return await Trip.findAll({
+      include: [
+        {
+          model: Ticket,
+          as: "tickets",
+          attributes: ["quantity"], // No seleccionamos columnas individuales de Ticket
+          required: true,
+        },
+        {
+          model: TripWorker, // Asume que TripWorker es el modelo de la tabla de unión
+          as: "tripworkers",
+          where: { branch_id: branchId, worker_id: workerId }, // Aplicar la condición directamente en la tabla de unión
+          attributes: [], // No seleccionamos columnas individuales de TripWorker
+          required: true,
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "image"],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "name"],
+          include: [
+            {
+              model: Location, // Relación con el modelo de origen
+              as: "origin",
+              attributes: ["id", "address", "image"], // Atributos a incluir de la tabla de origen
+            },
+            {
+              model: Location, // Relación con el modelo de destino
+              as: "destination",
+              attributes: ["id", "address", "image"], // Atributos a incluir de la tabla de destino
+            },
+          ],
+        },
+      ],
+      where: whereClause,
+    });
   },
 };
 

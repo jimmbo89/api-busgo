@@ -607,11 +607,7 @@ router.post("/trips-worker-date", validateSchema(tripWorkerDateSchema), TripCont
 
 //Rutas Ticket
 router.get("/ticket", TicketController.index);
-router.post(
-  "/ticket-web",
-  validateSchema(storeTicketWebSchema),
-  TicketController.store_web
-);
+router.post("/ticket-web", validateSchema(storeTicketWebSchema),TicketController.store_web);
 router.post(
   "/ticket",
   validateSchema(storeTicketSchema),

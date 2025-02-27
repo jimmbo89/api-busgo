@@ -81,11 +81,21 @@ const TicketRepository = {
     });
   },
 
-  async findAllDate(branchId, date = null) {
+  async findAllDate(branchId, date = null, endDate = null) {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
     const searchDate = date || formattedToday;
-
+    const whereClause = {
+      branch_id: branchId, // Siempre filtramos por branch_id
+    };
+    if (endDate && endDate.trim() !== "") {
+      whereClause.date = {
+        [Op.between]: [searchDate, endDate], // Rango de fechas (inclusive)
+      };
+    } else {
+      // Filtrar por una sola fecha si no se proporciona endDate
+      whereClause.date = searchDate;
+    }
     return await Ticket.findAll({
       attributes: [
         "id",
@@ -105,12 +115,7 @@ const TicketRepository = {
         "barcode",
         "print",
       ],
-      where: {
-        branch_id: branchId, // Filtra por branch_id
-        date: {
-          [Op.eq]: searchDate, // Filtra solo los viajes cuyo campo 'date' sea igual a la fecha de hoy
-        },
-      },
+      where:whereClause,
       include: [
         {
           model: Branch,

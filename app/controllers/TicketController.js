@@ -62,7 +62,7 @@ const TicketController = {
       `${req.user.name} - Entra a buscar los tickets de una sucursal en el dia `
     );
 
-    const { branch_id, date } = req.body;
+    const { branch_id, date, endDate } = req.body;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -72,7 +72,7 @@ const TicketController = {
     }
 
     try {
-      const tickets = await TicketRepository.findAllDate(branch_id, date);
+      const tickets = await TicketRepository.findAllDate(branch_id, date, endDate);
 
       if (!tickets.length) {
         return res.status(204).json({ msg: "TicketsNotFound" });

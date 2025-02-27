@@ -56,14 +56,18 @@ const storeTicketSchema = Joi.object({
     "number.base": "El campo pay debe ser un número entero",
   }),
   transactionStatus: Joi.boolean()
-  .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "boolean.base": "El estado de la transacción debe ser un valor booleano.",
     }),
   sequenceNumber: Joi.string()
     .length(12) // Longitud exacta de 12 caracteres
     .pattern(/^\d+$/) // Solo dígitos
-    .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "string.base": "El número de secuencia debe ser una cadena de texto.",
       "string.length":
@@ -72,14 +76,18 @@ const storeTicketSchema = Joi.object({
         "El número de secuencia debe contener solo dígitos.",
     }),
   extraData: Joi.object()
-  .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "object.base": "El campo extraData debe ser un objeto JSON.",
     }),
   transactionTip: Joi.number()
     .precision(2) // Hasta 2 decimales
     .min(0) // No puede ser negativo
-    .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "number.base": "La propina debe ser un número.",
       "number.min": "La propina no puede ser negativa.",
@@ -87,7 +95,9 @@ const storeTicketSchema = Joi.object({
   transactionCashback: Joi.number()
     .precision(2) // Hasta 2 decimales
     .min(0) // No puede ser negativo
-    .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "number.base": "El vuelto debe ser un número.",
       "number.min": "El vuelto no puede ser negativo.",
@@ -148,10 +158,7 @@ const storeTicketWebSchema = Joi.object({
   pay: Joi.number().precision(2).allow(null).empty("").optional().messages({
     "number.base": "El campo pay debe ser un número entero",
   }),
-  device: Joi.string()
-    .allow(null)
-    .optional("")
-  .messages({
+  device: Joi.string().allow(null).optional("").messages({
     "string.base": "El campo device debe ser un texto",
     "any.required": "El campo method es obligatorio",
   }),
@@ -211,14 +218,18 @@ const updateTicketSchema = Joi.object({
     "any.required": "El campo id es obligatorio",
   }),
   transactionStatus: Joi.boolean()
-  .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "boolean.base": "El estado de la transacción debe ser un valor booleano.",
     }),
   sequenceNumber: Joi.string()
     .length(12) // Longitud exacta de 12 caracteres
     .pattern(/^\d+$/) // Solo dígitos
-    .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "string.base": "El número de secuencia debe ser una cadena de texto.",
       "string.length":
@@ -227,14 +238,18 @@ const updateTicketSchema = Joi.object({
         "El número de secuencia debe contener solo dígitos.",
     }),
   extraData: Joi.object()
-  .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "object.base": "El campo extraData debe ser un objeto JSON.",
     }),
   transactionTip: Joi.number()
     .precision(2) // Hasta 2 decimales
     .min(0) // No puede ser negativo
-    .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "number.base": "La propina debe ser un número.",
       "number.min": "La propina no puede ser negativa.",
@@ -242,7 +257,9 @@ const updateTicketSchema = Joi.object({
   transactionCashback: Joi.number()
     .precision(2) // Hasta 2 decimales
     .min(0) // No puede ser negativo
-    .allow(null).optional().empty("") // Permite null
+    .allow(null)
+    .optional()
+    .empty("") // Permite null
     .messages({
       "number.base": "El vuelto debe ser un número.",
       "number.min": "El vuelto no puede ser negativo.",
@@ -269,6 +286,13 @@ const branchTicketTripSchema = Joi.object({
     "date.base":
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
   }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD
+    .allow("", null) // Permitir vacío o null
+    .optional() // Campo opcional
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
 });
 
 const monthlySalesSchema = Joi.object({
@@ -328,5 +352,5 @@ module.exports = {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
-  storeTicketWebSchema
+  storeTicketWebSchema,
 };

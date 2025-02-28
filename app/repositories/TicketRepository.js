@@ -389,16 +389,16 @@ const TicketRepository = {
         return acc;
       }, []);
 
+      // Normaliza los asientos seleccionados a números (por si vienen como strings)
+      const normalizedSelectedSeats = selectedSeats.map((seat) => Number(seat));
+
       // Verifica si hay conflicto entre los asientos seleccionados y los reservados
-      // Convertimos ambos arrays en conjuntos para comparar fácilmente
-      const reservedSet = new Set(reservedSeats);
-      const selectedSet = new Set(selectedSeats);
+      const reservedSet = new Set(reservedSeats); // Convierte a Set para búsquedas rápidas
 
       // Filtra los asientos seleccionados que ya están reservados
-      const conflictingSeats = selectedSeats.filter((seat) =>
+      const conflictingSeats = normalizedSelectedSeats.filter((seat) =>
         reservedSet.has(seat)
       );
-
       // Retorna los asientos en conflicto
       return conflictingSeats;
     } catch (error) {

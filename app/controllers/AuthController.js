@@ -196,21 +196,35 @@ const AuthController = {
       }
       let branchData = [];
       let companyData = [];
+      let systemRolePermissions = [];
+      let branchRolePermissions = [];
       let roleName = "";
       let role_id = "";
       if (req.body.branch_id) {
-        branchData = user.worker.branchWorkers.find(
+        const branchWorker = user.worker.branchWorkers.find(
           (branchWorker) => branchWorker.branch.id === req.body.branch_id
-        )?.branch;
-
-        if (!branchData) {
-          return res
-            .status(400)
-            .json({ msg: "No es usuario de esta Sucursal" });
+        );
+      
+        // Verificar si se encontró el branchWorker
+        if (!branchWorker) {
+          return res.status(400).json({ msg: "No es usuario de esta Sucursal" });
         }
-        roleName = user.branchWorker.role.name;
-        role_id = user.branchWorker.role_id;
+      
+        // Obtener branchData desde branchWorker
+        branchData = branchWorker.branch;
+      
+        // Obtener roleName y role_id desde branchWorker
+        roleName = branchWorker.role.name;
+        role_id = branchWorker.role_id;
         companyData = branchData.company;
+              // Obtener los permisos del rol en la relación con las branches
+      branchRolePermissions = user.worker.branchWorkers.flatMap(
+        (branchWorker) => {
+          return branchWorker.role.permissions.map((permission) => {
+            return `${permission.name}, ${permission.module}`;
+          });
+        }
+      );
       } else {
         // Asignar la primera compañía a companyData
         companyData = user.companies ? user.companies[0] : [];
@@ -219,6 +233,14 @@ const AuthController = {
         }
         roleName = user.worker.role.name;
         role_id = user.worker.role_id;
+
+              
+      // Obtener los permisos del rol del sistema
+      systemRolePermissions = user.worker.role.permissions.map(
+        (permission) => {
+          return `${permission.name}, ${permission.module}`;
+        }
+      );
       }
       // Construimos el objeto del usuario con la estructura deseada
       const userNew = {
@@ -244,22 +266,6 @@ const AuthController = {
         token: token,
         expires_at: expiresAt,
       });
-
-      // Obtener los permisos del rol del sistema
-      const systemRolePermissions = user.worker.role.permissions.map(
-        (permission) => {
-          return `${permission.name}, ${permission.module}`;
-        }
-      );
-
-      // Obtener los permisos del rol en la relación con las branches
-      const branchRolePermissions = user.worker.branchWorkers.flatMap(
-        (branchWorker) => {
-          return branchWorker.role.permissions.map((permission) => {
-            return `${permission.name}, ${permission.module}`;
-          });
-        }
-      );
 
       // Combinar los permisos y eliminar duplicados usando un Set
       const allPermissions = [

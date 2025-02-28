@@ -402,7 +402,7 @@ const TicketRepository = {
       // Retorna los asientos en conflicto
       return conflictingSeats;
     } catch (error) {
-      console.error(
+      logger.error(
         `Error verificando los asientos reservados Repository: ${error.message}`
       );
       throw new Error("Error al verificar asientos reservados");

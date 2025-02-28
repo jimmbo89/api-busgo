@@ -716,7 +716,7 @@ const TripController = {
           // Sumar al total general
           totalGeneral += total;
           totalPasajesVendidos += 1; // Contar cada ticket como un pasaje vendido
-
+          reimpresiones += ticket.print - 1;
           // Sumar al total por método de pago
           if (!totalsByMethod[method]) {
             totalsByMethod[method] = {

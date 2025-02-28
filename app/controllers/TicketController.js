@@ -757,7 +757,7 @@ const TicketController = {
             cantidad: 0, // Cantidad de pasajes
           };
         }
-
+        reimpresiones += ticket.print - 1;
         totalsByMethod[method].total += total; // Sumar el total en dinero
         //totalsByMethod[method].cantidad += quantity; // Sumar la cantidad de pasajes
         totalsByMethod[method].cantidad += 1; // Sumar la cantidad de pasajes

@@ -25,6 +25,7 @@ const TripWorkerController = require("./controllers/TripWorkerController");
 const TicketController = require("./controllers/TicketController");
 const TuuController = require("./controllers/TuuController");
 const StructureController = require("./controllers/StructureController");
+const PromotionController = require("./controllers/PromotionController");
 
 //Middlewares
 const auth = require("./middlewares/auth");
@@ -137,11 +138,8 @@ const {
   paymentSchema,
   paymentDataSchema,
 } = require("./middlewares/validations/tuuValidation");
-const {
-  storeStructureSchema,
-  updateStructureSchema,
-  idStructureSchema,
-} = require("./middlewares/validations/structureValidation");
+const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = require("./middlewares/validations/structureValidation");
+const { storePromotionSchema, updatePromotionSchema, idPromotionSchema, activePromotionSchema } = require("./middlewares/validations/promotionValidation");
 
 router.get("/", (req, res) => res.json({ hello: "World" }));
 
@@ -200,16 +198,8 @@ router.get("/role", RoleController.index);
 router.post("/role", validateSchema(storeRoleSchema), RoleController.store);
 router.post("/role-show", validateSchema(idRoleSchema), RoleController.show);
 router.put("/role", validateSchema(updateRoleSchema), RoleController.update);
-router.post(
-  "/role-destroy",
-  validateSchema(idRoleSchema),
-  RoleController.destroy
-);
-router.post(
-  "/get-role-type",
-  validateSchema(typeRoleSchema),
-  RoleController.getRolesByType
-);
+router.post("/role-destroy", validateSchema(idRoleSchema),RoleController.destroy);
+router.post("/get-role-type", validateSchema(typeRoleSchema), RoleController.getRolesByType);
 
 //Rutas Company
 router.get("/company", CompanyController.index);
@@ -675,5 +665,13 @@ router.post(
   validateSchema(idStructureSchema),
   StructureController.destroy
 );
+
+//Rutas Promotion
+router.get("/promotion", PromotionController.index);
+router.post("/promotion", validateSchema(storePromotionSchema), PromotionController.store);
+router.post("/promotion-show", validateSchema(idPromotionSchema), PromotionController.show);
+router.put("/promotion", validateSchema(updatePromotionSchema), PromotionController.update);
+router.post("/promotion-destroy", validateSchema(idPromotionSchema),PromotionController.destroy);
+router.post("/get-promotion-avtive", validateSchema(activePromotionSchema), PromotionController.getPromotionsByActiveStatus);
 
 module.exports = router;

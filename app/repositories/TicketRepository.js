@@ -36,6 +36,7 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
+        "promotions"
       ],
       include: [
         {
@@ -114,6 +115,7 @@ const TicketRepository = {
         "qr",
         "barcode",
         "print",
+        "promotions"
       ],
       where:whereClause,
       include: [
@@ -179,6 +181,7 @@ const TicketRepository = {
         "qr",
         "barcode",
         "print",
+        "promotions"
       ],
       include: [
         {
@@ -246,6 +249,7 @@ const TicketRepository = {
       extraData,
       transactionTip,
       transactionCashback,
+      promotions
     } = body;
 
     try {
@@ -268,6 +272,7 @@ const TicketRepository = {
         extraData,
         transactionTip,
         transactionCashback,
+        promotions
       });
 
       logger.info(`Ticket creado exitosamente (ID: ${ticket.id})`);
@@ -298,6 +303,7 @@ const TicketRepository = {
       "extraData",
       "transactionTip",
       "transactionCashback",
+      "promotions"
     ];
 
     const updatedData = Object.keys(body)

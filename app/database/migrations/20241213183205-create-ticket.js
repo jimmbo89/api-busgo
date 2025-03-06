@@ -96,6 +96,10 @@ module.exports = {
         allowNull: false,
         defaultValue: 1
       },
+      promotions: {
+        type: Sequelize.JSON, // Permitir almacenamiento de arrays
+        allowNull: true
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

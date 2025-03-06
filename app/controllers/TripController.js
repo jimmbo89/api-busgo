@@ -12,6 +12,7 @@ const {
   TicketRepository,
   CompanyRepository,
   IncidentRepository,
+  PromotionRepository,
 } = require("../repositories");
 
 const TripController = {
@@ -191,7 +192,9 @@ const TripController = {
         })
       );
 
-      res.status(200).json({ trips: mappedTrips });
+      const promotions = await PromotionRepository.findByActiveStatus(true);
+
+      res.status(200).json({ trips: mappedTrips, promotions: promotions });
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });

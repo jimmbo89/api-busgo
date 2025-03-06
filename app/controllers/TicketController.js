@@ -32,9 +32,14 @@ const TicketController = {
         method: ticket.method,
         status: ticket.status,
         quantity: ticket.quantity,
-        price: ticket.price,
-        total: ticket.total,
-        seats: ticket.seats,
+        price: Number(ticket.price),
+        total: Number(ticket.total),
+        seats: Array.isArray(ticket.seats)
+          ? ticket.seats // Si ya es un array, úsalo directamente
+          : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
+        promotions: Array.isArray(ticket.promotions)
+          ? ticket.promotions // Si ya es un array, úsalo directamente
+          : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
         adults: ticket.adults,
         minors: ticket.minors,
         qr: ticket.qr,
@@ -72,7 +77,11 @@ const TicketController = {
     }
 
     try {
-      const tickets = await TicketRepository.findAllDate(branch_id, date, endDate);
+      const tickets = await TicketRepository.findAllDate(
+        branch_id,
+        date,
+        endDate
+      );
 
       if (!tickets.length) {
         return res.status(204).json({ msg: "TicketsNotFound" });
@@ -89,11 +98,14 @@ const TicketController = {
         method: ticket.method,
         status: ticket.status,
         quantity: ticket.quantity,
-        price: ticket.price,
-        total: ticket.total,
+        price: Number(ticket.price),
+        total: Number(ticket.total),
         seats: Array.isArray(ticket.seats)
           ? ticket.seats // Si ya es un array, úsalo directamente
           : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
+        promotions: Array.isArray(ticket.promotions)
+          ? ticket.promotions // Si ya es un array, úsalo directamente
+          : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
         adults: ticket.adults ? ticket.adults : 0,
         minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
@@ -188,7 +200,7 @@ const TicketController = {
         adults: ticket.adults,
         minors: ticket.minors,
         date: ticket.date,
-        sequenceNumber: ticket.sequenceNumber
+        sequenceNumber: ticket.sequenceNumber,
       };
       //generar qr y codigo de barra
       const { qrCodePath, barcodePath } =
@@ -213,7 +225,6 @@ const TicketController = {
     logger.info(`${req.user.name} - Crea un nuevo ticket web`);
     logger.info("Datos recibidos al crear un ticket web");
     logger.info(JSON.stringify(req.body));
-
     req.body.user_id = req.user.id;
 
     const {
@@ -270,7 +281,9 @@ const TicketController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
       if (method === "Efectivo") {
-        let ticket = await TicketRepository.create(req.body, { transaction: t });
+        let ticket = await TicketRepository.create(req.body, {
+          transaction: t,
+        });
         const mappedTicket = {
           id: ticket.id,
           method: ticket.method,
@@ -280,17 +293,15 @@ const TicketController = {
           adults: ticket.adults,
           minors: ticket.minors,
           date: ticket.date,
-          sequenceNumber: ticket.sequenceNumber
+          sequenceNumber: ticket.sequenceNumber,
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
           await TicketRepository.generateTicketCodes(mappedTicket, ticket);
-  
-          
+
         await t.commit();
         res.status(201).json({ ticket: ticket });
-      }
-      else{
+      } else {
         const paymentData = {
           amount: total,
           device: device || "TJ44245N20440",
@@ -311,31 +322,34 @@ const TicketController = {
           req.body.transactionStatus = result.success;
           req.body.sequenceNumber = result.paymentRequestId;
           req.body.extraData = result.extraData;
-                
-        let ticket = await TicketRepository.create(req.body, { transaction: t });
-  
-        const mappedTicket = {
-          id: ticket.id,
-          method: ticket.method,
-          quantity: ticket.quantity,
-          price: ticket.price,
-          total: ticket.total,
-          adults: ticket.adults,
-          minors: ticket.minors,
-          date: ticket.date,
-          sequenceNumber: ticket.sequenceNumber
-        };
-        //generar qr y codigo de barra
-        const { qrCodePath, barcodePath } =
-          await TicketRepository.generateTicketCodes(mappedTicket, ticket);
-  
-          
-        await t.commit();
-        res.status(201).json({ ticket: ticket });
+
+          let ticket = await TicketRepository.create(req.body, {
+            transaction: t,
+          });
+
+          const mappedTicket = {
+            id: ticket.id,
+            method: ticket.method,
+            quantity: ticket.quantity,
+            price: ticket.price,
+            total: ticket.total,
+            adults: ticket.adults,
+            minors: ticket.minors,
+            date: ticket.date,
+            sequenceNumber: ticket.sequenceNumber,
+          };
+          //generar qr y codigo de barra
+          const { qrCodePath, barcodePath } =
+            await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+
+          await t.commit();
+          res.status(201).json({ ticket: ticket });
         } else {
           logger.error("Error al crear el pago:", result.message);
           await t.commit();
-        res.status(result.status || 500).json({ msg: result.message, ticket: [] });
+          res
+            .status(result.status || 500)
+            .json({ msg: result.message, ticket: [] });
         }
       }
     } catch (error) {
@@ -376,9 +390,14 @@ const TicketController = {
           method: ticket.method,
           status: ticket.status,
           quantity: ticket.quantity,
-          price: ticket.price,
-          total: ticket.total,
-          seats: ticket.seats,
+          price: Number(ticket.price),
+          total: Number(ticket.total),
+          seats: Array.isArray(ticket.seats)
+            ? ticket.seats // Si ya es un array, úsalo directamente
+            : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
+          promotions: Array.isArray(ticket.promotions)
+            ? ticket.promotions // Si ya es un array, úsalo directamente
+            : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
           date: ticket.date,
           print: ticket.print + 1,
           adults: ticket.adults,

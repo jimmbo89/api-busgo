@@ -102,6 +102,40 @@ const storeTicketSchema = Joi.object({
       "number.base": "El vuelto debe ser un número.",
       "number.min": "El vuelto no puede ser negativo.",
     }),
+    promotions: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().required().messages({
+          'number.base': 'El ID de la promoción debe ser un número',
+          'any.required': 'El ID de la promoción es requerido',
+        }),
+        percentage: Joi.number().min(0).max(100).required().messages({
+          'number.base': 'El porcentaje debe ser un número',
+          'number.min': 'El porcentaje no puede ser menor que 0',
+          'number.max': 'El porcentaje no puede ser mayor que 100',
+          'any.required': 'El porcentaje es requerido',
+        }),
+        originalPrice: Joi.number().positive().required().messages({
+          'number.base': 'El precio original debe ser un número',
+          'number.positive': 'El precio original debe ser un número positivo',
+          'any.required': 'El precio original es requerido',
+        }),
+        discountedPrice: Joi.number().positive().required().messages({
+          'number.base': 'El precio con descuento debe ser un número',
+          'number.positive': 'El precio con descuento debe ser un número positivo',
+          'any.required': 'El precio con descuento es requerido',
+        }),
+        type: Joi.string().required().messages({
+          'string.base': 'El tipo debe ser una cadena de texto',
+          'any.required': 'El tipo es requerido',
+        }),
+      })
+    )
+    .optional() // El campo "promotions" es opcional
+    .messages({
+      'array.base': 'Las promociones deben ser un array',
+      'array.includesRequiredUnknowns': 'Cada promoción debe cumplir con el esquema de validación',
+    }),
 });
 
 const storeTicketWebSchema = Joi.object({
@@ -162,6 +196,40 @@ const storeTicketWebSchema = Joi.object({
     "string.base": "El campo device debe ser un texto",
     "any.required": "El campo method es obligatorio",
   }),
+  promotions: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().required().messages({
+          'number.base': 'El ID de la promoción debe ser un número',
+          'any.required': 'El ID de la promoción es requerido',
+        }),
+        percentage: Joi.number().min(0).max(100).required().messages({
+          'number.base': 'El porcentaje debe ser un número',
+          'number.min': 'El porcentaje no puede ser menor que 0',
+          'number.max': 'El porcentaje no puede ser mayor que 100',
+          'any.required': 'El porcentaje es requerido',
+        }),
+        originalPrice: Joi.number().positive().required().messages({
+          'number.base': 'El precio original debe ser un número',
+          'number.positive': 'El precio original debe ser un número positivo',
+          'any.required': 'El precio original es requerido',
+        }),
+        discountedPrice: Joi.number().positive().required().messages({
+          'number.base': 'El precio con descuento debe ser un número',
+          'number.positive': 'El precio con descuento debe ser un número positivo',
+          'any.required': 'El precio con descuento es requerido',
+        }),
+        type: Joi.string().required().messages({
+          'string.base': 'El tipo debe ser una cadena de texto',
+          'any.required': 'El tipo es requerido',
+        }),
+      })
+    )
+    .optional() // El campo "promotions" es opcional
+    .messages({
+      'array.base': 'Las promociones deben ser un array',
+      'array.includesRequiredUnknowns': 'Cada promoción debe cumplir con el esquema de validación',
+    }),
 });
 
 // Esquema para actualizar un Ticket
@@ -213,6 +281,40 @@ const updateTicketSchema = Joi.object({
   pay: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo pay debe ser un número entero",
   }),
+  promotions: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().required().messages({
+          'number.base': 'El ID de la promoción debe ser un número',
+          'any.required': 'El ID de la promoción es requerido',
+        }),
+        percentage: Joi.number().min(0).max(100).required().messages({
+          'number.base': 'El porcentaje debe ser un número',
+          'number.min': 'El porcentaje no puede ser menor que 0',
+          'number.max': 'El porcentaje no puede ser mayor que 100',
+          'any.required': 'El porcentaje es requerido',
+        }),
+        originalPrice: Joi.number().positive().required().messages({
+          'number.base': 'El precio original debe ser un número',
+          'number.positive': 'El precio original debe ser un número positivo',
+          'any.required': 'El precio original es requerido',
+        }),
+        discountedPrice: Joi.number().positive().required().messages({
+          'number.base': 'El precio con descuento debe ser un número',
+          'number.positive': 'El precio con descuento debe ser un número positivo',
+          'any.required': 'El precio con descuento es requerido',
+        }),
+        type: Joi.string().required().messages({
+          'string.base': 'El tipo debe ser una cadena de texto',
+          'any.required': 'El tipo es requerido',
+        }),
+      })
+    )
+    .optional() // El campo "promotions" es opcional
+    .messages({
+      'array.base': 'Las promociones deben ser un array',
+      'array.includesRequiredUnknowns': 'Cada promoción debe cumplir con el esquema de validación',
+    }),
   id: Joi.number().integer().required().messages({
     "number.base": "El campo id debe ser un número entero",
     "any.required": "El campo id es obligatorio",

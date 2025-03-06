@@ -134,7 +134,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 1
-    }
+    },
+    promotions: {
+      type: DataTypes.JSON, // Tipo de dato JSON
+      allowNull: true, // Puede ser nulo
+    },
   }, {
     sequelize,
     modelName: 'Ticket',

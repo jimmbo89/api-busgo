@@ -2,6 +2,9 @@ const Joi = require("joi");
 
 // Esquema para crear un nuevo Ticket
 const storeTicketSchema = Joi.object({
+  id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo branch_id debe ser un número entero",
+  }),
   branch_id: Joi.number().integer().required().messages({
     "number.base": "El campo branch_id debe ser un número entero",
     "any.required": "El campo branch_id es obligatorio",

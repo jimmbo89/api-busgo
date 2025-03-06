@@ -150,6 +150,7 @@ const TicketController = {
       adults,
       minors,
       pay,
+      id
     } = req.body;
     let ticket = {};
 
@@ -189,6 +190,11 @@ const TicketController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
+      if(id){
+        req.body.qr = id;
+        req.body.barcode = id;
+      }
+
       let ticket = await TicketRepository.create(req.body, { transaction: t });
 
       const mappedTicket = {
@@ -202,9 +208,10 @@ const TicketController = {
         date: ticket.date,
         sequenceNumber: ticket.sequenceNumber,
       };
-      //generar qr y codigo de barra
-      const { qrCodePath, barcodePath } =
-        await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+      if (id === undefined || id === null || id === 0 || id === "") {
+        // Si id no existe, es null o está vacío, generar QR y código de barras
+        const { qrCodePath, barcodePath } = await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+      }
 
       await t.commit();
       res.status(201).json({ ticket: ticket });

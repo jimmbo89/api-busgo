@@ -12,6 +12,7 @@ const {
   Route,
   Vehicle,
   Company,
+  Worker,
   sequelize,
 } = require("../models");
 const ImageService = require("../services/ImageService");
@@ -36,7 +37,7 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
-        "promotions"
+        "promotions",
       ],
       include: [
         {
@@ -82,20 +83,24 @@ const TicketRepository = {
     });
   },
 
-  async findAllDate(branchId, date = null, endDate = null) {
+  async findAllDate(branchId, date = null, endDate = null, workerId = null) {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
     const searchDate = date || formattedToday;
     const whereClause = {
       branch_id: branchId, // Siempre filtramos por branch_id
     };
-    if (endDate && endDate.trim() !== "") {
-      whereClause.date = {
-        [Op.between]: [searchDate, endDate], // Rango de fechas (inclusive)
-      };
-    } else {
-      // Filtrar por una sola fecha si no se proporciona endDate
-      whereClause.date = searchDate;
+    // Agregar condiciones de fecha solo si `date` está presente
+    if (date && date.trim() !== "") {
+      if (endDate && endDate.trim() !== "") {
+        // Si `date` y `endDate` están presentes, filtrar por rango de fechas
+        whereClause.date = {
+          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+        };
+      } else {
+        // Si solo `date` está presente, filtrar por una sola fecha
+        whereClause.date = date;
+      }
     }
     return await Ticket.findAll({
       attributes: [
@@ -115,9 +120,9 @@ const TicketRepository = {
         "qr",
         "barcode",
         "print",
-        "promotions"
+        "promotions",
       ],
-      where:whereClause,
+      where: whereClause,
       include: [
         {
           model: Branch,
@@ -133,6 +138,7 @@ const TicketRepository = {
           model: Trip,
           as: "trip",
           attributes: ["id", "date", "schedule", "start", "end"],
+          required: true, // Excluir tickets sin trip asociado
           include: [
             {
               model: Vehicle,
@@ -155,6 +161,13 @@ const TicketRepository = {
                   attributes: ["id", "address", "image"],
                 },
               ],
+            },
+            {
+              model: Worker, // Incluir los trabajadores relacionados
+              as: "workers",
+              attributes: ["id", "name"], // Atributos que deseas incluir de Worker
+              through: { attributes: [] }, // Excluir atributos de la tabla intermedia (TripWorker)
+              where: workerId ? { id: workerId } : {}, // Filtro por workerId (si se proporciona)
             },
           ],
         },
@@ -181,7 +194,7 @@ const TicketRepository = {
         "qr",
         "barcode",
         "print",
-        "promotions"
+        "promotions",
       ],
       include: [
         {
@@ -249,7 +262,7 @@ const TicketRepository = {
       extraData,
       transactionTip,
       transactionCashback,
-      promotions
+      promotions,
     } = body;
 
     try {
@@ -272,7 +285,7 @@ const TicketRepository = {
         extraData,
         transactionTip,
         transactionCashback,
-        promotions
+        promotions,
       });
 
       logger.info(`Ticket creado exitosamente (ID: ${ticket.id})`);
@@ -303,7 +316,7 @@ const TicketRepository = {
       "extraData",
       "transactionTip",
       "transactionCashback",
-      "promotions"
+      "promotions",
     ];
 
     const updatedData = Object.keys(body)
@@ -471,8 +484,8 @@ const TicketRepository = {
       fs.writeFileSync(barcodePath, barcodeData);*/
       if (ticket) {
         await ticket.update({
-          qr: qr.toString(),  // Asegúrate de que se está pasando un string
-          barcode: barcode.toString()  // Asegúrate de que se está pasando un string
+          qr: qr.toString(), // Asegúrate de que se está pasando un string
+          barcode: barcode.toString(), // Asegúrate de que se está pasando un string
         });
       }
 
@@ -484,7 +497,7 @@ const TicketRepository = {
     }
   },
 
- // Función para desencriptar
+  // Función para desencriptar
   async decryptData(encryptedData, secretKey, iv) {
     //const iv = crypto.randomBytes(16); // Vector de inicialización (IV)
     //const iv = "2017111319891230"; // Vector de inicialización (IV)
@@ -500,25 +513,29 @@ const TicketRepository = {
   // Función para encriptar un objeto JSON
   async encryptData(data, secretKey) {
     const iv = "2017111319891230"; // IV fijo de 16 bytes
-    const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(secretKey), iv);
+    const cipher = crypto.createCipheriv(
+      "aes-256-cbc",
+      Buffer.from(secretKey),
+      iv
+    );
     let encrypted = cipher.update(JSON.stringify(data), "utf8", "hex");
     encrypted += cipher.final("hex");
     return encrypted; // Retorna un string
   },
 
- 
-
   async generateUniqueBarcode() {
     let barcode;
     let isUnique = false;
-  
+
     while (!isUnique) {
       // Genera un barcode único de 13 dígitos
-      barcode = Math.floor(1000000000000 + Math.random() * 9000000000000).toString();
-      
+      barcode = Math.floor(
+        1000000000000 + Math.random() * 9000000000000
+      ).toString();
+
       // Verifica si el barcode ya existe en la base de datos
       const existingTicket = await Ticket.findOne({ where: { barcode } });
-  
+
       if (!existingTicket) {
         isUnique = true;
       }

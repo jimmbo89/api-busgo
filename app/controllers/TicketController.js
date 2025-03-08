@@ -68,6 +68,7 @@ const TicketController = {
     );
 
     const { branch_id, date, endDate } = req.body;
+    const workerId = req.worker.id;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -80,7 +81,8 @@ const TicketController = {
       const tickets = await TicketRepository.findAllDate(
         branch_id,
         date,
-        endDate
+        endDate,
+        workerId
       );
 
       if (!tickets.length) {

@@ -67,10 +67,21 @@ const TripRepository = {
     });
   },
 
-  async findDate(branchId, date = null) {
+  async findDate(branchId, workerId = null, date = null) {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
     const searchDate = date || formattedToday;
+    // Construir el objeto `where` dinámicamente
+    const whereClause = {
+      branch_id: branchId, // Filtra por branch_id (siempre aplicado)
+    };
+
+    // Agregar la condición de fecha solo si `date` está presente
+    if (date) {
+      whereClause.date = {
+        [Op.eq]: searchDate, // Filtra por fecha
+      };
+    }
     return await Trip.findAll({
       attributes: [
         "id",
@@ -84,12 +95,7 @@ const TripRepository = {
         "route_id",
         "price",
       ],
-      where: {
-        branch_id: branchId, // Filtra por branch_id
-        /*date: {
-          [Op.eq]: searchDate, // Filtra solo los viajes cuyo campo 'date' sea igual a la fecha de hoy
-        },*/
-      },
+      where: whereClause, // Usar el objeto `where` construido dinámicamente
       include: [
         {
           model: Branch,
@@ -128,6 +134,13 @@ const TripRepository = {
           model: Ticket, // Incluir los tickets relacionados
           as: "tickets",
           attributes: ["id", "seats"], // Suponiendo que los asientos están en el campo 'seat_numbers' (como un array)
+        },
+        {
+          model: Worker, // Incluir los trabajadores relacionados
+          as: "workers",
+          attributes: ["id", "name"], // Atributos que deseas incluir de Worker
+          through: { attributes: [] }, // Excluir atributos de la tabla intermedia (TripWorker)
+          where: workerId ? { id: workerId } : {}, // Filtro por workerId (si se proporciona)
         },
       ],
     });

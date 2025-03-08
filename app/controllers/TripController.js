@@ -69,7 +69,8 @@ const TripController = {
       `${req.user.name} - Entra a buscar los viajes(index_branch_date) `
     );
 
-    const { branch_id } = req.body;
+    const { branch_id, date } = req.body;
+    const workerId = req.worker.id;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -79,7 +80,7 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(branch_id);
+      const trips = await TripRepository.findDate(branch_id, workerId, date);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
@@ -129,6 +130,7 @@ const TripController = {
     );
 
     const { ticket_id, branch_id, date } = req.body;
+    const workerId = req.worker.id;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -148,7 +150,7 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(req.body.branch_id, date);
+      const trips = await TripRepository.findDate(branch_id, workerId, date);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });

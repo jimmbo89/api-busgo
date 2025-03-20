@@ -4,7 +4,7 @@ const Joi = require('joi');
 const storeBranchSchema = Joi.object({
     company_id: Joi.number().required(),
     name: Joi.string().max(255).required(),
-    rut: Joi.string().max(50).required(),
+    rut: Joi.string().max(50).allow(null).empty('').optional(),
     address: Joi.string().allow(null).empty('').optional(),
     phone: Joi.string().max(20).allow(null).empty('').optional(),
     image: Joi.any()

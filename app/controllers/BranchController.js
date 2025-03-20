@@ -71,6 +71,7 @@ const BranchController = {
 
         try {
             // Verifica si ya existe una sucursal con el mismo rut (excluyendo la sucursal actual)
+            
         const existingBranch = await BranchRepository.existsByRut(rut);
 
         if (existingBranch) {
@@ -83,6 +84,15 @@ const BranchController = {
         if (!company) {
             logger.error(`BranchController->store: Empresa no encontrada con ID ${company_id}`);
             return res.status(404).json({ msg: 'CompanyNotFound' });
+        }
+
+        if (rut){
+            const existingBranch = await BranchRepository.existsByRut(rut);
+
+            if (existingBranch) {
+                logger.error('El RUT ya está registrado en otra sucursal:' + rut);
+                return res.status(400).json({ error: 'DuplicateRut', msg: 'El RUT ya está registrado en otra sucursal.' });
+            }
         }
 
         const branch = await BranchRepository.create(req.body, req.file);

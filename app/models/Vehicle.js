@@ -61,7 +61,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     rut: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       unique: true,
     },
     seats: {

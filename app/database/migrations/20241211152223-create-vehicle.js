@@ -24,7 +24,7 @@ module.exports = {
       rut: {
         type: Sequelize.STRING,
         unique: true,
-        allowNull: false
+        allowNull: true
       },
       seats: {
         type: Sequelize.INTEGER,

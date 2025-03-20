@@ -6,7 +6,7 @@ const storeVehicleSchema = Joi.object({
     brand: Joi.string().max(255).allow(null).empty('').optional(),
     model: Joi.string().max(255).allow(null).empty('').optional(),
     plate: Joi.string().max(255).allow(null).empty('').optional(),
-    rut: Joi.string().max(50).required(),
+    rut: Joi.string().max(50).allow(null).empty('').optional(),
     seats: Joi.number().allow(null).empty('').optional(),
     state: Joi.number().default(1).allow(null).empty('').optional(),
     image: Joi.string()

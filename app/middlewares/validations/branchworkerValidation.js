@@ -13,6 +13,10 @@ const updateBranchWorkerSchema = Joi.object({
     id: Joi.number().required(),
 });
 
+const worker_idBranchWorkerSchema = Joi.object({
+    worker_id: Joi.number().allow(null).empty('').optional(),
+});
+
 
 const idBranchWorkerSchema = Joi.object({
     id: Joi.number().required()
@@ -27,5 +31,6 @@ module.exports = {
     storeBranchWorkerSchema,
     updateBranchWorkerSchema,
     idBranchWorkerSchema,
-    typeRoleBranchSchema
+    typeRoleBranchSchema,
+    worker_idBranchWorkerSchema
 };

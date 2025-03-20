@@ -38,6 +38,26 @@ const BranchWorkerRepository = {
             ]
         });
     },
+
+    async findByWorker(workerId) {
+        return await BranchWorker.findAll({
+            where: {
+                worker_id: workerId // Filtramos por el ID de la sucursal
+            },
+            include: [
+                { 
+                    model: Role, 
+                    as: 'role', 
+                    attributes: ['id', 'name']
+                },
+                { 
+                    model: Branch, 
+                    as: 'branch', 
+                    attributes: ['id', 'name', 'image'],
+                }
+            ]
+        });
+    },
 };
 
 module.exports = BranchWorkerRepository;

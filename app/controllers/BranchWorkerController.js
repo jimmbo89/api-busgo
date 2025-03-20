@@ -63,6 +63,47 @@ const BranchWorkerController = {
             res.status(500).json({ error: 'ServerError', details: errorMsg });
         }
     },
+
+    async worker_branches(req, res) {
+        logger.info(`${req.user.name} - Busca todas las sucursales asociadas a un worker`);
+        try {
+            let { worker_id } = req.body;
+
+            if (worker_id === undefined || worker_id === null || worker_id === 0) {
+                worker_id = req.worker.id;
+              }else {
+                const worker = await WorkerRepository.findById(worker_id);
+                if (!worker) {                    
+                logger.error(`BranchWorkerController->worker_branches: worker_id no proporcionado`);
+                return res.status(400).json({ msg: 'WorkerNotFound' });
+                }
+            }
+    
+            // Buscar todas las relaciones Branch-Worker para el worker_id dado
+            const workerBranches = await BranchWorkerRepository.findByWorker(worker_id);
+    
+            // Si no se encuentran relaciones, devolver un mensaje adecuado
+            if (!workerBranches || workerBranches.length === 0) {
+                logger.error(`BranchWorkerController->worker_branches: No se encontraron sucursales para el worker con ID ${worker_id}`);
+                return res.status(404).json({ msg: 'NoBranchesFoundForWorker' });
+            }
+    
+            // Mapear los resultados para obtener solo los datos necesarios de las sucursales
+            const mappedBranches = workerBranches.map(branchWorker => ({
+                id: branchWorker.branch.id,
+                name: branchWorker.branch.name,
+                role: branchWorker.role.name,
+                image: branchWorker.branch.image,
+            }));
+    
+            // Devolver la respuesta con las sucursales mapeadas
+            res.status(200).json({ branches: mappedBranches });
+        } catch (error) {
+            const errorMsg = error.message || 'Error desconocido';
+            logger.error('BranchWorkerController->worker_branches: ' + errorMsg);
+            res.status(500).json({ error: 'ServerError', details: errorMsg });
+        }
+    },
     
     async getBranchWorkersRole(req, res) {
         logger.info(`${req.user.name} - Entra a la ruta unificada de Asociar trabajador a la sucursal`);

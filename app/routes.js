@@ -67,6 +67,7 @@ const {
   updateBranchWorkerSchema,
   idBranchWorkerSchema,
   typeRoleBranchSchema,
+  worker_idBranchWorkerSchema
 } = require("./middlewares/validations/branchworkerValidation");
 const {
   storePermissionRoleSchema,
@@ -306,6 +307,7 @@ router.post(
   validateSchema(branch_idTripSchema),
   BranchWorkerController.branch_workers
 );
+router.post("/worker-branches", validateSchema(worker_idBranchWorkerSchema), BranchWorkerController.worker_branches);
 router.post(
   "/branch-worker",
   validateSchema(storeBranchWorkerSchema),

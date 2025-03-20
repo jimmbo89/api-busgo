@@ -1,88 +1,1326 @@
-2025-02-13 15:44:24 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:44:24 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:44:28 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:44:28 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:44:34 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:44:34 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:44:54 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:44:54 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:44:59 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:44:59 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:45:06 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:45:50 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:45:50 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:45:52 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:45:52 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:45:53 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:46:55 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:46:55 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:46:58 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:46:59 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:47:00 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:48:02 info: juan.perez - Entra a buscar los vehículos
-2025-02-13 15:48:06 info: juan.perez - Accediendo a la lista de estructuras
-2025-02-13 15:48:15 info: juan.perez - Actualiza el vehículo con ID 9
-2025-02-13 15:48:15 info: Datos recibidos al editar un vehículo
-2025-02-13 15:48:15 info: {"seats":"12","structure_id":"3","id":"9"}
-2025-02-13 15:48:15 info: Vehículo actualizado exitosamente (ID: 9)
-2025-02-13 15:48:15 info: juan.perez - Entra a buscar los vehículos
-2025-02-13 15:48:21 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:48:22 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
-2025-02-13 15:48:28 info: juan.perez - Entra a la ruta unificada de viajes
-2025-02-13 15:48:43 info: juan.perez - Entra a buscar los vehículos
-2025-02-13 15:48:46 info: juan.perez - Accediendo a la lista de estructuras
-2025-02-13 15:48:52 info: juan.perez - Actualiza el vehículo con ID 2
-2025-02-13 15:48:52 info: Datos recibidos al editar un vehículo
-2025-02-13 15:48:52 info: {"seats":"12","structure_id":"3","id":"2"}
-2025-02-13 15:48:52 info: Vehículo actualizado exitosamente (ID: 2)
-2025-02-13 15:48:52 info: juan.perez - Entra a buscar los vehículos
-2025-02-13 15:48:57 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:48:57 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
-2025-02-13 15:49:01 info: juan.perez - Entra a la ruta unificada de viajes
-2025-02-13 15:49:05 info: juan.perez - Actualiza el viaje con ID 9
-2025-02-13 15:49:05 info: datos recibidos al editar un viaje
-2025-02-13 15:49:05 info: {"vehicle_id":2,"id":9}
-2025-02-13 15:49:05 info: Viaje actualizado exitosamente (ID: 9)
-2025-02-13 15:49:05 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
-2025-02-13 15:49:08 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:49:08 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:49:11 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:50:48 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:50:48 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:50:52 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:50:52 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:51:00 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:51:33 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:53:09 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:53:09 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:53:12 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:53:12 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:53:22 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:56:27 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:56:50 info: juan.perez - Crea un nuevo ticket
-2025-02-13 15:56:50 info: Datos recibidos al crear un ticket
-2025-02-13 15:56:50 info: {"trip_id":7,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-13T20:56:50.201Z","branch_id":3}
-2025-02-13 15:56:50 info: Ticket creado exitosamente (ID: 44)
-2025-02-13 15:56:50 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:56:56 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:57:12 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:57:13 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
-2025-02-13 15:57:14 info: juan.perez - Entra a la ruta unificada de viajes
-2025-02-13 15:57:43 info: juan.perez - Crea un nuevo viaje
-2025-02-13 15:57:43 info: datos recibidos al crear un viaje
-2025-02-13 15:57:43 info: {"route_id":1,"vehicle_id":2,"schedule":"09:00","arrival":"08:20","price":"20000","workers":[{"worker_id":7}],"date":"2025-02-13T20:57:43.053Z","branch_id":3}
-2025-02-13 15:57:43 info: Viaje creado exitosamente (ID: 17)
-2025-02-13 15:57:43 info: juan.perez - Entra a buscar los viajes(index_branch_date) 
-2025-02-13 15:57:59 info: juan.perez - Entra a buscar las sucursales
-2025-02-13 15:57:59 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:58:01 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 15:58:45 info: juan.perez - Crea un nuevo ticket
-2025-02-13 15:58:45 info: Datos recibidos al crear un ticket
-2025-02-13 15:58:45 info: {"trip_id":17,"branch_id":3,"method":"Efectivo","quantity":"5","price":"20000.00","total":100000,"adults":"3","minors":null,"seats":[1,2,3,4,5],"date":"2025-02-13T20:58:45.767Z"}
-2025-02-13 15:58:46 info: Ticket creado exitosamente (ID: 45)
-2025-02-13 15:58:46 info: juan.perez - Entra a buscar los tickets de una sucursal en el dia 
-2025-02-13 15:58:52 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 16:06:44 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 16:07:06 info: juan.perez - Entra a buscar los viajes de una fecha dada
-2025-02-13 16:23:05 info: juan.perez - Cierra sessión
-2025-02-13 16:23:08 info: Entra a buscar las sucursales en el login
+2025-02-28 14:53:41 info: juan.perez - Crea un nuevo ticket web
+2025-02-28 14:53:41 info: Datos recibidos al crear un ticket web
+2025-02-28 14:53:41 info: {"trip_id":15,"branch_id":3,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-28"}
+2025-02-28 14:53:41 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:00:54 info: juan.perez - Crea un nuevo ticket web
+2025-02-28 15:00:54 info: Datos recibidos al crear un ticket web
+2025-02-28 15:00:54 info: {"trip_id":15,"branch_id":3,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-28"}
+2025-02-28 15:00:54 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:01:40 info: juan.perez - Crea un nuevo ticket web
+2025-02-28 15:01:40 info: Datos recibidos al crear un ticket web
+2025-02-28 15:01:40 info: {"trip_id":15,"branch_id":3,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-28"}
+2025-02-28 15:01:40 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:03:19 info: juan.perez - Crea un nuevo ticket web
+2025-02-28 15:03:19 info: Datos recibidos al crear un ticket web
+2025-02-28 15:03:19 info: {"trip_id":15,"branch_id":3,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-28"}
+2025-02-28 15:03:19 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:16:50 info: juan.perez - Crea un nuevo ticket
+2025-02-28 15:16:50 info: Datos recibidos al crear un ticket
+2025-02-28 15:16:50 info: {"trip_id":15,"branch_id":3,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[4],"date":"2025-02-28"}
+2025-02-28 15:16:50 error: TicketController->store: Los asientos ya están reservados: 4
+2025-02-28 15:18:17 info: juan.perez - Crea un nuevo ticket
+2025-02-28 15:18:17 info: Datos recibidos al crear un ticket
+2025-02-28 15:18:17 info: {"trip_id":15,"branch_id":3,"method":"Efectivo","quantity":"1","price":"10000.00","total":10000,"adults":null,"minors":null,"seats":[2,1],"date":"2025-02-28"}
+2025-02-28 15:18:17 error: TicketController->store: Los asientos ya están reservados: 2, 1
+2025-03-04 17:19:15 info: Entra a buscar las sucursales en el login
+2025-03-04 17:20:03 info: Entrando a loguearse
+2025-03-04 17:20:03 info: datos recibidos al loguerase
+2025-03-04 17:20:03 info: {"email":"juan.perez","password":"admin321","branch_id":null}
+2025-03-04 17:20:10 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:20:30 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:20:33 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:22:53 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:22:56 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:23:02 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:23:38 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:24:36 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:39:05 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:39:11 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:39:14 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:39:16 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:42:04 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:42:07 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:42:41 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:42:42 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:43:15 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:45:04 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:45:11 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:45:13 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:45:20 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:45:42 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:45:45 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:46:18 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:46:19 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:46:40 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:46:41 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:46:47 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:22 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:23 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:24 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:30 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:32 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:35 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:53 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:47:55 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:49:23 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:49:27 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:49:33 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:49:39 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-04 17:49:55 info: juan.perez - Accediendo a la lista de estructuras
+2025-03-05 09:29:38 info: Entra a buscar las sucursales en el login
+2025-03-05 09:29:46 info: Entrando a loguearse
+2025-03-05 09:29:46 info: datos recibidos al loguerase
+2025-03-05 09:29:46 info: {"email":"juan.perez","password":"admin321","branch_id":null}
+2025-03-05 09:29:54 info: juan.perez - Entra a buscar los trabajadores
+2025-03-05 09:29:56 info: juan.perez - entra a buscar los roles de type Sistema
+2025-03-05 09:30:04 info: juan.perez - Actualiza el trabajador con ID 1
+2025-03-05 09:30:04 info: Datos recibidos al editar un trabajador
+2025-03-05 09:30:04 info: {"user":"admin","id":"1","user_id":"1"}
+2025-03-05 09:30:04 info: Verificando existencia por email, RUT o usuario en el repositorio
+2025-03-05 09:30:04 info: entra a actualizar los datos de user
+2025-03-05 09:30:04 info: Datos actualizados en la tabla users (ID: 1): {"name":"admin"}
+2025-03-05 09:30:04 info: Trabajador actualizado exitosamente (ID: 1)
+2025-03-05 09:30:04 info: juan.perez - Entra a buscar los trabajadores
+2025-03-05 09:30:24 info: juan.perez - Actualiza la contraseña del userID 1
+2025-03-05 09:30:31 info: juan.perez - Cierra sessión
+2025-03-05 09:30:32 info: Entra a buscar las sucursales en el login
+2025-03-05 09:30:38 info: Entrando a loguearse
+2025-03-05 09:30:38 info: datos recibidos al loguerase
+2025-03-05 09:30:38 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-05 09:40:13 info: admin - Accediendo a la lista de permisos
+2025-03-05 09:40:51 info: admin - Creando un nuevo permiso
+2025-03-05 09:40:51 info: admin - Accediendo a la lista de permisos
+2025-03-05 09:40:56 info: admin - Accediendo a la lista de roles
+2025-03-05 09:40:58 info: admin - Busca todas las relaciones Permission-Role
+2025-03-05 09:41:00 info: admin - Accediendo a la lista de permisos
+2025-03-05 09:41:03 info: admin - Crea una nueva relación Permission-Role
+2025-03-05 09:41:03 info: admin - Busca todas las relaciones Permission-Role
+2025-03-05 09:41:14 info: admin - Cierra sessión
+2025-03-05 09:41:17 info: Entra a buscar las sucursales en el login
+2025-03-05 09:41:22 info: Entrando a loguearse
+2025-03-05 09:41:22 info: datos recibidos al loguerase
+2025-03-05 09:41:22 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-05 09:41:29 info: admin - Accediendo a la lista de roles
+2025-03-05 09:44:34 info: admin - Accediendo a la lista de roles
+2025-03-05 09:47:53 info: admin - Accediendo a la lista de roles
+2025-03-05 09:48:18 info: admin - Accediendo a la lista de promociones
+2025-03-05 09:48:26 info: admin - Accediendo a la lista de promociones
+2025-03-05 09:48:33 info: admin - Accediendo a la lista de promociones
+2025-03-05 09:49:01 info: admin - Accediendo a la lista de promociones
+2025-03-05 09:49:59 info: admin - Accediendo a la lista de promociones
+2025-03-05 09:50:02 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:01:46 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:02 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:14 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:14 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:16 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:29 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:30 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:45 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:45 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:50 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:03:55 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:00 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:03 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:06 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:26 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:27 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:52 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:04:58 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:05:03 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:05:05 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:05:21 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:05:35 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:07:10 info: admin - Creando una nueva promoción
+2025-03-05 10:07:10 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:07:40 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:09:03 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:09:03 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:14:04 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:14:04 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:14:13 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:14:15 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:14:18 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:15:40 info: admin - Creando una nueva promoción
+2025-03-05 10:15:41 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:15:53 info: admin - Editando una promoción
+2025-03-05 10:16:46 info: admin - Editando una promoción
+2025-03-05 10:16:46 error: PromotionController->update: Error al actualizar la promoción: PromotionRepository.existsByRut is not a function
+2025-03-05 10:17:25 info: admin - Editando una promoción
+2025-03-05 10:17:25 info: Promoción actualizada exitosamente (ID: 2)
+2025-03-05 10:17:25 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:20:36 info: admin - Eliminando una promoción
+2025-03-05 10:20:36 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:43:05 info: admin - Cierra sessión
+2025-03-05 10:43:08 info: Entra a buscar las sucursales en el login
+2025-03-05 10:44:08 info: Entrando a loguearse
+2025-03-05 10:44:08 info: datos recibidos al loguerase
+2025-03-05 10:44:08 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-05 10:44:14 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:45:54 info: admin - Accediendo a la lista de promociones
+2025-03-05 10:47:58 info: admin - Cierra sessión
+2025-03-05 10:47:59 info: Entra a buscar las sucursales en el login
+2025-03-05 11:03:18 info: Entra a buscar las sucursales en el login
+2025-03-05 11:03:28 info: Entrando a loguearse
+2025-03-05 11:03:28 info: datos recibidos al loguerase
+2025-03-05 11:03:28 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-05 11:04:56 info: admin - Entra a buscar las sucursales
+2025-03-05 11:04:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:05:18 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:08:42 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:11:06 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:11:42 info: admin - Entra a buscar las sucursales
+2025-03-05 11:11:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:19 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:21 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:25 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:28 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:28 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:31 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:31 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:42 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:43 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:49 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:49 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:12:53 info: admin - Entra a buscar las sucursales
+2025-03-05 11:12:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:13:59 info: admin - Entra a buscar las sucursales
+2025-03-05 11:13:59 info: admin - Entra a buscar las sucursales
+2025-03-05 11:13:59 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:13:59 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:14:42 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:21:09 info: admin - Entra a buscar las sucursales
+2025-03-05 11:21:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:21:18 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:22:22 info: admin - Entra a buscar las sucursales
+2025-03-05 11:22:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:22:32 info: admin - Entra a buscar las sucursales
+2025-03-05 11:22:32 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:22:34 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:31:35 info: admin - Entra a buscar las sucursales
+2025-03-05 11:31:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:31:35 info: admin - Entra a buscar las sucursales
+2025-03-05 11:31:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:32:31 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:38:55 info: admin - Entra a buscar las sucursales
+2025-03-05 11:38:55 info: admin - Entra a buscar las sucursales
+2025-03-05 11:38:55 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:38:55 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:24 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:24 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:24 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:24 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:27 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:27 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:33 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:33 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:37 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:37 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:49 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:49 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:39:58 info: admin - Entra a buscar las sucursales
+2025-03-05 11:39:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:40:26 info: admin - Entra a buscar las sucursales
+2025-03-05 11:40:26 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:40:53 info: admin - Entra a buscar las sucursales
+2025-03-05 11:40:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:41:12 info: admin - Entra a buscar las sucursales
+2025-03-05 11:41:12 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:42:06 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:43:50 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:49:11 info: admin - Entra a buscar las sucursales
+2025-03-05 11:49:11 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:49:13 info: admin - Entra a buscar las sucursales
+2025-03-05 11:49:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:50:16 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:51:19 info: admin - Entra a buscar las sucursales
+2025-03-05 11:51:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:51:22 info: admin - Entra a buscar las sucursales
+2025-03-05 11:51:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:51:25 info: admin - Entra a buscar las sucursales
+2025-03-05 11:51:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:51:27 info: admin - Entra a buscar las sucursales
+2025-03-05 11:51:27 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:51:29 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:52:38 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:54:33 info: admin - Entra a buscar las sucursales
+2025-03-05 11:54:33 info: admin - Entra a buscar las sucursales
+2025-03-05 11:54:33 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:54:33 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:54:36 info: admin - Entra a buscar las sucursales
+2025-03-05 11:54:36 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:54:40 info: admin - Entra a buscar las sucursales
+2025-03-05 11:54:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:54:49 info: admin - Entra a buscar las sucursales
+2025-03-05 11:54:49 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:54:51 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:55:29 info: admin - Entra a buscar las sucursales
+2025-03-05 11:55:30 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:55:38 info: admin - Entra a buscar las sucursales
+2025-03-05 11:55:38 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:55:40 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:56:25 info: admin - Entra a buscar las sucursales
+2025-03-05 11:56:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:56:49 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:57:38 info: admin - Entra a buscar las sucursales
+2025-03-05 11:57:38 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:57:46 info: admin - Entra a buscar las sucursales
+2025-03-05 11:57:46 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:57:50 info: admin - Entra a buscar las sucursales
+2025-03-05 11:57:50 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:57:53 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:58:40 info: admin - Entra a buscar las sucursales
+2025-03-05 11:58:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:58:56 info: admin - Entra a buscar las sucursales
+2025-03-05 11:58:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:58:58 info: admin - Entra a buscar las sucursales
+2025-03-05 11:58:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:59:02 info: admin - Entra a buscar las sucursales
+2025-03-05 11:59:02 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:59:06 info: admin - Entra a buscar las sucursales
+2025-03-05 11:59:06 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:59:09 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 11:59:59 info: admin - Entra a buscar las sucursales
+2025-03-05 11:59:59 info: admin - Entra a buscar las sucursales
+2025-03-05 11:59:59 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 11:59:59 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:18 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:18 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:23 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:23 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:31 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:31 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:43 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:48 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:52 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:52 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:00:56 info: admin - Entra a buscar las sucursales
+2025-03-05 12:00:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:11 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:11 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:11 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:11 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:20 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:20 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:20 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:37 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:37 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:37 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:37 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:39 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:39 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:41 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:41 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:44 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:44 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:47 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:47 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:48 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:49 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:51 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:53 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:01:55 info: admin - Entra a buscar las sucursales
+2025-03-05 12:01:55 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:02:03 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 12:02:53 info: admin - Entra a buscar las sucursales
+2025-03-05 12:02:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:03:22 info: admin - Entra a buscar las sucursales
+2025-03-05 12:03:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:04:19 info: admin - Entra a buscar las sucursales
+2025-03-05 12:04:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:04:44 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 12:06:52 info: admin - Entra a buscar las sucursales
+2025-03-05 12:06:52 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:06:54 info: admin - Entra a buscar las sucursales
+2025-03-05 12:06:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:06:56 info: admin - Entra a buscar las sucursales
+2025-03-05 12:06:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:07:06 info: admin - Entra a buscar las sucursales
+2025-03-05 12:07:06 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:07:08 info: admin - Entra a buscar las sucursales
+2025-03-05 12:07:08 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:07:10 info: admin - Entra a buscar las sucursales
+2025-03-05 12:07:10 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:07:47 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 12:08:39 info: admin - Entra a buscar las sucursales
+2025-03-05 12:08:39 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:08:43 info: admin - Entra a buscar las sucursales
+2025-03-05 12:08:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:08:46 info: admin - Entra a buscar las sucursales
+2025-03-05 12:08:46 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:08:56 info: admin - Entra a buscar las sucursales
+2025-03-05 12:08:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:08:56 info: admin - Entra a buscar las sucursales
+2025-03-05 12:08:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:08:57 info: admin - Entra a buscar las sucursales
+2025-03-05 12:08:57 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:09:03 info: admin - Entra a buscar las sucursales
+2025-03-05 12:09:03 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:09:05 info: admin - Entra a buscar las sucursales
+2025-03-05 12:09:05 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:09:11 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 12:09:58 info: admin - Entra a buscar las sucursales
+2025-03-05 12:09:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:02 info: admin - Entra a buscar las sucursales
+2025-03-05 12:10:02 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:04 info: admin - Entra a buscar las sucursales
+2025-03-05 12:10:04 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:07 info: admin - Entra a buscar las sucursales
+2025-03-05 12:10:07 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:08 info: admin - Entra a buscar las sucursales
+2025-03-05 12:10:08 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:11 info: admin - Entra a buscar las sucursales
+2025-03-05 12:10:11 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:14 info: admin - Entra a buscar las sucursales
+2025-03-05 12:10:14 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:10:18 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 12:12:29 info: admin - Entra a buscar las sucursales
+2025-03-05 12:12:30 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:12:32 info: admin - Entra a buscar las sucursales
+2025-03-05 12:12:32 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:12:34 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 12:17:11 info: admin - Entra a buscar las sucursales
+2025-03-05 12:17:11 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:17:20 info: admin - Entra a buscar las sucursales
+2025-03-05 12:17:20 info: admin - Entra a buscar las sucursales
+2025-03-05 12:17:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 12:17:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:06:54 info: Entra a buscar las sucursales en el login
+2025-03-05 13:07:01 info: Entrando a loguearse
+2025-03-05 13:07:01 info: datos recibidos al loguerase
+2025-03-05 13:07:01 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-05 13:07:13 info: admin - Entra a buscar las sucursales
+2025-03-05 13:07:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:07:15 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:08:58 info: admin - Entra a buscar las sucursales
+2025-03-05 13:08:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:09:31 info: admin - Entra a buscar las sucursales
+2025-03-05 13:09:31 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:09:43 info: admin - Entra a buscar las sucursales
+2025-03-05 13:09:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:10:00 info: admin - Entra a buscar las sucursales
+2025-03-05 13:10:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:10:37 info: admin - Entra a buscar las sucursales
+2025-03-05 13:10:37 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:10:54 info: admin - Entra a buscar las sucursales
+2025-03-05 13:10:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:10:57 info: admin - Entra a buscar las sucursales
+2025-03-05 13:10:57 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:11:40 info: admin - Entra a buscar las sucursales
+2025-03-05 13:11:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:15 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:15 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:19 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:24 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:24 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:25 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:28 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:28 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:47 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:47 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:49 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:49 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:51 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:12:57 info: admin - Entra a buscar las sucursales
+2025-03-05 13:12:57 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:13:12 info: admin - Entra a buscar las sucursales
+2025-03-05 13:13:12 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:13:42 info: admin - Entra a buscar las sucursales
+2025-03-05 13:13:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:13:54 info: admin - Entra a buscar las sucursales
+2025-03-05 13:13:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:13:56 info: admin - Entra a buscar las sucursales
+2025-03-05 13:13:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:14:00 info: admin - Entra a buscar las sucursales
+2025-03-05 13:14:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:14:35 info: admin - Entra a buscar las sucursales
+2025-03-05 13:14:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:14:58 info: admin - Entra a buscar las sucursales
+2025-03-05 13:14:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:00 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:09 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:19 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:20 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:29 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:29 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:42 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:45 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:45 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:48 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:15:51 info: admin - Entra a buscar las sucursales
+2025-03-05 13:15:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:04 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:04 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:08 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:08 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:12 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:12 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:15 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:23 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:23 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:28 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:28 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:50 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:50 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:51 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:16:59 info: admin - Entra a buscar las sucursales
+2025-03-05 13:16:59 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:17:00 info: admin - Entra a buscar las sucursales
+2025-03-05 13:17:01 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:17:06 info: admin - Entra a buscar las sucursales
+2025-03-05 13:17:06 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:17:12 info: admin - Entra a buscar las sucursales
+2025-03-05 13:17:12 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:17:19 info: admin - Entra a buscar las sucursales
+2025-03-05 13:17:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:17:23 info: admin - Entra a buscar las sucursales
+2025-03-05 13:17:23 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:17:26 info: admin - Entra a buscar las sucursales
+2025-03-05 13:17:26 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:13 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:17 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:17 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:21 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:35 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:38 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:38 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:42 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:48 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:52 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:52 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:18:56 info: admin - Entra a buscar las sucursales
+2025-03-05 13:18:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:20:53 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:25:44 info: admin - Entra a buscar las sucursales
+2025-03-05 13:25:44 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:25:46 info: admin - Entra a buscar las sucursales
+2025-03-05 13:25:46 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:25:57 info: admin - Entra a buscar las sucursales
+2025-03-05 13:25:57 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:25:58 info: admin - Entra a buscar las sucursales
+2025-03-05 13:25:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:26:14 info: admin - Entra a buscar las sucursales
+2025-03-05 13:26:14 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:26:16 info: admin - Entra a buscar las sucursales
+2025-03-05 13:26:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:26:37 info: admin - Entra a buscar las sucursales
+2025-03-05 13:26:37 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:26:46 info: admin - Entra a buscar las sucursales
+2025-03-05 13:26:46 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:26:53 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:28:48 info: admin - Entra a buscar las sucursales
+2025-03-05 13:28:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:28:51 info: admin - Entra a buscar las sucursales
+2025-03-05 13:28:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:29:05 info: admin - Entra a buscar las sucursales
+2025-03-05 13:29:06 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:29:48 info: admin - Entra a buscar las sucursales
+2025-03-05 13:29:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:29:53 info: admin - Entra a buscar las sucursales
+2025-03-05 13:29:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:29:57 info: admin - Entra a buscar las sucursales
+2025-03-05 13:29:57 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:30:02 info: admin - Entra a buscar las sucursales
+2025-03-05 13:30:02 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:30:17 info: admin - Entra a buscar las sucursales
+2025-03-05 13:30:17 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:30:31 info: admin - Entra a buscar las sucursales
+2025-03-05 13:30:31 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:09 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:16 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:25 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:40 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:41 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:43 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:46 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:46 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:31:57 info: admin - Entra a buscar las sucursales
+2025-03-05 13:31:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:03 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:03 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:05 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:05 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:21 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:27 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:27 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:32 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:32 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:40 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:54 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:32:56 info: admin - Entra a buscar las sucursales
+2025-03-05 13:32:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:33:07 info: admin - Entra a buscar las sucursales
+2025-03-05 13:33:07 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:33:12 info: admin - Entra a buscar las sucursales
+2025-03-05 13:33:12 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:33:13 info: admin - Entra a buscar las sucursales
+2025-03-05 13:33:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:33:14 info: admin - Entra a buscar las sucursales
+2025-03-05 13:33:14 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:33:21 info: admin - Entra a buscar las sucursales
+2025-03-05 13:33:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:36:19 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:43:57 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:44:28 info: admin - Entra a buscar las sucursales
+2025-03-05 13:44:29 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:44:32 info: admin - Entra a buscar las sucursales
+2025-03-05 13:44:33 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:44:40 info: admin - Entra a buscar las sucursales
+2025-03-05 13:44:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:44:43 info: admin - Entra a buscar las sucursales
+2025-03-05 13:44:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:10 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:10 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:14 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:14 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:15 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:15 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:16 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:17 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:17 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:18 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:18 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:20 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:21 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:22 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:26 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:26 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:27 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:27 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:29 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:29 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:30 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:30 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:31 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:31 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:32 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:32 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:34 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:34 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:35 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:37 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:37 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:40 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:43 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:45 info: admin - Entra a buscar las sucursales
+2025-03-05 13:46:45 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:46:52 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:47:33 info: admin - Crea un nuevo ticket web
+2025-03-05 13:47:33 info: Datos recibidos al crear un ticket web
+2025-03-05 13:47:33 info: {"trip_id":16,"branch_id":3,"method":"Efectivo","quantity":"3","price":"2000.00","total":3000,"adults":"1","minors":"1","seats":[3,4,5],"date":"2025-03-05T18:47:33.155Z"}
+2025-03-05 13:47:33 info: Ticket creado exitosamente (ID: 67)
+2025-03-05 13:47:33 error: TicketController->store_web:Cannot set headers after they are sent to the client
+2025-03-05 13:49:23 error: Validation error in POST /api/get-trip-date - Body: {"branch_id":null} - Errors: El campo id debe ser un número entero
+2025-03-05 13:49:31 info: admin - Entra a buscar las sucursales
+2025-03-05 13:49:31 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:49:40 info: admin - Entra a buscar las sucursales
+2025-03-05 13:49:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:49:53 info: admin - Elimina el ticket con ID 67
+2025-03-05 13:49:53 info: Ticket eliminado exitosamente (ID: 67)
+2025-03-05 13:49:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:49:57 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:50:29 error: Validation error in POST /api/ticket-web - Body: {"trip_id":16,"method":"Efectivo","quantity":"3","price":"2000.00","total":3000,"seats":[3,4,5],"adults":"1","minors":"1","promotions":[{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"normal"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"adults"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"minors"}],"date":"2025-03-05T18:50:29.517Z","branch_id":3} - Errors: "promotions" must be of type object
+2025-03-05 13:56:18 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:56:58 info: admin - Entra a buscar las sucursales
+2025-03-05 13:56:58 info: admin - Entra a buscar las sucursales
+2025-03-05 13:56:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:56:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:01 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:01 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:05 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:05 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:06 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:06 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:08 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:08 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:10 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:10 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:13 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:16 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:18 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:20 info: admin - Entra a buscar las sucursales
+2025-03-05 13:57:20 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 13:57:23 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 13:57:51 info: admin - Crea un nuevo ticket web
+2025-03-05 13:57:51 info: Datos recibidos al crear un ticket web
+2025-03-05 13:57:51 info: {"trip_id":16,"branch_id":3,"method":"Efectivo","quantity":"3","price":"2000.00","total":3000,"adults":"1","minors":"1","seats":[3,4,5],"promotions":[{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"normal"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"adults"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"minors"}],"date":"2025-03-05T18:57:51.596Z"}
+2025-03-05 13:57:51 info: Ticket creado exitosamente (ID: 68)
+2025-03-05 13:57:51 error: TicketController->store_web:Cannot set headers after they are sent to the client
+2025-03-05 14:09:43 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:10:06 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:10:33 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:10:44 info: admin - Entra a buscar las sucursales
+2025-03-05 14:10:44 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:10:47 info: admin - Entra a buscar las sucursales
+2025-03-05 14:10:47 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:10:49 info: admin - Elimina el ticket con ID 68
+2025-03-05 14:10:49 info: Ticket eliminado exitosamente (ID: 68)
+2025-03-05 14:10:49 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:10:52 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:11:28 info: admin - Crea un nuevo ticket web
+2025-03-05 14:11:28 info: Datos recibidos al crear un ticket web
+2025-03-05 14:11:28 info: {"trip_id":16,"method":"Efectivo","quantity":"3","price":"2000.00","total":3000,"seats":[3,4,5],"adults":"1","minors":"1","promotions":[{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"normal"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"adults"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"minors"}],"date":"2025-03-05T19:11:28.384Z","branch_id":3}
+2025-03-05 14:11:28 info: Ticket creado exitosamente (ID: 69)
+2025-03-05 14:11:28 error: TicketController->store_web:Cannot set headers after they are sent to the client
+2025-03-05 14:12:38 info: admin - Entra a buscar las sucursales
+2025-03-05 14:12:38 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:12:52 info: admin - Entra a buscar las sucursales
+2025-03-05 14:12:52 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:13:16 info: admin - Entra a buscar las sucursales
+2025-03-05 14:13:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:13:19 info: admin - Entra a buscar las sucursales
+2025-03-05 14:13:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:18:53 info: admin - Entra a buscar las sucursales
+2025-03-05 14:18:53 info: admin - Entra a buscar las sucursales
+2025-03-05 14:18:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:18:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:18:54 info: admin - Entra a buscar las sucursales
+2025-03-05 14:18:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:15 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:15 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:17 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:17 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:21 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:27 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:27 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:30 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:30 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:32 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:32 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:36 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:36 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:39 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:39 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:45 info: admin - Entra a buscar las sucursales
+2025-03-05 14:19:45 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:19:56 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:21:13 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:18 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:18 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:25 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:29 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:29 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:33 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:33 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:36 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:36 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:39 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:39 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:44 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:44 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:21:53 info: admin - Entra a buscar las sucursales
+2025-03-05 14:21:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:22:02 info: admin - Entra a buscar las sucursales
+2025-03-05 14:22:02 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:22:04 info: admin - Entra a buscar las sucursales
+2025-03-05 14:22:04 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:22:22 info: admin - Entra a buscar las sucursales
+2025-03-05 14:22:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:22:32 info: admin - Entra a buscar las sucursales
+2025-03-05 14:22:32 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-05 14:22:35 info: admin - Entra a buscar las sucursales
+2025-03-05 14:22:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:25:21 info: admin - Entra a buscar las sucursales
+2025-03-05 14:25:21 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-05 14:25:22 info: admin - Entra a buscar las sucursales
+2025-03-05 14:25:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:25:33 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:27:48 info: admin - Entra a buscar las sucursales
+2025-03-05 14:27:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:27:54 info: admin - Entra a buscar las sucursales
+2025-03-05 14:27:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:28:00 info: admin - Entra a buscar las sucursales
+2025-03-05 14:28:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:29:06 info: admin - Entra a buscar las sucursales
+2025-03-05 14:29:07 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:29:08 info: admin - Entra a buscar las sucursales
+2025-03-05 14:29:08 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:29:51 info: admin - Entra a buscar las sucursales
+2025-03-05 14:29:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:30:05 info: admin - Entra a buscar las sucursales
+2025-03-05 14:30:05 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:30:07 info: admin - Entra a buscar las sucursales
+2025-03-05 14:30:07 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:30:23 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:30:40 info: admin - Actualiza el ticket con ID 69
+2025-03-05 14:30:40 info: Datos recibidos al editar un ticket
+2025-03-05 14:30:40 info: {"price":"2000.00","total":4000,"seats":[3,4,5],"promotions":[{"id":1,"type":"adults","percentage":50,"originalPrice":"2000.00","discountedPrice":1000},{"id":1,"type":"minors","percentage":50,"originalPrice":"2000.00","discountedPrice":1000}],"id":69,"trip_id":16}
+2025-03-05 14:30:40 info: Ticket actualizado exitosamente (ID: 69)
+2025-03-05 14:30:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:30:46 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:31:22 info: admin - Accediendo a la lista de promociones
+2025-03-05 14:31:50 info: admin - Creando una nueva promoción
+2025-03-05 14:31:50 info: admin - Accediendo a la lista de promociones
+2025-03-05 14:31:54 info: admin - Entra a buscar las sucursales
+2025-03-05 14:31:54 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:31:57 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:33:01 info: admin - Actualiza el ticket con ID 69
+2025-03-05 14:33:01 info: Datos recibidos al editar un ticket
+2025-03-05 14:33:01 info: {"price":"2000.00","total":4400,"seats":[3,4,5],"promotions":[{"id":1,"type":"adults","percentage":50,"originalPrice":"2000.00","discountedPrice":1000},{"id":3,"percentage":30,"originalPrice":"2000.00","discountedPrice":600,"type":"minors"}],"id":69,"trip_id":16}
+2025-03-05 14:33:01 info: Ticket actualizado exitosamente (ID: 69)
+2025-03-05 14:33:01 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:33:05 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:33:35 info: admin - Entra a buscar las sucursales
+2025-03-05 14:33:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:33:48 info: admin - Entra a buscar las sucursales
+2025-03-05 14:33:48 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:33:53 info: admin - Entra a buscar las sucursales
+2025-03-05 14:33:53 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:33:55 info: admin - Entra a buscar las sucursales
+2025-03-05 14:33:55 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:34:01 info: admin - Entra a buscar las sucursales
+2025-03-05 14:34:01 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:34:02 info: admin - Entra a buscar las sucursales
+2025-03-05 14:34:02 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:34:14 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:35:43 info: admin - Entra a buscar las sucursales
+2025-03-05 14:35:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:35:52 info: admin - Entra a buscar las sucursales
+2025-03-05 14:35:52 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:35:58 info: admin - Entra a buscar las sucursales
+2025-03-05 14:35:58 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:36:09 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:37:06 info: admin - Entra a buscar las sucursales
+2025-03-05 14:37:06 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:37:09 info: admin - Entra a buscar las sucursales
+2025-03-05 14:37:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:37:13 info: admin - Entra a buscar las sucursales
+2025-03-05 14:37:13 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:37:15 info: admin - Entra a buscar las sucursales
+2025-03-05 14:37:15 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:37:17 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-05 14:38:00 info: admin - Actualiza el ticket con ID 69
+2025-03-05 14:38:00 info: Datos recibidos al editar un ticket
+2025-03-05 14:38:00 info: {"price":"2000.00","total":5400,"seats":[3,4,5],"promotions":[{"id":3,"type":"minors","percentage":30,"originalPrice":"2000.00","discountedPrice":600}],"adults":null,"id":69,"trip_id":16}
+2025-03-05 14:38:00 info: Ticket actualizado exitosamente (ID: 69)
+2025-03-05 14:38:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-05 14:38:10 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-06 08:55:36 info: Entra a buscar las sucursales en el login
+2025-03-06 08:56:13 info: Entrando a loguearse
+2025-03-06 08:56:13 info: datos recibidos al loguerase
+2025-03-06 08:56:13 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-06 08:57:38 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:00:10 info: admin - Accediendo a la lista de roles
+2025-03-06 09:00:12 info: admin - Busca todas las relaciones Permission-Role
+2025-03-06 09:01:34 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:02:54 info: admin - Accediendo a la lista de roles
+2025-03-06 09:02:55 info: admin - Busca todas las relaciones Permission-Role
+2025-03-06 09:03:03 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:10:22 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:10:24 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:10:27 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:12:51 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:12:53 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:12:54 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:13:13 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:13:20 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:16:19 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:16:25 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:16:30 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:16:41 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:21:44 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:32:33 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:32:42 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:35:44 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:35:48 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:36:19 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:36:57 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:37:02 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:37:03 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:37:58 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:39:01 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:39:41 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:41:01 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:41:13 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:44:40 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:53:08 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:53:12 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:54:06 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:54:11 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:54:13 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:54:44 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:54:44 info: admin - Accediendo a la lista de estructuras
+2025-03-06 09:57:45 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:11 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:35 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:36 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:40 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:42 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:47 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:00:48 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:03:21 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:03:21 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:03:43 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:04:10 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:04:10 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:05:07 info: admin - Creando una nueva estructura
+2025-03-06 10:05:07 info: Datos recibidos al crear una structura
+2025-03-06 10:05:07 info: {"name":"assdsds","description":"sfsdfsdfsdfsdf","seatMap":[[{"label":"1","selected":true,"disabled":false,"type":"seat"},{"label":null,"selected":false,"disabled":false,"type":"aisle"},{"label":null,"selected":false,"disabled":false,"type":null},{"label":null,"selected":false,"disabled":false,"type":null}],[{"label":"2","selected":true,"disabled":false,"type":"seat"},{"label":"3","selected":true,"disabled":false,"type":"seat"},{"label":null,"selected":false,"disabled":false,"type":"aisle"},{"label":null,"selected":false,"disabled":false,"type":null}],[{"label":"4","selected":true,"disabled":false,"type":"seat"},{"label":"5","selected":true,"disabled":false,"type":"seat"},{"label":null,"selected":false,"disabled":false,"type":"aisle"},{"label":null,"selected":false,"disabled":false,"type":null}]],"seats":[1,2,3,4,5],"seatCount":"5"}
+2025-03-06 10:05:07 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:21:46 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:21:54 info: admin - Accediendo a la lista de estructuras
+2025-03-06 10:33:42 info: admin - Cierra sessión
+2025-03-06 10:33:45 info: Entra a buscar las sucursales en el login
+2025-03-06 13:27:00 info: Entra a buscar las sucursales en el login
+2025-03-06 13:27:30 info: Entrando a loguearse
+2025-03-06 13:27:30 info: datos recibidos al loguerase
+2025-03-06 13:27:30 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-06 13:27:50 info: admin - Entra a buscar los trabajadores
+2025-03-06 13:27:57 info: admin - Entra a buscar las sucursales
+2025-03-06 13:28:03 info: admin - Entra a buscar las sucursales
+2025-03-06 13:28:03 info: admin - Entra a buscar los dispositivos de una sucursal dada
+2025-03-06 13:28:49 info: admin - Entra a buscar los vehículos
+2025-03-06 13:36:34 info: admin - Entra a buscar las sucursales
+2025-03-06 13:36:34 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:37:58 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:44:03 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:44:08 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:44:41 info: admin - Entra a buscar las rutas
+2025-03-06 13:44:51 info: admin - Entra a buscar las sucursales
+2025-03-06 13:44:51 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:46:04 info: admin - Entra a la ruta unificada de viajes
+2025-03-06 13:47:41 info: admin - Entra a buscar las sucursales
+2025-03-06 13:48:04 info: admin - Entra a buscar las sucursales
+2025-03-06 13:48:05 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:50:23 info: admin - Entra a buscar las sucursales
+2025-03-06 13:50:24 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 13:52:16 info: admin - Entra a buscar las sucursales
+2025-03-06 13:52:16 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 13:52:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 13:52:25 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 13:52:51 info: admin - Cierra sessión
+2025-03-06 13:52:52 info: Entra a buscar las sucursales en el login
+2025-03-06 13:53:03 info: Entra a buscar las sucursales en el login
+2025-03-06 15:07:39 info: Entra a buscar las sucursales en el login
+2025-03-06 15:07:47 info: Entrando a loguearse
+2025-03-06 15:07:47 info: datos recibidos al loguerase
+2025-03-06 15:07:47 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-06 15:08:03 info: admin - Entra a buscar las sucursales
+2025-03-06 15:08:03 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:13:08 info: admin - Entra a buscar las sucursales
+2025-03-06 15:13:09 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:13:09 info: admin - Entra a buscar las sucursales
+2025-03-06 15:13:09 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:13:14 info: admin - Entra a buscar las sucursales
+2025-03-06 15:13:23 info: admin - Entra a buscar las sucursales
+2025-03-06 15:13:23 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:15:44 info: admin - Entra a buscar las sucursales
+2025-03-06 15:15:44 info: admin - Entra a buscar las sucursales
+2025-03-06 15:15:44 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:15:44 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:15:59 info: admin - Entra a buscar las sucursales
+2025-03-06 15:15:59 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:16:01 info: admin - Entra a buscar las sucursales
+2025-03-06 15:16:01 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:19:45 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:22:41 info: admin - Entra a buscar las sucursales
+2025-03-06 15:22:41 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:22:45 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:22:48 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-06 15:30:06 info: admin - Entra a buscar las sucursales
+2025-03-06 15:30:06 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:30:09 info: admin - Entra a buscar las sucursales
+2025-03-06 15:30:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:30:25 info: admin - Entra a buscar las sucursales
+2025-03-06 15:30:25 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:30:48 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:30:56 info: admin - Entra a buscar las sucursales
+2025-03-06 15:30:56 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:30:59 info: admin - Entra a buscar las sucursales
+2025-03-06 15:30:59 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:31:18 info: admin - Entra a buscar las sucursales
+2025-03-06 15:31:18 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:37:00 info: admin - Entra a buscar las sucursales
+2025-03-06 15:37:00 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:37:21 info: admin - Entra a buscar las sucursales
+2025-03-06 15:37:21 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:37:33 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-06 15:38:51 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:39:33 info: admin - Entra a buscar las sucursales
+2025-03-06 15:39:33 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:39:33 error: TicketController->getTicketDate: Cannot read properties of null (reading 'route')
+2025-03-06 15:39:36 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:39:36 error: TicketController->getTicketDate: Cannot read properties of null (reading 'route')
+2025-03-06 15:44:18 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:44:46 info: admin - Entra a buscar las sucursales
+2025-03-06 15:44:46 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:44:56 info: admin - Entra a buscar las sucursales
+2025-03-06 15:44:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:44:56 info: admin - Entra a buscar las sucursales
+2025-03-06 15:44:56 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:45:22 info: admin - Entra a buscar las sucursales
+2025-03-06 15:45:27 info: admin - Entra a buscar las sucursales
+2025-03-06 15:45:27 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:45:40 info: admin - Entra a buscar las sucursales
+2025-03-06 15:45:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:45:43 info: admin - Entra a buscar las sucursales
+2025-03-06 15:45:43 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:45:47 info: admin - Entra a buscar las sucursales
+2025-03-06 15:45:47 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:45:55 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-06 15:46:03 info: admin - Entra a buscar las sucursales
+2025-03-06 15:46:03 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-06 15:52:35 info: admin - Cierra sessión
+2025-03-06 15:52:38 info: Entra a buscar las sucursales en el login
+2025-03-07 09:05:38 info: Entra a buscar las sucursales en el login
+2025-03-07 09:05:56 info: Entrando a loguearse
+2025-03-07 09:05:56 info: datos recibidos al loguerase
+2025-03-07 09:05:56 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-07 09:20:11 info: admin - Accediendo a la lista de promociones
+2025-03-07 09:22:46 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:27:46 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:35:08 info: admin - Accediendo a la lista de promociones
+2025-03-07 09:39:46 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:42:42 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:42:44 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:43:53 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:43:56 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:45:40 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:45:45 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:45:55 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:45:57 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:45:59 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:46:03 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:48:14 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:51:48 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:52:47 info: admin - Accediendo a la lista de estructuras
+2025-03-07 09:52:49 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:01:24 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:01:29 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:01:31 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:01:41 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:01:46 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:01:56 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:21 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:23 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:26 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:28 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:30 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:33 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:37 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:39 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:40 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:42 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:43 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:04:52 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:07:18 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:07:20 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:08:35 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:08:48 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:08:54 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:08:56 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:09:11 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:09:13 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:12:21 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:12:23 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:12:27 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:12:42 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:12:43 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:12:59 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:14:59 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:15:05 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:29:20 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:29:22 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:29:41 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:34:36 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:34:38 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:34:57 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:35:08 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:35:15 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:35:42 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:35:47 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:35:52 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:35:57 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:36:00 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:36:20 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:36:21 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:36:31 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:36:33 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:37:29 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:37:31 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:37:44 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:37:48 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:37:57 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:42:38 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:42:46 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:42:50 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:42:54 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:42:59 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:43:03 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:43:05 info: admin - Accediendo a la lista de estructuras
+2025-03-07 10:46:41 info: admin - Cierra sessión
+2025-03-07 10:46:42 info: Entra a buscar las sucursales en el login
+2025-03-07 11:00:01 info: Entra a buscar las sucursales en el login
+2025-03-07 11:01:32 info: Entrando a loguearse
+2025-03-07 11:01:32 info: datos recibidos al loguerase
+2025-03-07 11:01:32 info: {"email":"admin","password":"12345","branch_id":null}
+2025-03-07 11:01:44 info: Entrando a loguearse
+2025-03-07 11:01:44 info: datos recibidos al loguerase
+2025-03-07 11:01:44 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-07 11:01:52 info: admin - Accediendo a la lista de estructuras
+2025-03-07 11:02:26 info: admin - Cierra sessión
+2025-03-07 11:02:28 info: Entra a buscar las sucursales en el login
+2025-03-07 12:00:25 info: Entra a buscar las sucursales en el login
+2025-03-07 12:00:31 info: Entrando a loguearse
+2025-03-07 12:00:31 info: datos recibidos al loguerase
+2025-03-07 12:00:31 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-07 12:00:41 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:01:03 error: Validation error in POST /api/promotion - Body: {"name":"sdfsdfdsfdsf","description":"dfgdddfgdfgdfg","percentage":"20"} - Errors: "active" is required
+2025-03-07 12:01:20 error: Validation error in POST /api/promotion - Body: {"name":"fewrwerwer","description":"werwerwerwerwer","percentage":"20"} - Errors: "active" is required
+2025-03-07 12:01:58 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:02:00 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:02:14 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:02:31 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:02:34 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:02:37 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:02:47 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:03:04 info: admin - Creando una nueva promoción
+2025-03-07 12:03:04 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:03:20 info: admin - Creando una nueva promoción
+2025-03-07 12:03:20 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:03:39 info: admin - Editando una promoción
+2025-03-07 12:03:39 info: Promoción actualizada exitosamente (ID: 5)
+2025-03-07 12:03:39 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:03:45 info: admin - Editando una promoción
+2025-03-07 12:03:45 info: Promoción actualizada exitosamente (ID: 4)
+2025-03-07 12:03:45 info: admin - Accediendo a la lista de promociones
+2025-03-07 12:03:50 info: admin - Cierra sessión
+2025-03-07 12:03:51 info: Entra a buscar las sucursales en el login
+2025-03-07 12:18:15 info: Entra a buscar las sucursales en el login
+2025-03-07 13:40:56 info: Entra a buscar las sucursales en el login
+2025-03-07 13:41:05 info: Entrando a loguearse
+2025-03-07 13:41:05 info: datos recibidos al loguerase
+2025-03-07 13:41:05 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-07 13:43:21 info: admin - Accediendo a la lista de estructuras
+2025-03-07 13:45:35 info: admin - Accediendo a la lista de estructuras
+2025-03-07 13:45:38 info: admin - Accediendo a la lista de promociones
+2025-03-07 13:47:45 info: admin - Accediendo a la lista de promociones
+2025-03-07 13:47:47 info: admin - Accediendo a la lista de promociones
+2025-03-07 13:49:29 info: admin - Accediendo a la lista de promociones
+2025-03-07 13:55:17 info: admin - Accediendo a la lista de promociones
+2025-03-07 13:55:19 info: admin - Accediendo a la lista de promociones
+2025-03-07 14:00:17 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:00:57 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:01:47 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:01:52 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:01:57 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:14 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:16 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:19 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:22 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:27 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:34 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:36 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:41 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:49 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:02:58 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:04:55 info: admin - Entra a buscar las sucursales
+2025-03-07 14:07:00 info: admin - Entra a buscar las sucursales
+2025-03-07 14:07:00 info: admin - Entra a buscar los datos de los viajes y pasajes de una fecha dada
+2025-03-07 14:07:00 info: Datos recibidos al obtener los viajes y pasajes de una fecha dada
+2025-03-07 14:07:00 info: {"id":8,"type":"Company","date":"2025-03-07"}
+2025-03-07 14:12:06 info: admin - Entra a buscar las sucursales
+2025-03-07 14:12:06 info: admin - Entra a buscar los datos de los viajes y pasajes de una fecha dada
+2025-03-07 14:12:06 info: Datos recibidos al obtener los viajes y pasajes de una fecha dada
+2025-03-07 14:12:06 info: {"id":8,"type":"Company","date":"2025-03-07"}
+2025-03-07 14:12:08 info: admin - Entra a buscar las sucursales
+2025-03-07 14:12:08 info: admin - Entra a buscar los datos de los viajes y pasajes de una fecha dada
+2025-03-07 14:12:08 info: Datos recibidos al obtener los viajes y pasajes de una fecha dada
+2025-03-07 14:12:08 info: {"id":8,"type":"Company","date":"2025-03-07"}
+2025-03-07 14:13:03 info: admin - Entra a buscar las sucursales
+2025-03-07 14:13:03 info: admin - Entra a buscar los datos de los pasajes de una fecha dada
+2025-03-07 14:13:03 info: Datos recibidos al obtener los pasajes de una fecha dada
+2025-03-07 14:13:03 info: {"id":8,"type":"Company","date":"2025-03-07"}
+2025-03-07 14:13:10 info: admin - Accediendo a la lista de permisos
+2025-03-07 14:15:45 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:15:46 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:15:50 info: admin - Accediendo a la lista de permisos
+2025-03-07 14:16:17 info: admin - Accediendo a la lista de roles
+2025-03-07 14:22:16 info: admin - Accediendo a la lista de roles
+2025-03-07 14:22:24 info: admin - Busca todas las relaciones Permission-Role
+2025-03-07 14:23:42 info: admin - Entra a buscar las sucursales
+2025-03-07 14:23:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:28:17 info: admin - Entra a buscar las sucursales
+2025-03-07 14:28:17 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:28:19 info: admin - Entra a buscar las sucursales
+2025-03-07 14:28:19 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:28:22 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:28:24 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 14:30:03 info: admin - Entra a buscar las sucursales
+2025-03-07 14:30:03 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:30:07 info: admin - Entra a buscar las sucursales
+2025-03-07 14:30:07 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:30:08 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 14:30:32 info: admin - Entra a buscar las sucursales
+2025-03-07 14:30:32 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:30:37 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:31:06 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:31:08 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:37:06 info: admin - Entra a buscar las sucursales
+2025-03-07 14:37:06 info: admin - Entra a buscar los datos de los viajes y pasajes de una fecha dada
+2025-03-07 14:37:06 info: Datos recibidos al obtener los viajes y pasajes de una fecha dada
+2025-03-07 14:37:06 info: {"id":8,"type":"Company","date":"2025-03-07"}
+2025-03-07 14:37:09 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:37:21 info: admin - Editando una estructura
+2025-03-07 14:37:21 info: Estructura actualizada exitosamente (ID: 15)
+2025-03-07 14:37:21 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:37:32 info: admin - Editando una estructura
+2025-03-07 14:37:32 info: Estructura actualizada exitosamente (ID: 2)
+2025-03-07 14:37:32 info: admin - Accediendo a la lista de estructuras
+2025-03-07 14:37:42 info: admin - Entra a buscar las sucursales
+2025-03-07 14:37:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:37:44 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 14:39:00 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:09 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:17 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:17 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:30 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:30 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:36 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:36 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:38 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:38 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:40 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:42 info: admin - Entra a buscar las sucursales
+2025-03-07 14:39:42 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:39:44 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 14:40:09 info: admin - Entra a buscar las sucursales
+2025-03-07 14:40:09 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:40:11 info: admin - Entra a buscar las sucursales
+2025-03-07 14:40:12 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:40:13 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 14:56:00 info: admin - Entra a buscar las sucursales
+2025-03-07 14:56:00 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:56:02 info: admin - Entra a buscar las sucursales
+2025-03-07 14:56:02 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:56:35 info: admin - Entra a buscar las sucursales
+2025-03-07 14:56:35 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:57:40 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 14:58:26 info: admin - Entra a buscar las sucursales
+2025-03-07 14:58:26 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:58:40 info: admin - Entra a buscar las sucursales
+2025-03-07 14:58:40 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:58:44 info: admin - Entra a buscar las sucursales
+2025-03-07 14:58:44 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 14:58:49 info: admin - Entra a buscar los viajes de una fecha dada
+2025-03-07 15:06:11 info: admin - Entra a buscar las sucursales
+2025-03-07 15:06:11 info: admin - Entra a buscar los tickets de una sucursal en el dia 
+2025-03-07 15:13:00 info: admin - Entra a buscar las sucursales
+2025-03-07 15:13:01 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-07 15:16:53 info: admin - Entra a buscar las sucursales
+2025-03-07 15:16:53 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-07 15:21:43 info: admin - Entra a la ruta unificada de viajes
+2025-03-07 15:24:22 info: admin - Entra a buscar las sucursales
+2025-03-07 15:24:22 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-03-07 15:25:08 info: admin - Entra a la ruta unificada de viajes
+2025-03-07 15:27:02 info: admin - Entra a la ruta unificada de viajes
+2025-03-07 15:27:28 info: admin - Entra a buscar las rutas
+2025-03-07 15:27:58 info: admin - Entra a buscar las rutas
+2025-03-07 15:29:42 info: admin - Entra a buscar las ubicaciones
+2025-03-07 15:30:53 info: admin - Entra a buscar las ubicaciones
+2025-03-07 15:31:07 info: admin - Entra a buscar las ubicaciones
+2025-03-07 15:31:46 info: admin - Entra a buscar las ubicaciones
+2025-03-07 15:32:14 info: admin - Entra a buscar las ubicaciones
+2025-03-07 15:32:23 info: admin - Entra a buscar las ubicaciones
+2025-03-07 15:35:57 info: admin - Entra a buscar los vehículos
+2025-03-07 15:38:13 info: admin - Entra a buscar los vehículos
+2025-03-07 15:38:14 info: admin - Entra a buscar los vehículos
+2025-03-07 15:39:16 info: admin - Entra a buscar los vehículos
+2025-03-07 15:44:15 info: admin - Busca todas las relaciones Vehicle-Workers
+2025-03-07 15:44:35 info: admin - Accediendo a la lista de estructuras
+2025-03-07 15:44:53 info: admin - Entra a buscar las sucursales
+2025-03-07 15:44:53 info: admin - Entra a buscar los dispositivos de una sucursal dada
+2025-03-07 15:45:31 info: admin - Entra a buscar las sucursales
+2025-03-07 15:45:31 info: admin - Entra a buscar los dispositivos de una sucursal dada
+2025-03-07 15:48:59 info: admin - Cierra sessión
+2025-03-07 15:49:00 info: Entra a buscar las sucursales en el login
+2025-03-07 20:52:21 info: Entra a buscar las sucursales en el login
+2025-03-07 20:52:47 info: Entrando a loguearse
+2025-03-07 20:52:47 info: datos recibidos al loguerase
+2025-03-07 20:52:47 info: {"email":"admin","password":"admin","branch_id":null}
+2025-03-07 20:55:25 info: admin - Entra a buscar los trabajadores
+2025-03-07 20:55:28 info: admin - entra a buscar los roles de type Sistema
+2025-03-07 20:55:35 info: admin - entra a buscar los roles de type Sistema
+2025-03-07 20:56:04 info: admin - Entra a buscar las sucursales
+2025-03-07 20:56:25 info: admin - Entra a buscar las sucursales
+2025-03-07 20:59:36 info: admin - Entra a buscar las sucursales
+2025-03-07 20:59:39 info: admin - Entra a buscar los trabajadores
+2025-03-07 20:59:41 info: admin - Entra a buscar las sucursales
+2025-03-07 21:03:13 info: admin - Busca todas las relaciones Branch-Worker
+2025-03-07 21:03:17 info: admin - Entra a la ruta unificada de Asociar trabajador a la sucursal
+2025-03-07 21:07:05 info: admin - Busca todas las relaciones Branch-Vehicle
+2025-03-07 21:07:14 info: admin - Entra a buscar los vehículos
+2025-03-07 21:07:20 info: admin - Entra a buscar los vehículos
+2025-03-07 21:09:40 info: admin - Busca todas las relaciones Branch-Route
+2025-03-07 21:09:48 info: admin - Entra a buscar las rutas
+2025-03-07 21:10:03 info: admin - Entra a buscar las rutas
+2025-03-07 21:10:07 info: admin - Entra a buscar las rutas
+2025-03-07 21:13:39 info: admin - Busca todas las relaciones Branch-Route
+2025-03-07 21:13:40 info: admin - Busca todas las relaciones Branch-Route
+2025-03-07 21:13:42 info: admin - Busca todas las relaciones Branch-Route
+2025-03-07 21:15:27 info: admin - Entra a buscar las sucursales
+2025-03-07 21:15:28 info: admin - Entra a buscar las sucursales
+2025-03-07 21:15:30 info: admin - Busca todas las relaciones Branch-Route
+2025-03-07 21:15:52 info: admin - Entra a buscar las rutas
+2025-03-07 21:15:55 info: admin - Entra a buscar las sucursales
+2025-03-07 21:15:58 info: admin - Entra a buscar las sucursales
+2025-03-07 21:16:01 info: admin - Busca todas las relaciones Branch-Route
+2025-03-07 21:16:22 info: admin - Entra a buscar las rutas
+2025-03-07 21:16:25 info: admin - Entra a buscar las rutas
+2025-03-07 21:16:34 info: admin - Entra a buscar las compañías
+2025-03-07 21:16:44 info: admin - Entra a buscar las compañías
+2025-03-07 21:18:38 info: admin - Entra a buscar las compañías
+2025-03-07 21:18:40 info: admin - Entra a buscar las compañías
+2025-03-07 21:19:22 info: admin - Cierra sessión
+2025-03-07 21:19:23 info: Entra a buscar las sucursales en el login

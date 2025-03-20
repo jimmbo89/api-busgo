@@ -239,3 +239,124 @@
 2025-02-21 14:19:33 error: TripController->update:req is not defined
 2025-02-21 14:19:42 error: Error en IncidentRepository->create: notNull Violation: Incident.branch_id cannot be null
 2025-02-21 14:19:42 error: TripController->update:notNull Violation: Incident.branch_id cannot be null
+2025-02-24 10:51:57 error: TripController->getTripDate: Cannot read properties of null (reading 'seatMap')
+2025-02-24 11:19:12 error: Validation error in POST /api/get-trip-date - Body: {"branch_id":null} - Errors: El campo id debe ser un número entero
+2025-02-24 13:49:32 error: DeviceController->isDeviceAssociatedWithCompany: Error en DeviceRepository->isDeviceAssociatedWithCompany: WHERE parameter "serial" has invalid "undefined" value
+2025-02-25 09:23:56 error: Error en la respuesta del servidor: The request contains invalid data.
+2025-02-25 09:23:56 error: TicketController->store:response is not defined
+2025-02-25 09:31:13 error: Error en la respuesta del servidor: The request contains invalid data.
+2025-02-25 09:31:13 error: Error al crear el pago:
+2025-02-25 09:34:20 error: Error en la respuesta del servidor: The request contains invalid data.
+2025-02-25 09:34:21 error: Error al crear el pago:
+2025-02-25 09:35:56 error: Error en la respuesta del servidor: The request contains invalid data.
+2025-02-25 09:35:56 error: Error al crear el pago:
+2025-02-25 09:37:11 error: Error en la respuesta del servidor: The request contains invalid data.
+2025-02-25 09:37:11 error: Error al crear el pago:
+2025-02-25 09:44:34 error: Error en la respuesta del servidor: Device for API-Key doesn't exist
+2025-02-25 09:44:34 error: Error al crear el pago:
+2025-02-25 12:03:41 error: Error al loguear usuario: Permission is not defined
+2025-02-26 09:34:08 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:35:11 error: Validation error in POST /api/get-tickets-date - Body: {"branch_id":null} - Errors: El campo id debe ser un número entero
+2025-02-26 09:43:11 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:45:13 error: Validation error in POST /api/get-trip-branch-date - Body: {"branch_id":null} - Errors: El campo id debe ser un número entero
+2025-02-26 09:46:22 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:46:22 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:47:55 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:47:55 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:49:53 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:49:53 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:51:00 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:51:00 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 09:55:23 error: Error al generar los códigos del ticket: string violation: barcode cannot be an array or an object
+2025-02-26 09:55:23 error: TicketController->store:string violation: barcode cannot be an array or an object
+2025-02-26 10:02:01 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:02:01 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:06:11 error: Error en encryptData: Invalid initialization vector
+2025-02-26 10:06:11 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:06:11 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:08:03 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:08:03 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:11:55 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:11:55 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:14:54 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:14:54 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:18:25 error: Error al generar los códigos del ticket: string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 10:18:25 error: TicketController->store:string violation: qr cannot be an array or an object,
+string violation: barcode cannot be an array or an object
+2025-02-26 11:09:49 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"2025-02-26T16:09:49.145Z"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:11:28 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"2025-02-26T16:11:28.635Z"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:12:11 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"2025-02-26T16:12:11.665Z"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:13:14 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"2025-02-26T16:13:14.523Z"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:13:17 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"2025-02-26T16:13:17.542Z"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:13:22 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"2025-02-26T16:13:22.097Z"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:14:48 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El campo date es requerido
+2025-02-26 11:14:52 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El campo date es requerido
+2025-02-26 11:14:53 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":null,"date":"Wed Feb 26 2025"} - Errors: El campo type debe ser "Company" o "Sucursal", El campo type debe ser un texto, El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:16:07 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":"Company","date":"Wed Feb 26 2025"} - Errors: El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:22:47 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":"Company","date":"Wed Feb 26 2025"} - Errors: El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:23:26 error: Validation error in POST /api/ticket-sold-date - Body: {"id":3,"type":"Company","date":"26/2/2025"} - Errors: El formato de la fecha debe ser YYYY-MM-DD
+2025-02-26 11:26:07 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:26:13 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:29:58 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:30:03 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:30:07 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:30:17 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:30:46 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:30:53 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:32:44 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:43:19 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:44:05 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:44:09 error: TicketController->getTicketsSoldDate: Compañía no encontrada con ID 3
+2025-02-26 11:44:43 error: Error en el controlador: c is not defined
+2025-02-26 11:44:49 error: Error en el controlador: c is not defined
+2025-02-26 23:00:25 error: Error en TripController->getTripsByBranchAndWorker: sequelize is not defined
+2025-02-26 23:01:07 error: Error en TripController->getTripsByBranchAndWorker: Ticket is associated to Trip using an alias. You must use the 'as' keyword to specify the alias within your include statement.
+2025-02-26 23:03:06 error: Error en TripController->getTripsByBranchAndWorker: Worker is associated to Trip using an alias. You must use the 'as' keyword to specify the alias within your include statement.
+2025-02-26 23:05:19 error: Error en TripController->getTripsByBranchAndWorker: TripWorker is not associated to Trip!
+2025-02-26 23:06:11 error: Error en TripController->getTripsByBranchAndWorker: TripWorker is associated to Trip using an alias. You must use the 'as' keyword to specify the alias within your include statement.
+2025-02-26 23:06:35 error: Error en TripController->getTripsByBranchAndWorker: Expression #13 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bulletin.tickets.id' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+2025-02-26 23:07:04 error: Error en TripController->getTripsByBranchAndWorker: In aggregated query without GROUP BY, expression #1 of SELECT list contains nonaggregated column 'bulletin.Trip.id'; this is incompatible with sql_mode=only_full_group_by
+2025-02-26 23:09:57 error: Error en TripController->getTripsByBranchAndWorker: In aggregated query without GROUP BY, expression #1 of SELECT list contains nonaggregated column 'bulletin.Trip.id'; this is incompatible with sql_mode=only_full_group_by
+2025-02-26 23:10:58 error: Error en TripController->getTripsByBranchAndWorker: Expression #13 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bulletin.tickets.id' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+2025-02-26 23:12:36 error: Error en TripController->getTripsByBranchAndWorker: Expression #5 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'bulletin.tripworkers.id' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+2025-02-27 14:04:46 error: Validation error in POST /api/get-tickets-date - Body: {"date":"2025-02-27","end":"2025-02-27","branch_id":3} - Errors: "end" is not allowed
+2025-02-28 11:17:13 error: Error al loguear usuario: Cannot read properties of undefined (reading 'role')
+2025-02-28 11:17:19 error: Error al loguear usuario: Cannot read properties of undefined (reading 'role')
+2025-02-28 11:22:46 error: Error al loguear usuario: Cannot read properties of undefined (reading 'role')
+2025-02-28 14:53:41 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:00:54 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:01:40 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:03:19 error: TicketController->store_web: Los asientos ya están reservados: 4
+2025-02-28 15:16:50 error: TicketController->store: Los asientos ya están reservados: 4
+2025-02-28 15:18:17 error: TicketController->store: Los asientos ya están reservados: 2, 1
+2025-03-05 10:16:46 error: PromotionController->update: Error al actualizar la promoción: PromotionRepository.existsByRut is not a function
+2025-03-05 13:47:33 error: TicketController->store_web:Cannot set headers after they are sent to the client
+2025-03-05 13:49:23 error: Validation error in POST /api/get-trip-date - Body: {"branch_id":null} - Errors: El campo id debe ser un número entero
+2025-03-05 13:50:29 error: Validation error in POST /api/ticket-web - Body: {"trip_id":16,"method":"Efectivo","quantity":"3","price":"2000.00","total":3000,"seats":[3,4,5],"adults":"1","minors":"1","promotions":[{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"normal"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"adults"},{"id":1,"percentage":50,"originalPrice":"2000.00","discountedPrice":1000,"type":"minors"}],"date":"2025-03-05T18:50:29.517Z","branch_id":3} - Errors: "promotions" must be of type object
+2025-03-05 13:57:51 error: TicketController->store_web:Cannot set headers after they are sent to the client
+2025-03-05 14:11:28 error: TicketController->store_web:Cannot set headers after they are sent to the client
+2025-03-06 15:39:33 error: TicketController->getTicketDate: Cannot read properties of null (reading 'route')
+2025-03-06 15:39:36 error: TicketController->getTicketDate: Cannot read properties of null (reading 'route')
+2025-03-07 12:01:03 error: Validation error in POST /api/promotion - Body: {"name":"sdfsdfdsfdsf","description":"dfgdddfgdfgdfg","percentage":"20"} - Errors: "active" is required
+2025-03-07 12:01:20 error: Validation error in POST /api/promotion - Body: {"name":"fewrwerwer","description":"werwerwerwerwer","percentage":"20"} - Errors: "active" is required

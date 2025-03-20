@@ -185,6 +185,9 @@ const tripWorkerDateSchema = Joi.object({
     .messages({
       "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
     }),
+    worker_id: Joi.number().allow(null).empty("").optional().messages({
+      "number.base": "El campo branch_id debe ser un número entero",
+    }),
 });
 
 module.exports = {

@@ -790,49 +790,57 @@ const TripController = {
   },
 
   async getTripsByBranchAndWorker(req, res) {
-    const { branch_id, date, endDate } = req.body;
-    const worker_id = req.worker.id;
+    const { branch_id, date, endDate, worker_id } = req.body;
+    // Verifica si worker_id es undefined, null o 0
+    if (worker_id === undefined || worker_id === null || worker_id === 0) {
+      worker_id = req.worker.id;
+    }
     // Validar si la sucursal o compañía existe
-      const branch = await BranchRepository.findById(branch_id);
-      if (!branch) {
-        logger.error(
-          `TripController->getTripsByBranchAndWorker: Sucursal no encontrada con ID ${branch_id}`
+    const branch = await BranchRepository.findById(branch_id);
+    if (!branch) {
+      logger.error(
+        `TripController->getTripsByBranchAndWorker: Sucursal no encontrada con ID ${branch_id}`
+      );
+      return res.status(404).json({ msg: "BranchNotFound" });
+    }
+
+    try {
+      // Obtener los tickets vendidos en la fecha dada
+      const trips = await TripRepository.findTripsByBranchAndWorker(
+        branch_id,
+        date,
+        endDate,
+        worker_id
+      );
+      const mappedTrips = trips.map((trip) => {
+        // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
+        const passenger = trip.tickets.reduce(
+          (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
+          0
         );
-        return res.status(404).json({ msg: "BranchNotFound" });
-      }
 
-   try {
-       // Obtener los tickets vendidos en la fecha dada
-    const trips = await TripRepository.findTripsByBranchAndWorker(
-      branch_id,
-      date,
-      endDate,
-      worker_id
-    );
-    const mappedTrips = trips.map((trip) => {
-      // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
-      const passenger = trip.tickets.reduce((sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0), 0);
-    
-      return {
-        id: trip.id,
-        date: trip.date,
-        start: trip.start,
-        end: trip.end,
-        vehicleName: trip.vehicle.plate,
-        vehicleImage: trip.vehicle.image,
-        name: trip.route.name,
-        origin: trip.route.origin.address,
-        originImage: trip.route.origin.image,
-        destination: trip.route.destination.address,
-        destinationImage: trip.route.destination.image,
-        passenger, // Usar la suma calculada
-      };
-    });
-    
+        return {
+          id: trip.id,
+          date: trip.date,
+          start: trip.start,
+          end: trip.end,
+          vehicleName: trip.vehicle.plate,
+          vehicleImage: trip.vehicle.image,
+          name: trip.route.name,
+          origin: trip.route.origin.address,
+          originImage: trip.route.origin.image,
+          destination: trip.route.destination.address,
+          destinationImage: trip.route.destination.image,
+          passenger, // Usar la suma calculada
+        };
+      });
 
-      res.status(200).json({trips: mappedTrips});
+      res.status(200).json({ trips: mappedTrips });
     } catch (error) {
-      logger.error("Error en TripController->getTripsByBranchAndWorker:", error);
+      logger.error(
+        "Error en TripController->getTripsByBranchAndWorker:",
+        error
+      );
       res.status(500).json({ error: error.message });
     }
   },

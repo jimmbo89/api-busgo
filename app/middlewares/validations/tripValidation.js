@@ -26,14 +26,14 @@ const storeTripSchema = Joi.object({
     .messages({
       "string.pattern.base": "El campo schedule debe tener el formato 00:00:00",
     }),
-  arrival: Joi.string()
-      .pattern(/^\d{2}:\d{2}$/) // Formato 00:00
-      .allow(null)
-      .empty("")
-      .optional()
-      .messages({
-        "string.pattern.base": "El campo arrival debe tener el formato 00:00:00",
-      }),
+    arrival: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/) // Formato 2025-04-15 05:10 o 2025-04-15 05:10:00
+    .allow(null)
+    .empty("")
+    .optional()
+    .messages({
+      "string.pattern.base": "El campo arrival debe tener el formato YYYY-MM-DD HH:MM:SS",
+    }),
   start: Joi.string()
     .pattern(/^\d{2}:\d{2}$/) // Formato 00:00
     .allow(null)
@@ -96,13 +96,13 @@ const updateTripSchema = Joi.object({
       "string.pattern.base": "El campo schedule debe tener el formato 00:00:00",
     }),
   arrival: Joi.string()
-    .pattern(/^\d{2}:\d{2}$/) // Formato 00:00
-    .allow(null)
-    .empty("")
-    .optional()
-    .messages({
-      "string.pattern.base": "El campo arrival debe tener el formato 00:00:00",
-    }),
+  .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/) // Formato 2025-04-15 05:10 o 2025-04-15 05:10:00
+  .allow(null)
+  .empty("")
+  .optional()
+  .messages({
+    "string.pattern.base": "El campo arrival debe tener el formato YYYY-MM-DD HH:MM:SS",
+  }),
   start: Joi.string()
     .pattern(/^\d{2}:\d{2}$/) // Formato 00:00
     .allow(null)

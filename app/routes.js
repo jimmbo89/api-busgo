@@ -549,6 +549,7 @@ router.post(
   validateSchema(branchTicketTripSchema),
   TripController.index_branch_date
 );
+router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
 router.post("/trip-show", validateSchema(idTripSchema), TripController.show);
 router.put("/trip", validateSchema(updateTripSchema), TripController.update);

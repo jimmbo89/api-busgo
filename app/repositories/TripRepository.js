@@ -77,11 +77,11 @@ const TripRepository = {
     };
 
     // Agregar la condición de fecha solo si `date` está presente
-    if (date) {
+    //if (date) {
       whereClause.date = {
         [Op.eq]: searchDate, // Filtra por fecha
       };
-    }
+    //}
     return await Trip.findAll({
       attributes: [
         "id",

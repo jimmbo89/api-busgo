@@ -68,11 +68,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     schedule: {
-      type: DataTypes.TIME,
+      type: DataTypes.STRING,
       allowNull: true
     },
     arrival: {
-      type: DataTypes.TIME,
+      type: DataTypes.STRING,
       allowNull: true
     },
     start: {

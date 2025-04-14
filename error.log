@@ -360,3 +360,34 @@ string violation: barcode cannot be an array or an object
 2025-03-06 15:39:36 error: TicketController->getTicketDate: Cannot read properties of null (reading 'route')
 2025-03-07 12:01:03 error: Validation error in POST /api/promotion - Body: {"name":"sdfsdfdsfdsf","description":"dfgdddfgdfgdfg","percentage":"20"} - Errors: "active" is required
 2025-03-07 12:01:20 error: Validation error in POST /api/promotion - Body: {"name":"fewrwerwer","description":"werwerwerwerwer","percentage":"20"} - Errors: "active" is required
+2025-03-20 08:40:19 error: BranchController->store:existingBranch is not defined
+2025-03-20 08:43:05 error: BranchController->store:notNull Violation: Branch.rut cannot be null
+2025-03-20 15:03:35 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:03:35 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:03:36 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:03:39 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:03:45 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:03:50 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:03:52 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:01 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:01 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:05 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:13 error: BranchWorkerController->worker_branches: z is not defined
+2025-03-20 15:04:13 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:14 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:16 error: BranchWorkerController->worker_branches: z is not defined
+2025-03-20 15:04:16 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-03-20 15:04:39 error: BranchWorkerController->worker_branches: z is not defined
+2025-03-20 15:04:39 error: Validation error in POST /api/trips-worker-date - Body: {"branch_id":null,"date":"2025-03-20"} - Errors: El campo branch_id debe ser un número entero
+2025-04-14 13:12:49 error: TripController->index: moment is not defined
+2025-04-14 13:21:50 error: TripController->index: trip.arrival.toISOString is not a function
+2025-04-14 13:22:59 error: TripController->index: trip.arrival.toISOString is not a function
+2025-04-14 14:02:34 error: TripController->update:Assignment to constant variable.
+2025-04-14 14:04:40 error: TripController->update:actualStart is not defined
+2025-04-14 14:10:35 error: TripController->update:actualStart is not defined
+2025-04-14 14:37:31 error: TripController->update:Fecha inválida: 13:54
+2025-04-14 14:38:42 error: TripController->update:Fecha inválida: 13:54
+2025-04-14 14:40:40 error: Error actualizando el viaje: string violation: start cannot be an array or an object
+2025-04-14 14:40:40 error: TripController->update:Error actualizando el viaje
+2025-04-14 14:54:51 error: TripController->update:this.createDateTime is not a function
+2025-04-14 14:55:14 error: TripController->update:this.compareDates is not a function

@@ -70,7 +70,8 @@ const TripController = {
     );
 
     const { branch_id, date } = req.body;
-    const workerId = req.worker.id;
+    //const workerId = req.worker.id;
+    const workerId = null;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -127,6 +128,87 @@ const TripController = {
   async getTripDate(req, res) {
     logger.info(
       `${req.user.name} - Entra a buscar los viajes de una fecha dada`
+    );
+
+    const { ticket_id, branch_id, date } = req.body;
+    //const workerId = req.worker.id;
+    const workerId = null;
+    const branch = await BranchRepository.findById(branch_id);
+    if (!branch) {
+      logger.error(
+        `TripController->getTripDate: Sucursal no encontrada con ID ${branch_id}`
+      );
+      return res.status(400).json({ msg: "BranchNotFound" });
+    }
+
+    if (ticket_id) {
+      const ticket = await TicketRepository.findById(ticket_id);
+      if (!ticket) {
+        logger.error(
+          `TripController->getTripDate: Ticket no encontrado con ID ${ticket_id}`
+        );
+        return res.status(400).json({ msg: "BranchNotFound" });
+      }
+    }
+
+    try {
+      const trips = await TripRepository.findDate(branch_id, workerId, date);
+
+      if (!trips.length) {
+        return res.status(204).json({ msg: "TripsNotFound" });
+      }
+
+      const mappedTrips = await Promise.all(
+        trips.map(async (trip) => {
+          const reservedSeats = trip.tickets
+            ? trip.tickets
+                .filter((ticket) => !ticket_id || ticket.id !== ticket_id) // Si ticketId está presente, excluye el ticket con ese id
+                .flatMap((ticket) => {
+                  // Asegúrate de parsear correctamente los asientos
+                  return Array.isArray(ticket.seats)
+                    ? ticket.seats // Si ya es un array, lo usas directamente
+                    : JSON.parse(ticket.seats); // Si es un string JSON, lo parseas
+                })
+            : [];
+          const seatMap = trip.vehicle?.structure?.seatMap
+            ? Array.isArray(trip.vehicle.structure.seatMap)
+              ? trip.vehicle.structure.seatMap // Si ya es un array, lo usas directamente
+              : JSON.parse(trip.vehicle.structure.seatMap) // Si es un string, lo parseas a array
+            : []; // Si no existe structure.seatMap, devuelves un array vacío
+
+          return {
+            id: trip.id,
+            trip_id: trip.id,
+            date: trip.date,
+            schedule: trip.schedule,
+            arrival: trip.arrival,
+            seats: trip.vehicle.seats,
+            plate: trip.vehicle.plate,
+            imageVehicle: trip.vehicle.image,
+            name: trip.route.name, // Incluir los datos de la ruta asociada
+            origin: trip.route.origin.address,
+            price: trip.price,
+            originImage: trip.route.origin.image,
+            destination: trip.route.destination.address,
+            destinationImage: trip.route.destination.image,
+            reservedSeats,
+            seatMap: seatMap,
+          };
+        })
+      );
+
+      const promotions = await PromotionRepository.findByActiveStatus(true);
+
+      res.status(200).json({ trips: mappedTrips, promotions: promotions });
+    } catch (error) {
+      logger.error("TripController->getTripDate: " + error.message);
+      res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
+  async getTripWorkerDate(req, res) {
+    logger.info(
+      `${req.user.name} - Entra a buscar los viajes de una fecha dada relacionados a un trabajador`
     );
 
     const { ticket_id, branch_id, date } = req.body;
@@ -202,7 +284,6 @@ const TripController = {
       res.status(500).json({ error: "ServerError", details: error.message });
     }
   },
-
   // Crear un nuevo viaje
   async store(req, res) {
     logger.info(`${req.user.name} - Crea un nuevo viaje`);
@@ -369,13 +450,54 @@ const TripController = {
     }
   },
 
-  // Actualizar un viaje
+  async createDateTime(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return null;
+
+    // Asegurar que el tiempo tenga segundos
+    const formattedTime = timeStr.includes(":")
+      ? `${timeStr}:00`
+      : `${timeStr}:00:00`;
+
+    return new Date(`${dateStr}T${formattedTime}`);
+  },
+
+  async compareDates(date1, date2) {
+    // Convertir a objetos Date si son strings
+    const d1 = typeof date1 === "string" ? new Date(date1) : date1;
+    const d2 = typeof date2 === "string" ? new Date(date2) : date2;
+
+    if (isNaN(d1.getTime())) throw new Error(`Fecha inválida: ${date1}`);
+    if (isNaN(d2.getTime())) throw new Error(`Fecha inválida: ${date2}`);
+
+    const diffMs = d2 - d1; // Diferencia en milisegundos
+    const diffMinutes = Math.round(diffMs / (1000 * 60));
+
+    // Formato legible para humanos (ej: "2 horas 15 minutos")
+    const hours = Math.floor(Math.abs(diffMinutes) / 60);
+    const minutes = Math.abs(diffMinutes) % 60;
+    let humanReadable = "";
+
+    if (diffMinutes < 0) {
+      humanReadable = `${hours}h ${minutes}m antes`;
+    } else if (diffMinutes > 0) {
+      humanReadable = `${hours}h ${minutes}m después`;
+    } else {
+      humanReadable = "a tiempo";
+    }
+
+    return {
+      difference: diffMinutes, // -15 (antes), 0 (a tiempo), 30 (después)
+      humanReadable,
+      isDelayed: diffMinutes > 0,
+    };
+  },
+
   async update(req, res) {
     logger.info(`${req.user.name} - Actualiza el viaje con ID ${req.body.id}`);
     logger.info("datos recibidos al editar un viaje");
     logger.info(JSON.stringify(req.body));
 
-    const {
+    let {
       id,
       date,
       schedule,
@@ -472,86 +594,77 @@ const TripController = {
             .json({ msg: "Datos no encontrados para algunas asociaciones." });
         }
       }
-
-      // Función para convertir HH:MM a minutos
-      const timeToMinutes = (time) => {
-        // Validar si time es null, undefined o una cadena vacía
-        if (!time || typeof time !== "string" || time.trim() === "") {
-          return null;
-        }
-
-        // Validar el formato HH:MM usando una expresión regular
-        const timePattern = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/; // Formato 24 horas
-        if (!timePattern.test(time)) {
-          logger.info(`Formato de hora inválido: ${time}`);
-          return null;
-        }
-
-        // Convertir la hora a minutos
-        const [hours, minutes] = time.split(":").map(Number);
-        return hours * 60 + minutes;
-      };
-
-      // Validar y convertir las horas a minutos solo si existen y no están vacías
-      const startMinutes = start ? timeToMinutes(start) : null;
-      const scheduleMinutes = trip.schedule
-        ? timeToMinutes(trip.schedule)
-        : null;
-      const endMinutes = end ? timeToMinutes(end) : null;
-      const arrivalMinutes = trip.arrival ? timeToMinutes(trip.arrival) : null;
-
-      // Comparar start y schedule solo si start existe y no es null
-      if (
-        startMinutes !== null &&
-        scheduleMinutes !== null &&
-        startMinutes > scheduleMinutes
-      ) {
-        const difference = startMinutes - scheduleMinutes;
-        logger.info(`Start es mayor que Schedule por ${difference} minutos`);
+      if (start) {
+        const today = new Date().toISOString().split("T")[0]; // Fecha actual en YYYY-MM-DD
+        const actualStart = await TripController.createDateTime(today, start);
+        const scheduledStart = await TripController.createDateTime(
+          trip.date,
+          trip.schedule
+        );
+        // Comparar fechas
+        const { difference, humanReadable, isDelayed } =
+          await TripController.compareDates(scheduledStart, actualStart);
+        if (isDelayed) {
+          logger.info(`Start es mayor que Schedule por ${humanReadable}.`);
         const incidentBody = {
           branch_id: trip.branch_id, // ID de la sucursal
           user_id: req.user.id, // ID del usuario que realiza la acción
           title: "Retraso en la salida del viaje",
-          description: `Realizó la salida del viaje ${trip.id} con un retrazo de (${difference}) minutos.`,
+          description: `Realizó la salida del viaje ${trip.id} con un retrazo de (${humanReadable}).`,
           details: {
-            start,
-            schedule,
-            arrival,
-            difference: startMinutes - scheduleMinutes,
+            actualStart: actualStart.toISOString()
+            .replace('T', ' ')
+            .substring(0, 19),
+            scheduledStart,
+            difference: humanReadable,
           },
           date: new Date(), // Fecha actual
         };
+        logger.info(`actualStart ${actualStart}`);
+        const formattedStart = actualStart.toISOString()
+        .replace('T', ' ')
+        .substring(0, 19); // Cortar los milisegundos
 
-        // Llamar al método create del IncidentRepository
-        await IncidentRepository.create(incidentBody);
+      // 4. Asignar al cuerpo de la petición
+      req.body.start = formattedStart; // "2025-04-14 15:00:00"
+          await IncidentRepository.create(incidentBody);
+        }
       }
+      if (end) {
+        const today = new Date().toISOString().split("T")[0];
+        const actualEnd = await TripController.createDateTime(today, end);
+        const scheduledArrival = trip.arrival; // Asumiendo que trip.arrival es 'YYYY-MM-DD HH:mm:ss'
 
-      // Comparar end y arrival solo si end existe y no es null
-      if (
-        endMinutes !== null &&
-        arrivalMinutes !== null &&
-        endMinutes > arrivalMinutes
-      ) {
-        const difference = endMinutes - arrivalMinutes;
-        logger.info(`End es mayor que Arrival por ${difference} minutos`);
-        const incidentBody = {
-          branch_id: trip.branch_id, // ID de la sucursal
-          user_id: req.user.id, // ID del usuario que realiza la acción
-          title: "Retraso en la llegada del viaje",
-          description: `Hizo la llegada del viaje ${trip.id} (${difference}) minutos más tardes.`,
-          details: {
-            start,
-            schedule,
-            arrival,
-            difference: endMinutes - arrivalMinutes,
-          },
-          date: new Date(), // Fecha actual
-        };
+        const { difference, humanReadable, isDelayed } = await TripController.compareDates(
+          scheduledArrival,
+          actualEnd
+        );
 
-        // Llamar al método create del IncidentRepository
-        await IncidentRepository.create(incidentBody);
+        if (isDelayed) {
+          logger.info(`End es mayor que Arrival por ${humanReadable}.`);
+          const incidentBody = {
+            branch_id: trip.branch_id, // ID de la sucursal
+            user_id: req.user.id, // ID del usuario que realiza la acción
+            title: "Retraso en la llegada del viaje",
+            description: `Hizo la llegada del viaje ${trip.id} (${humanReadable}).`,
+            details: {
+              actualEnd: actualEnd.toISOString()
+          .replace('T', ' ')
+          .substring(0, 19),
+              arrival: trip.arrival,
+              difference: humanReadable,
+            },
+            date: new Date(), // Fecha actual
+          };
+          const formattedEnd = actualEnd.toISOString()
+          .replace('T', ' ')
+          .substring(0, 19); // Cortar los milisegundos
+
+        // 4. Asignar al cuerpo de la petición
+        req.body.end = formattedEnd; // "2025-04-14 15:00:00"
+          await IncidentRepository.create(incidentBody);
+        }
       }
-
       const updatedTrip = await TripRepository.update(trip, req.body);
 
       if (req.body.workers) {
@@ -568,7 +681,6 @@ const TripController = {
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },
-
   // Eliminar un viaje
   async destroy(req, res) {
     logger.info(`${req.user.name} - Elimina el viaje con ID ${req.body.id}`);

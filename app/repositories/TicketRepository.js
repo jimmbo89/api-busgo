@@ -498,9 +498,12 @@ const TicketRepository = {
   },
 
   // Función para desencriptar
-  async decryptData(encryptedData, secretKey, iv) {
-    //const iv = crypto.randomBytes(16); // Vector de inicialización (IV)
-    //const iv = "2017111319891230"; // Vector de inicialización (IV)
+  /*async decryptData(encryptedData) {
+    const baseKey = "bulletin"; // Usa el string que desees
+
+    // Generar la clave de 32 bytes con SHA-256
+    const secretKey = crypto.createHash("sha256").update(baseKey).digest();
+    const iv = "2017111319891230";
     const decipher = crypto.createDecipheriv(
       "aes-256-cbc",
       Buffer.from(secretKey),
@@ -509,6 +512,34 @@ const TicketRepository = {
     let decrypted = decipher.update(encryptedData, "hex", "utf8");
     decrypted += decipher.final("utf8");
     return JSON.parse(decrypted);
+  },*/
+  async decryptData(encryptedData) {
+    try {
+        const baseKey = "bulletin";
+        const secretKey = crypto.createHash("sha256").update(baseKey).digest();
+        const iv = Buffer.from("2017111319891230", "utf8");
+        
+        logger.info("Input recibido:", {
+            encryptedData: encryptedData,
+            iv: iv,
+            secretKey: secretKey.toString('hex')
+        });
+
+        const decipher = crypto.createDecipheriv("aes-256-cbc", secretKey, iv);
+        let decrypted = decipher.update(encryptedData, "hex", "utf8");
+        decrypted += decipher.final("utf8");
+        
+        const result = JSON.parse(decrypted);
+        logger.info("Desencriptación exitosa:", result);
+        return result;
+        
+    } catch (error) {
+        logger.error("Error en decryptData:", {
+            error: error.message,
+            stack: error.stack
+        });
+        throw error;
+    }
   },
   // Función para encriptar un objeto JSON
   async encryptData(data, secretKey) {

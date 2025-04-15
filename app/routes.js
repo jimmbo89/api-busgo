@@ -134,6 +134,7 @@ const {
   monthlySalesSchema,
   ticketSoldDateSchema,
   storeTicketWebSchema,
+  qrEncryptedSchema
 } = require("./middlewares/validations/ticketValidation");
 const {
   paymentSchema,
@@ -636,6 +637,8 @@ router.post(
   validateSchema(ticketSoldDateSchema),
   TicketController.getTicketsSoldDate
 );
+
+router.post("/verify-qr-ticket", validateSchema(qrEncryptedSchema),TicketController.verifyEncryptedQR);
 
 //Api Tuu
 router.post("/tuu", validateSchema(paymentSchema), TuuController.store);

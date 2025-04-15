@@ -100,6 +100,10 @@ module.exports = {
         type: Sequelize.JSON, // Permitir almacenamiento de arrays
         allowNull: true
       },
+      qr_status: {
+        type: Sequelize.INTEGER,
+        allowNull: true, // Inicialmente null
+      },
       createdAt: {
         allowNull: false,
         type: Sequelize.DATE

@@ -391,3 +391,11 @@ string violation: barcode cannot be an array or an object
 2025-04-14 14:40:40 error: TripController->update:Error actualizando el viaje
 2025-04-14 14:54:51 error: TripController->update:this.createDateTime is not a function
 2025-04-14 14:55:14 error: TripController->update:this.compareDates is not a function
+2025-04-14 16:44:28 error: Validation error in PUT /api/route - Body: {"estimated":"2131.2","id":1} - Errors: "estimated" must be an integer
+2025-04-15 09:45:17 error: Validation error in POST /api/trip - Body: {"route_id":1,"vehicle_id":1,"date":"2025-04-15","schedule":"10:00","arrival":"21:52","price":"10000","workers":[{"worker_id":1}],"branch_id":3} - Errors: El campo arrival debe tener el formato YYYY-MM-DD HH:MM:SS
+2025-04-15 12:45:26 error: TicketController->store_web:qrCodePath is not defined
+2025-04-15 13:37:33 error: Validation error in POST /api/verify-qr-ticket - Body: {"qr":"685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26"} - Errors: El campo branch_id es obligatorio, El campo trip_id es obligatorio, El campo date es obligatorio, El campo method es obligatorio, El campo quantity es obligatorio, El campo price es obligatorio, El campo seats es obligatorio, "qr" is not allowed
+2025-04-15 13:39:24 error: Error en verifyEncryptedQR: crypto.createHash is not a function
+2025-04-15 13:40:20 error: Error en verifyEncryptedQR: crypto.createHash is not a function
+2025-04-15 13:42:17 error: Error al desencriptar QR: this.decryptData is not a function
+2025-04-15 13:47:12 error: Error al desencriptar QR: Invalid initialization vector

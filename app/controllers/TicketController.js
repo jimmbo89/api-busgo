@@ -213,10 +213,15 @@ const TicketController = {
       if (id === undefined || id === null || id === 0 || id === "") {
         // Si id no existe, es null o está vacío, generar QR y código de barras
         const { qrCodePath, barcodePath } = await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+        const ticketWithCodes = {
+          ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
+          qrCodePath,
+          barcodePath
+        };
       }
 
       await t.commit();
-      res.status(201).json({ ticket: ticket });
+      res.status(201).json({ ticket: ticketWithCodes?? ticket });
     } catch (error) {
       if (!t.finished) {
         await t.rollback();
@@ -306,10 +311,15 @@ const TicketController = {
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
-          await TicketRepository.generateTicketCodes(mappedTicket, ticket);
-
+            await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+        const ticketWithCodes = {
+          ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
+          qrCodePath,
+          barcodePath
+        };
+        
         await t.commit();
-        res.status(201).json({ ticket: ticket });
+        res.status(201).json({ ticket: ticketWithCodes });
       } else {
         const paymentData = {
           amount: total,
@@ -350,9 +360,13 @@ const TicketController = {
           //generar qr y codigo de barra
           const { qrCodePath, barcodePath } =
             await TicketRepository.generateTicketCodes(mappedTicket, ticket);
-
+            const ticketWithCodes = {
+              ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
+              qrCodePath,
+              barcodePath
+            };
           await t.commit();
-          res.status(201).json({ ticket: ticket });
+          res.status(201).json({ ticket: ticketWithCodes });
         } else {
           logger.error("Error al crear el pago:", result.message);
           await t.commit();
@@ -461,7 +475,115 @@ const TicketController = {
     }
   },
 
-  async getCurrentTime() {
+  async verifyEncryptedQR(req, res) {
+    logger.info(`${req.user.name} - Verificando QR: ${req.body.qr}`);
+    // Validación del input
+    let qr = req.body.qr;
+    try {
+        // 1. Buscar ticket por QR encriptado
+        const ticket = await Ticket.findOne({ 
+            where: { qr: qr },
+        });
+
+        if (!ticket) {
+            return res.status(404).json({ msg: "QRNotFound" });
+        }
+       try {
+        let decryptedData = await TicketRepository.decryptData(ticket.qr);
+    
+        // 3. Verificar coincidencia con los datos del ticket
+        const isValid = await TicketController.validateDecryptedData(decryptedData, ticket);
+
+        if (!isValid) {
+            logger.warn(`QR alterado para ticket ${ticket.id}`);
+            return res.status(400).json({ error: "TamperedQR" });
+        }
+        } catch (decryptError) {
+            logger.info("Error al desencriptar QR:", decryptError);
+            return res.status(400).json({ error: "InvalidQRFormat" });
+        }
+
+
+        // 4. Lógica de estado (qr_status)
+        let actionTaken = "Reescaneado";
+        const incidentDetails = {
+          ticket_id: ticket.id,
+          qr: req.body.qr,
+          previous_status: ticket.qr_status
+      };
+
+      if (ticket.qr_status === null) {
+          // Primer escaneo - Actualizar estado
+          ticket.qr_status = 1;
+          actionTaken = "Primero";
+          logger.info(`Primer escaneo del QR: ${ticket.id}`);
+          await ticket.save();
+      } else {
+          ticket.qr_status += 1
+          // QR ya había sido escaneado antes
+          actionTaken = "Reescaneado";
+          logger.info(`QR re-escaneado: ${ticket.id} (Estado anterior: ${ticket.qr_status})`);
+          await ticket.save();
+          const incidentBody = {
+            branch_id: ticket.branch_id,
+            user_id: req.user.id,
+            title: `Escaneo de QR (${actionTaken})`,
+            description: `${req.user.name} escaneó el QR del ticket ${ticket.id}`,
+            details: {
+                ...incidentDetails,
+                new_status: ticket.qr_status,
+                action: actionTaken
+            },
+            date: new Date()
+        };
+  
+        await IncidentRepository.create(incidentBody);
+      }
+        // 5. Respuesta con datos desencriptados
+        res.status(200).json({
+            ticket_id: ticket.id,
+            qr_status: ticket.qr_status,
+            action: actionTaken === "Primero" ? true : false,
+        });
+
+    } catch (error) {
+        logger.error("Error en verifyEncryptedQR:", error);
+        res.status(500).json({ error: "ServerError" });
+    }
+  },
+// Método auxiliar para validar datos desencriptados
+  async validateDecryptedData(decryptedData, ticket) {
+    const comparisons = {
+        id: { 
+            decrypted: decryptedData.id, 
+            ticket: ticket.id,
+            typeDecrypted: typeof decryptedData.id,
+            typeTicket: typeof ticket.id,
+            match: decryptedData.id == ticket.id
+        },
+        method: {
+            decrypted: decryptedData.method,
+            ticket: ticket.method,
+            match: decryptedData.method == ticket.method
+        },
+        total: {
+          decrypted: decryptedData.total,
+          ticket: ticket.total,
+          match: decryptedData.total == ticket.total
+      },
+        date: {
+            decrypted: new Date(decryptedData.date),
+            ticket: new Date(ticket.date),
+            match: new Date(decryptedData.date).getTime() === new Date(ticket.date).getTime()
+        }
+    };
+    
+    return comparisons.id.match && 
+          comparisons.method.match && 
+          comparisons.total.match && 
+          comparisons.date.match;
+  },
+    async getCurrentTime() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, "0"); // Asegura dos dígitos
     const minutes = String(now.getMinutes()).padStart(2, "0"); // Asegura dos dígitos

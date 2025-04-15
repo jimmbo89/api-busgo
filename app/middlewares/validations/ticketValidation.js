@@ -450,6 +450,18 @@ const ticketSoldDateSchema = Joi.object({
       "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
     }),
 });
+
+const qrEncryptedSchema = Joi.object({
+  qr: Joi.string()
+    .required()
+    .pattern(/^[a-f0-9]+$/) // Hexadecimal para AES encriptado
+    .messages({
+      "string.base": "El QR debe ser una cadena hexadecimal",
+      "string.empty": "El QR no puede estar vacío",
+      "string.pattern.base": "El formato del QR encriptado no es válido",
+      "any.required": "El QR es obligatorio"
+    })
+});
 module.exports = {
   storeTicketSchema,
   updateTicketSchema,
@@ -458,4 +470,5 @@ module.exports = {
   monthlySalesSchema,
   ticketSoldDateSchema,
   storeTicketWebSchema,
+  qrEncryptedSchema
 };

@@ -1,6 +1,56 @@
-2025-04-14 15:04:10 info: admin - Actualiza el viaje con ID 18
-2025-04-14 15:04:10 info: datos recibidos al editar un viaje
-2025-04-14 15:04:10 info: {"id":18,"end":"18:10"}
-2025-04-14 15:04:10 info: End es mayor que Arrival por 13h 0m después.
-2025-04-14 15:04:10 info: Viaje actualizado exitosamente (ID: 18)
-2025-04-14 15:04:43 info: admin - Entra a buscar los viajes(index_branch_date) 
+2025-04-15 14:13:03 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:13:03 info: QR desencriptado:
+2025-04-15 14:13:03 info: Comparación detallada:
+2025-04-15 14:13:03 warn: QR alterado para ticket 74
+2025-04-15 14:14:31 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:14:31 info: Input recibido:
+2025-04-15 14:14:31 info: QR desencriptado:
+2025-04-15 14:14:31 info: Comparación detallada:
+2025-04-15 14:14:31 warn: QR alterado para ticket 74
+2025-04-15 14:16:56 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:16:56 info: Input recibido:
+2025-04-15 14:16:56 info: Desencriptación exitosa:
+2025-04-15 14:16:56 info: QR desencriptado:
+2025-04-15 14:16:56 info: Comparación detallada:
+2025-04-15 14:16:56 info: Error al desencriptar QR: Cannot read properties of undefined (reading 'match')
+2025-04-15 14:17:47 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:17:47 info: Input recibido:
+2025-04-15 14:17:47 info: Desencriptación exitosa:
+2025-04-15 14:17:47 info: QR desencriptado:
+2025-04-15 14:17:47 info: Primer escaneo del QR: 74
+2025-04-15 14:18:42 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:18:42 info: Input recibido:
+2025-04-15 14:18:42 info: Desencriptación exitosa:
+2025-04-15 14:18:42 info: QR desencriptado:
+2025-04-15 14:18:42 info: QR re-escaneado: 74 (Estado anterior: 1)
+2025-04-15 14:20:15 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:20:15 info: Input recibido:
+2025-04-15 14:20:15 info: Desencriptación exitosa:
+2025-04-15 14:20:15 info: QR desencriptado:
+2025-04-15 14:20:15 info: QR re-escaneado: 74 (Estado anterior: 2)
+2025-04-15 14:26:30 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:26:30 info: Input recibido:
+2025-04-15 14:26:30 info: Desencriptación exitosa:
+2025-04-15 14:26:30 info: QR desencriptado:
+2025-04-15 14:26:30 info: QR re-escaneado: 74 (Estado anterior: 3)
+2025-04-15 14:27:25 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:27:25 info: Input recibido:
+2025-04-15 14:27:25 info: Desencriptación exitosa:
+2025-04-15 14:27:25 info: QR desencriptado:
+2025-04-15 14:27:25 info: QR re-escaneado: 74 (Estado anterior: 4)
+2025-04-15 14:28:28 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:28:28 info: Input recibido:
+2025-04-15 14:28:28 info: Desencriptación exitosa:
+2025-04-15 14:28:28 info: QR desencriptado:
+2025-04-15 14:28:28 info: Primer escaneo del QR: 74
+2025-04-15 14:29:58 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:29:58 info: Input recibido:
+2025-04-15 14:29:58 info: Desencriptación exitosa:
+2025-04-15 14:29:58 info: QR desencriptado:
+2025-04-15 14:29:58 info: Primer escaneo del QR: 74
+2025-04-15 14:30:30 info: admin - Verificando QR: 685bf4461b5101a551765d6d35d70031b66bea022742e651904a4f0542075ee13feab13489a4bead28d612302ff8423b90cc103bb7595a9c2e7b3fc901096114baea1128b1f0c99d71a7d95ea8c15b2a655f37c7c995e599a0c60de6880c5ec0282b137ef6abbe3fd9fcb044ff05adb6d9323099335a5c09fa21656a1b527c26
+2025-04-15 14:30:30 info: Input recibido:
+2025-04-15 14:30:30 info: Desencriptación exitosa:
+2025-04-15 14:30:30 info: QR desencriptado:
+2025-04-15 14:30:30 info: QR re-escaneado: 74 (Estado anterior: 2)
+2025-04-15 14:31:18 info: admin - Entra a buscar las compañías

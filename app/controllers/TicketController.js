@@ -763,7 +763,7 @@ const TicketController = {
         const routeInfo = `${trip.route.origin.address} - ${trip.route.destination.address}`;
 
         // Calcular el horario
-        let horario;
+        /*let horario;
         if (trip.end) {
           // Si hay hora de finalización, usar start y end
           horario = `${trip.start} - ${trip.end}`;
@@ -781,7 +781,28 @@ const TicketController = {
             trip.route.estimated
           );
           horario = `${trip.schedule} - ${estimatedTime}`;
-        }
+        }*/
+          let horario;
+
+          if (trip.end) {
+            // Si hay hora de finalización, usar start y end (ya están en el formato correcto)
+            horario = `${trip.start} - ${trip.end}`;
+          } else if (trip.start) {
+            // Si hay hora de inicio, sumar estimated a start
+            const startDate = new Date(trip.start);
+            const estimatedTime = new Date(startDate.getTime() + trip.route.estimated * 60000);
+            const formattedEstimated = estimatedTime.toISOString().replace('T', ' ').substring(0, 19);
+            horario = `${trip.start} - ${formattedEstimated}`;
+          } else {
+            // Si no hay hora de inicio, combinar trip.date con schedule y sumar estimated
+            // Asumo que trip.schedule es solo la hora (ej. "10:00:00") y trip.date es la fecha (ej. "2025-04-16")
+            const combinedDateTime = `${trip.date} ${trip.schedule}`;
+            const scheduleDate = new Date(combinedDateTime);
+            const estimatedTime = new Date(scheduleDate.getTime() + trip.route.estimated * 60000);
+            const formattedSchedule = combinedDateTime;
+            const formattedEstimated = estimatedTime.toISOString().replace('T', ' ').substring(0, 19);
+            horario = `${formattedSchedule} - ${formattedEstimated}`;
+          }
         // Calcular asientos vendidos y dinero generado
         const asientosVendidos = tickets.reduce(
           (sum, ticket) => sum + ticket.quantity,
@@ -799,6 +820,7 @@ const TicketController = {
           vehiclePlate: vehicle.plate,
           vehicleBrand: vehicle.brand,
           route: routeInfo, // Origen y destino concatenados
+          estimated: trip.route.estimated,
           horario: horario, // Horario dinámico
           capacidad: trip.vehicle.seats, // Capacidad del vehículo
           asientosVendidos, // Asientos vendidos

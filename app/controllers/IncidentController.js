@@ -1,4 +1,4 @@
-const logger = require('../../config/logger'); // Logger para seguimiento
+const logger = require("../../config/logger"); // Logger para seguimiento
 const { IncidentRepository, BranchRepository } = require("../repositories");
 
 const IncidentController = {
@@ -12,10 +12,10 @@ const IncidentController = {
 
     req.body.user_id = req.user.id;
 
-    const branch = await BranchRepository.findById(branch_id);
+    const branch = await BranchRepository.findById(req.body.branch_id);
     if (!branch) {
       logger.error(
-        `IncidentController->store: Sucursal no encontrada con ID ${branch_id}`
+        `IncidentController->store: Sucursal no encontrada con ID ${req.body.branch_id}`
       );
       return res.status(400).json({ msg: "BranchNotFound" });
     }
@@ -34,6 +34,58 @@ const IncidentController = {
     }
   },
 
+  async getIncidents(req, res) {
+    logger.info(`${req.user.name} - entra a buscar las incidencias`);
+    logger.info("Datos recibidos buscar las incidencias");
+    logger.info(JSON.stringify(req.body));
+    try {
+      const { branch_id, startDate, endDate } = req.body;
+
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `IncidentController->store: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(400).json({ msg: "BranchNotFound" });
+      }
+
+      // Obtener incidencias del repository
+      const incidents = await IncidentRepository.getIncidentsByBranchAndDate(
+        branch_id,
+        startDate,
+        endDate
+      );
+
+      logger.info('JSON.stringify(incidents)');
+      logger.info(JSON.stringify(incidents));
+      // Formatear la respuesta
+      const formattedIncidents = incidents.map((incident) => {
+        return {
+          id: incident.id,
+          title: incident.title,
+          description: incident.description,
+          date: incident.date,
+          details: incident.details,
+          workerName: incident.user.worker.name,
+          image: incident.user.worker.image,
+          branchId: incident.branch_id,
+          branch_id: incident.branch_id,
+          workerId: incident.worker_id,
+          worker_d: incident.worker_id,
+        };
+      });
+
+      res.status(200).json({ incidents: formattedIncidents });
+    } catch (error) {
+      console.error("Error in incidentController.getIncidents:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
+        errorDetails:
+          process.env.NODE_ENV === "development" ? error.stack : undefined,
+      });
+    }
+  },
   /**
    * Obtener todas las incidencias
    */
@@ -166,7 +218,12 @@ const IncidentController = {
     }
 
     try {
-      const {incidents, totalIncidents} = await IncidentRepository.getIncidentsByBranchMonth( month, type, branch_id);
+      const { incidents, totalIncidents } =
+        await IncidentRepository.getIncidentsByBranchMonth(
+          month,
+          type,
+          branch_id
+        );
       mappedIncidents = incidents.map((incident) => ({
         id: incident.id,
         user_id: incident.user_id,

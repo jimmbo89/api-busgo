@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { Incident, Branch, sequelize } = require("../models"); // Importa el modelo de Incident
+const { Incident, Branch, Worker, User, sequelize } = require("../models"); // Importa el modelo de Incident
 const logger = require("../../config/logger");
 
 const IncidentRepository = {
@@ -30,7 +30,7 @@ const IncidentRepository = {
           {
             model: Branch,
             as: "branch", // Incluir persona si también es necesario
-            atributes: ["name", "image"],
+            atributes: ["id", "name", "image"],
           },
         ],
       });
@@ -93,15 +93,15 @@ const IncidentRepository = {
 
   async getIncidentsByBranchMonth(month, type, branchId = null) {
     try {
-        const whereClause = {
-            [Op.and]: [
-              sequelize.where(
-                sequelize.fn("DATE_FORMAT", sequelize.col("date"), "%Y-%m"),
-                month
-              ),
-              //{ pay: 1 },
-            ],
-          };
+      const whereClause = {
+        [Op.and]: [
+          sequelize.where(
+            sequelize.fn("DATE_FORMAT", sequelize.col("date"), "%Y-%m"),
+            month
+          ),
+          //{ pay: 1 },
+        ],
+      };
 
       // Si el tipo es "Sucursal" y hay un branchId, filtrar por branch_id
       if (type === "Sucursal" && branchId) {
@@ -129,6 +129,63 @@ const IncidentRepository = {
         `Error en IncidentRepository->getIncidentsByBranchMonth: ${error.message}`
       );
       throw error;
+    }
+  },
+
+  async getIncidentsByBranchAndDate( branch_id, startDate = null, endDate = null ) {
+    try {
+      let dateFilter = {};
+
+      // Si no se proporcionan fechas, usar el día actual
+      if (!startDate && !endDate) {
+        const today = new Date().toISOString().split("T")[0]; // Formato YYYY-MM-DD
+
+        dateFilter = {
+          date: today,
+        };
+      } else {
+        // Construir filtro basado en las fechas proporcionadas
+        const filter = {};
+
+        if (startDate) {
+          filter[Op.gte] = startDate;
+        }
+
+        if (endDate) {
+          filter[Op.lte] = endDate;
+        }
+
+        dateFilter = {
+          date: filter,
+        };
+      }
+
+      const whereClause = branch_id ? { ...dateFilter, branch_id } : dateFilter;
+
+      const incidents = await Incident.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: User,
+            as: "user",
+            include: [
+              {
+                model: Worker,
+                as: "worker",
+              },
+            ],
+          },
+        ],
+        order: [["date", "DESC"]], // Ordenar por date en lugar de createdAt
+      });
+
+      return incidents;
+    } catch (error) {
+      logger.error(
+        "Error in IncidentRepository.getIncidentsByBranchAndDate:",
+        error
+      );
+      throw new Error("Failed to retrieve incidents");
     }
   },
 };

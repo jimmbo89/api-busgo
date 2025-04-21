@@ -93,6 +93,8 @@ const BranchWorkerController = {
                 id: branchWorker.branch.id,
                 name: branchWorker.branch.name,
                 role: branchWorker.role.name,
+                role_id: branchWorker.role_id,
+                roleId: branchWorker.role_id,
                 image: branchWorker.branch.image,
             }));
     

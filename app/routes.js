@@ -673,6 +673,7 @@ router.post(
 
 //Rutas Promotion
 router.get("/promotion", PromotionController.index);
+router.get("/get-promotion", PromotionController.index_true);
 router.post("/promotion", validateSchema(storePromotionSchema), PromotionController.store);
 router.post("/promotion-show", validateSchema(idPromotionSchema), PromotionController.show);
 router.put("/promotion", validateSchema(updatePromotionSchema), PromotionController.update);

@@ -18,6 +18,21 @@ const PromotionController = {
     }
   },
 
+  async index_true(req, res) {
+    logger.info(`${req.user.name} - Accediendo a la lista de promociones activas`);
+
+    try {
+      const promotions = await PromotionRepository.findByActiveStatus(true);
+      res.status(200).json({ promotions: promotions });
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+      logger.error("Error en PromotionController->index: " + errorMsg);
+      res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
   // Crear una nueva promoción
   async store(req, res) {
     logger.info(`${req.user.name} - Creando una nueva promoción`);

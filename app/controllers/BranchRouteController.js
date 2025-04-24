@@ -37,7 +37,9 @@ const BranchRouteController = {
             return res.status(404).json({ msg: 'BranchNotFound' });
         }
         try {
-            const branchRoutes = await BranchRouteRepository.findByBranch(branch_id);
+            const branchRoutes = await BranchRouteRepository.findByBranch(branch_id, {
+                order: [['created_at', 'ASC']] // ASC para más antiguo primero, DESC para más reciente primero
+            });
 
             // Mapeamos los resultados para obtener solo los IDs y nombres
             const mappedBranchRoutes = branchRoutes.map((branchRoute) => {
@@ -51,7 +53,9 @@ const BranchRouteController = {
                 route_id: branchRoute.route_id,
                 name: route.name,
                 originName: route.origin.address,
+                origin_id: route.origin_id,
                 originImage: route.origin.image,
+                destination_id: route.destination_id,
                 destinationName: route.destination.address,
                 destinationImage: route.destination.image,
             }

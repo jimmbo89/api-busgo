@@ -34,7 +34,7 @@ const BranchRouteRepository = {
                 { 
                     model: Route, 
                     as: 'route', 
-                    attributes: ['id', 'name', 'estimated'],
+                    attributes: ['id', 'name', 'estimated', 'origin_id', 'destination_id'],
                     include: [
                         {
                           model: Location,

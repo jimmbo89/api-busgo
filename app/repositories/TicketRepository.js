@@ -760,6 +760,7 @@ const TicketRepository = {
         "price",
       ],
       where: whereClause,
+      order: [['date', 'ASC']],
       include: [
         {
           model: Branch,

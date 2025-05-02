@@ -552,7 +552,7 @@ router.post(
 router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
 router.post("/trip-show", validateSchema(idTripSchema), TripController.show);
-router.put("/trip", validateSchema(updateTripSchema), TripController.update);
+router.post("/trip-update", validateSchema(updateTripSchema), TripController.update);
 router.post(
   "/trip-destroy",
   validateSchema(idTripSchema),

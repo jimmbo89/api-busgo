@@ -432,6 +432,72 @@ const TripRepository = {
     }
   },
 
+  async getTripsDateWorker(branchId, date, endDate, workerId) {
+    try {
+      const whereClause = {
+        branch_id: branchId // Siempre filtramos por sucursal
+      };
+
+      // Manejo de fechas
+      if (endDate && endDate.trim() !== "") {
+        whereClause.date = {
+          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+        };
+      } else {
+        whereClause.date = date;
+      }
+
+      const trips = await Trip.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Branch,
+            as: "branch",
+            include: [
+              {
+                model: Company,
+                as: "company",
+              },
+            ],
+          },
+          {
+            model: Ticket,
+            as: "tickets",
+          },
+          {
+            model: Route,
+            as: "route",
+            attributes: ["id", "name"],
+            include: [
+              {
+                model: Location,
+                as: "origin",
+                attributes: ["id", "address", "image"],
+              },
+              {
+                model: Location,
+                as: "destination",
+                attributes: ["id", "address", "image"],
+              },
+            ],
+          },
+          {
+            model: TripWorker,
+            as: "tripworkers",
+            where: { worker_id: workerId }, // Filtramos por el trabajador
+            required: true, // INNER JOIN para asegurar que existe la relación
+          }
+        ],
+        order: [['date', 'ASC'], ['schedule', 'ASC']] // Ordenamos por fecha y hora de salida
+      });
+
+      return trips;
+    } catch (error) {
+      logger.error("Error al obtener los viajes y tickets:", error);
+      throw error;
+    }
+  },
+
   async findTripsByBranchAndWorker(branchId, date, endDate, workerId) {
     const whereClause = {
       branch_id: branchId, // Siempre filtramos por branch_id

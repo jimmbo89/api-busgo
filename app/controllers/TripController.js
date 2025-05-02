@@ -901,6 +901,123 @@ const TripController = {
     }
   },
 
+  async getTripsTicketsDateWorker(req, res) {
+    logger.info(
+      `${req.user.name} - Entra a buscar los datos de los viajes y pasajes de una fecha dada de un trabajador`
+    );
+    logger.info(
+      "Datos recibidos al obtener los viajes y pasajes de una fecha dada"
+    );
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      const { branch_id, date, endDate } = req.body;
+      const workerId = req.worker.id; // Obtenemos el ID del trabajador desde el request
+
+      // Validar si la sucursal existe
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `TripController->getTripsDate: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(404).json({ msg: "BranchNotFound" });
+      }
+
+      // Obtener los trips con sus tickets asociados para el trabajador
+      const trips = await TripRepository.getTripsDateWorker(branch_id, date, endDate, workerId);
+
+      // Inicializar las variables para calcular los totales
+      const totalsByMethod = {};
+      let totalGeneral = 0;
+      let totalPasajesVendidos = 0;
+      let reimpresiones = 0;
+
+      // Procesar los trips y sus tickets
+      const tripsSummary = trips.map((trip) => {
+        const origin = trip.route.origin;
+        const destination = trip.route.destination;
+        const tripName = `${origin.address} - ${destination.address}`;
+        const tripTickets = trip.tickets || [];
+        
+        // Obtener información del trabajador en este viaje
+        const tripWorker = trip.tripworkers?.[0]?.worker;
+
+        // Inicializar los totales por método de pago para este trip
+        const tripTotalsByMethod = {};
+        let tripTotal = 0;
+        let tripPasajesVendidos = 0;
+
+        // Procesar los tickets del trip
+        tripTickets.forEach((ticket) => {
+          const method = ticket.method.toUpperCase();
+          const total = parseFloat(ticket.total);
+
+          // Sumar al total general
+          totalGeneral += total;
+          totalPasajesVendidos += 1;
+          reimpresiones += ticket.print - 1;
+
+          // Sumar al total por método de pago
+          if (!totalsByMethod[method]) {
+            totalsByMethod[method] = {
+              total: 0,
+              cantidad: 0,
+            };
+          }
+          totalsByMethod[method].total += total;
+          totalsByMethod[method].cantidad += 1;
+
+          // Sumar al total del trip
+          if (!tripTotalsByMethod[method]) {
+            tripTotalsByMethod[method] = {
+              total: 0,
+              cantidad: 0,
+            };
+          }
+          tripTotalsByMethod[method].total += total;
+          tripTotalsByMethod[method].cantidad += 1;
+          tripTotal += total;
+          tripPasajesVendidos += 1;
+        });
+
+        // Formatear la información del trip
+        return {
+          nombre: tripName,
+          totalPasajes: tripPasajesVendidos,
+          totalTramo: tripTotal,
+          totalesPorMetodo: Object.keys(tripTotalsByMethod).map((method) => ({
+          metodo: method,
+          total: tripTotalsByMethod[method].total,
+          cantidad: tripTotalsByMethod[method].cantidad,
+          })),
+        };
+      });
+
+      // Convertir el objeto totalsByMethod en un array
+      const totalsByMethodArray = Object.keys(totalsByMethod).map((method) => ({
+        metodo: method,
+        total: totalsByMethod[method].total,
+        cantidad: totalsByMethod[method].cantidad,
+      }));
+
+      // Formatear la respuesta
+      const response = {
+        nombre: branch.name,
+        fecha: endDate && endDate.trim() !== "" ? `${date} - ${endDate}` : date,
+        pasajesEmitidos: totalPasajesVendidos,
+        reimpresiones: reimpresiones,
+        totalesPorMetodo: totalsByMethodArray,
+        totales: totalGeneral,
+        tramos: tripsSummary,
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error("Error en el controlador TripController:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
+
   async getTripsByBranchAndWorker(req, res) {
     let { branch_id, date, endDate, worker_id } = req.body;
     // Verifica si worker_id es undefined, null o 0

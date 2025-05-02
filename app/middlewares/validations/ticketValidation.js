@@ -451,6 +451,29 @@ const ticketSoldDateSchema = Joi.object({
     }),
 });
 
+const ticketSoldDateWorkerSchema = Joi.object({
+ branch_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo id debe ser un número entero",
+    "number.integer": "El campo id debe ser un número entero",
+    "number.positive": "El campo id debe ser un número positivo",
+    "any.required": "El campo id es requerido",
+  }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Expresión regular para validar el formato YYYY-MM-DD
+    .required()
+    .messages({
+      "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
+      "any.required": "El campo date es requerido",
+    }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD
+    .allow("", null) // Permitir vacío o null
+    .optional() // Campo opcional
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
+});
+
 const qrEncryptedSchema = Joi.object({
   qr: Joi.string()
     .required()
@@ -470,5 +493,6 @@ module.exports = {
   monthlySalesSchema,
   ticketSoldDateSchema,
   storeTicketWebSchema,
-  qrEncryptedSchema
+  qrEncryptedSchema,
+  ticketSoldDateWorkerSchema
 };

@@ -972,6 +972,90 @@ const TicketController = {
       res.status(500).json({ error: error.message });
     }
   },
+
+  async getTicketsSoldDateWorker(req, res) {
+    logger.info(
+      `${req.user.name} - Entra a buscar los datos de los pasajes de una fecha dada de un trabajador`
+    );
+    logger.info("Datos recibidos al obtener los pasajes de una fecha dada");
+    logger.info(JSON.stringify(req.body));
+    try {
+      const workerId = req.worker.id;
+      const { branch_id, date, endDate} = req.body;
+
+      // Validar si la sucursal existe
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `TicketController->getTicketsSoldDate: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(404).json({ msg: "BranchNotFound" });
+      }
+
+      // Obtener los tickets vendidos en la fecha dada para el trabajador
+      const tickets = await TicketRepository.getTicketsSoldDateWorker(
+        branch_id,
+        date,
+        endDate,
+        workerId
+      );
+
+      // Inicializar las variables para calcular los totales
+      const totalsByMethod = {};
+      let totalGeneral = 0;
+      let totalPasajesVendidos = 0;
+      let reimpresiones = 0;
+
+      // Procesar los tickets
+      tickets.forEach((ticket) => {
+        const method = ticket.method.toUpperCase();
+        const total = parseFloat(ticket.total);
+        const quantity = parseInt(ticket.quantity, 10);
+
+        if (!totalsByMethod[method]) {
+          totalsByMethod[method] = {
+            total: 0,
+            cantidad: 0,
+          };
+        }
+        
+        reimpresiones += ticket.print - 1;
+        totalsByMethod[method].total += total;
+        totalsByMethod[method].cantidad += 1;
+        totalGeneral += total;
+        totalPasajesVendidos++;
+      });
+
+      // Convertir el objeto totalsByMethod en un array
+      const totalsByMethodArray = Object.keys(totalsByMethod).map((method) => ({
+        metodo: method,
+        total: totalsByMethod[method].total,
+        cantidad: totalsByMethod[method].cantidad,
+      }));
+
+      // Formatear la respuesta
+      let fecha = null;
+      if (endDate && endDate.trim() !== "") {
+        fecha = `${date} - ${endDate}`;
+      } else {
+        fecha = date;
+      }
+
+      const response = {
+        nombre: branch.name,
+        fecha: fecha,
+        pasajesEmitidos: totalPasajesVendidos,
+        reimpresiones: reimpresiones,
+        totalesPorMetodo: totalsByMethodArray,
+        totales: totalGeneral,
+      };
+
+      res.json(response);
+    } catch (error) {
+      logger.error("Error en el controlador:", error);
+      res.status(500).json({ error: error.message });
+    }
+  },
 };
 
 module.exports = TicketController;

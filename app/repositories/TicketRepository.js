@@ -13,6 +13,7 @@ const {
   Vehicle,
   Company,
   Worker,
+  TripWorker,
   sequelize,
 } = require("../models");
 const ImageService = require("../services/ImageService");
@@ -830,6 +831,52 @@ const TicketRepository = {
             },
           ],
         },
+      ],
+    });
+
+    return tickets;
+  },
+
+  async getTicketsSoldDateWorker(branchId, date, endDate, workerId) {
+    const whereClause = {
+      branch_id: branchId // Siempre filtramos por sucursal
+    };
+
+    // Manejo de fechas
+    if (endDate && endDate.trim() !== "") {
+      whereClause.date = {
+        [Op.between]: [date, endDate], // Rango de fechas (inclusive)
+      };
+    } else {
+      whereClause.date = date; // Filtro por fecha única
+    }
+
+    const tickets = await Ticket.findAll({
+      where: whereClause,
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          include: [
+            {
+              model: Company,
+              as: "company",
+            },
+          ],
+        },
+        {
+          model: Trip,
+          as: "trip",
+          required: true, // INNER JOIN con Trip
+          include: [
+            {
+              model: TripWorker,
+              as: "tripworkers",
+              where: { worker_id: workerId }, // Filtro por trabajador
+              required: true // INNER JOIN para asegurar relación
+            }
+          ]
+        }
       ],
     });
 

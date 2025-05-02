@@ -135,7 +135,8 @@ const {
   monthlySalesSchema,
   ticketSoldDateSchema,
   storeTicketWebSchema,
-  qrEncryptedSchema
+  qrEncryptedSchema,
+  ticketSoldDateWorkerSchema
 } = require("./middlewares/validations/ticketValidation");
 const { paymentSchema, paymentDataSchema, } = require("./middlewares/validations/tuuValidation");
 const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = require("./middlewares/validations/structureValidation");
@@ -563,11 +564,8 @@ router.post(
   validateSchema(branch_idTripSchema),
   TripController.getRouteVehicleBranch
 );
-router.post(
-  "/trips-tickets-date",
-  validateSchema(ticketSoldDateSchema),
-  TripController.getTripsTicketsDate
-);
+router.post("/trips-tickets-date", validateSchema(ticketSoldDateSchema), TripController.getTripsTicketsDate);
+router.post("/trips-tickets-date-worker", validateSchema(ticketSoldDateWorkerSchema), TripController.getTripsTicketsDateWorker);
 
 //Rutas Trip
 router.get("/trip-worker", TripWorkerController.index);
@@ -636,6 +634,8 @@ router.post(
   validateSchema(ticketSoldDateSchema),
   TicketController.getTicketsSoldDate
 );
+
+router.post("/ticket-sold-date-worker", validateSchema(ticketSoldDateWorkerSchema), TicketController.getTicketsSoldDateWorker);
 
 router.post("/verify-qr-ticket", validateSchema(qrEncryptedSchema),TicketController.verifyEncryptedQR);
 

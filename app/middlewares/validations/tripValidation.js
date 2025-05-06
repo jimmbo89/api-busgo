@@ -104,7 +104,7 @@ const updateTripSchema = Joi.object({
     "string.pattern.base": "El campo arrival debe tener el formato YYYY-MM-DD HH:MM:SS",
   }),
   start: Joi.string()
-  .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/) // Formato 00:00
+  .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/) // Formato 2025-04-15 05:10 o 2025-04-15 05:10:00
     .allow(null)
     .empty("")
     .optional()
@@ -113,7 +113,7 @@ const updateTripSchema = Joi.object({
         "El campo start debe tener el formato YYYY-MM-DD HH:mm:ss",
     }),
   end: Joi.string()
-  .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/) // Formato 00:00
+  .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/) // Formato 2025-04-15 05:10 o 2025-04-15 05:10:00
     .allow(null)
     .empty("")
     .optional()

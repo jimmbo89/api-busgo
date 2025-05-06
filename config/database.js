@@ -8,6 +8,11 @@ module.exports = {
   host: process.env.DB_HOST || "127.0.0.1",
   dialect: process.env.DB_DIALECT || "mysql",
 
+   // Configuración correcta de zona horaria
+   dialectOptions: {
+    timezone: 'local' // Usa la zona horaria del sistema
+  },
+  timezone: process.env.TZ || 'America/Santiago', // Para Sequelize
   // Configuración de pooling de conexiones
   pool: {
     max: 5, // Máximo de conexiones

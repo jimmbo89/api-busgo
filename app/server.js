@@ -1,3 +1,5 @@
+require('dotenv').config();
+process.env.TZ = process.env.TZ || 'America/Santiago';
 const express = require('express');
 const app = express();
 const session = require('express-session');

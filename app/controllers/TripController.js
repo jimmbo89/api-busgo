@@ -454,15 +454,27 @@ const TripController = {
     }
   },
 
-  async createDateTime(dateStr, timeStr) {
-    if (!dateStr || !timeStr) return null;
+  async createDateTime(datePart, timePart) {
+    // Si timePart ya incluye fecha completa (YYYY-MM-DD HH:MM:SS)
+    if (
+      typeof timePart === "string" &&
+      timePart.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+    ) {
+      const [dateStr, timeStr] = timePart.split(" ");
+      return new Date(`${dateStr}T${timeStr}`);
+    }
 
-    // Asegurar que el tiempo tenga segundos
-    const formattedTime = timeStr.includes(":")
-      ? `${timeStr}:00`
-      : `${timeStr}:00:00`;
+    // Si timePart es solo hora (HH:MM)
+    if (typeof timePart === "string" && timePart.match(/^\d{2}:\d{2}$/)) {
+      return new Date(`${datePart}T${timePart}:00`);
+    }
 
-    return new Date(`${dateStr}T${formattedTime}`);
+    // Si es un timestamp o formato ISO
+    if (typeof timePart === "string" && !isNaN(new Date(timePart))) {
+      return new Date(timePart);
+    }
+
+    throw new Error(`Formato de fecha no reconocido: ${timePart}`);
   },
 
   async compareDates(date1, date2) {
@@ -494,6 +506,51 @@ const TripController = {
       humanReadable,
       isDelayed: diffMinutes > 0,
     };
+  },
+
+  async formatToMySQLDateTime(date) {
+    try {
+      if (!date) return null;
+
+      // Si ya está en el formato correcto
+      if (
+        typeof date === "string" &&
+        date.match(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+      ) {
+        return date;
+      }
+
+      const timeZone = process.env.TZ || "America/Santiago";
+      const dateObj = new Date(date);
+
+      if (isNaN(dateObj.getTime())) {
+        throw new Error("Fecha inválida");
+      }
+
+      // Formatear componentes individualmente
+      const year = dateObj.toLocaleString("es-CL", {
+        timeZone,
+        year: "numeric",
+      });
+      const month = dateObj.toLocaleString("es-CL", {
+        timeZone,
+        month: "2-digit",
+      });
+      const day = dateObj.toLocaleString("es-CL", { timeZone, day: "2-digit" });
+      const time = dateObj.toLocaleString("es-CL", {
+        timeZone,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      });
+
+      // Ensamblar el formato deseado: YYYY-MM-DD HH:MM:SS
+      return `${year}-${month}-${day} ${time}`;
+    } catch (error) {
+      logger.error("Error al formatear fecha:", error);
+      return null;
+    }
   },
 
   async update(req, res) {
@@ -610,27 +667,29 @@ const TripController = {
           await TripController.compareDates(scheduledStart, actualStart);
         if (isDelayed) {
           logger.info(`Start es mayor que Schedule por ${humanReadable}.`);
-        const incidentBody = {
-          branch_id: trip.branch_id, // ID de la sucursal
-          user_id: req.user.id, // ID del usuario que realiza la acción
-          title: "Retraso en la salida del viaje",
-          description: `Realizó la salida del viaje ${trip.id} con un retrazo de (${humanReadable}).`,
-          details: {
-            actualStart: actualStart.toISOString()
-            .replace('T', ' ')
-            .substring(0, 19),
-            scheduledStart,
-            difference: humanReadable,
-          },
-          date: new Date(), // Fecha actual
-        };
-        logger.info(`actualStart ${actualStart}`);
-        const formattedStart = actualStart.toISOString()
-        .replace('T', ' ')
-        .substring(0, 19); // Cortar los milisegundos
+          const incidentBody = {
+            branch_id: trip.branch_id, // ID de la sucursal
+            user_id: req.user.id, // ID del usuario que realiza la acción
+            title: "Retraso en la salida del viaje",
+            description: `Realizó la salida del viaje ${trip.id} con un retrazo de (${humanReadable}).`,
+            details: {
+              actualStart: await TripController.formatToMySQLDateTime(
+                actualStart
+              ),
+              scheduledStart: await TripController.formatToMySQLDateTime(
+                scheduledStart
+              ),
+              difference: humanReadable,
+            },
+            date: await TripController.formatToMySQLDateTime(new Date()), // Fecha actual
+          };
+          logger.info(`actualStart ${actualStart}`);
+          const formattedStart = await TripController.formatToMySQLDateTime(
+            actualStart
+          ); // Cortar los milisegundos
 
-      // 4. Asignar al cuerpo de la petición
-      req.body.start = formattedStart; // "2025-04-14 15:00:00"
+          // 4. Asignar al cuerpo de la petición
+          req.body.start = formattedStart; // "2025-04-14 15:00:00"
           await IncidentRepository.create(incidentBody);
         }
       }
@@ -639,10 +698,8 @@ const TripController = {
         const actualEnd = await TripController.createDateTime(today, end);
         const scheduledArrival = trip.arrival; // Asumiendo que trip.arrival es 'YYYY-MM-DD HH:mm:ss'
 
-        const { difference, humanReadable, isDelayed } = await TripController.compareDates(
-          scheduledArrival,
-          actualEnd
-        );
+        const { difference, humanReadable, isDelayed } =
+          await TripController.compareDates(scheduledArrival, actualEnd);
 
         if (isDelayed) {
           logger.info(`End es mayor que Arrival por ${humanReadable}.`);
@@ -652,20 +709,16 @@ const TripController = {
             title: "Retraso en la llegada del viaje",
             description: `Hizo la llegada del viaje ${trip.id} (${humanReadable}).`,
             details: {
-              actualEnd: actualEnd.toISOString()
-          .replace('T', ' ')
-          .substring(0, 19),
+              actualEnd: await TripController.formatToMySQLDateTime(actualEnd),
               arrival: trip.arrival,
               difference: humanReadable,
             },
-            date: new Date(), // Fecha actual
+            date: await TripController.formatToMySQLDateTime(new Date()), // Fecha actual
           };
-          const formattedEnd = actualEnd.toISOString()
-          .replace('T', ' ')
-          .substring(0, 19); // Cortar los milisegundos
+          const formattedEnd = await TripController.formatToMySQLDateTime(actualEnd); // Cortar los milisegundos
 
-        // 4. Asignar al cuerpo de la petición
-        req.body.end = formattedEnd; // "2025-04-14 15:00:00"
+          // 4. Asignar al cuerpo de la petición
+          req.body.end = formattedEnd; // "2025-04-14 15:00:00"
           await IncidentRepository.create(incidentBody);
         }
       }
@@ -685,6 +738,7 @@ const TripController = {
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },
+
   // Eliminar un viaje
   async destroy(req, res) {
     logger.info(`${req.user.name} - Elimina el viaje con ID ${req.body.id}`);
@@ -928,7 +982,12 @@ const TripController = {
       }
 
       // Obtener los trips con sus tickets asociados para el trabajador
-      const trips = await TripRepository.getTripsDateWorker(branch_id, date, endDate, workerId);
+      const trips = await TripRepository.getTripsDateWorker(
+        branch_id,
+        date,
+        endDate,
+        workerId
+      );
 
       // Inicializar las variables para calcular los totales
       const totalsByMethod = {};
@@ -942,7 +1001,7 @@ const TripController = {
         const destination = trip.route.destination;
         const tripName = `${origin.address} - ${destination.address}`;
         const tripTickets = trip.tickets || [];
-        
+
         // Obtener información del trabajador en este viaje
         const tripWorker = trip.tripworkers?.[0]?.worker;
 
@@ -990,9 +1049,9 @@ const TripController = {
           totalPasajes: tripPasajesVendidos,
           totalTramo: tripTotal,
           totalesPorMetodo: Object.keys(tripTotalsByMethod).map((method) => ({
-          metodo: method,
-          total: tripTotalsByMethod[method].total,
-          cantidad: tripTotalsByMethod[method].cantidad,
+            metodo: method,
+            total: tripTotalsByMethod[method].total,
+            cantidad: tripTotalsByMethod[method].cantidad,
           })),
         };
       });

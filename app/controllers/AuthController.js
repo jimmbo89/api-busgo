@@ -247,7 +247,13 @@ const AuthController = {
         id: user.id, // ID del usuario
         email: user.email, // Correo del usuario
         name: user.name,
-        worker: user.worker,
+        worker: {
+          id: user.worker.id,
+          name: user.worker.name,
+          email: user.worker.email,
+          image: user.worker.image,
+          user_id: user.worker.user_id,
+        },
       };
 
       // Creamos el token con el objeto estructurado
@@ -365,7 +371,13 @@ const AuthController = {
         id: user.id, // ID del usuario
         email: user.email, // Correo del usuario
         name: user.name,
-        worker: user.worker,
+        worker: {
+          id: user.worker.id,
+          name: user.worker.name,
+          email: user.worker.email,
+          image: user.worker.image,
+          user_id: user.worker.user_id,
+        },
       };
 
       // Creamos el token con el objeto estructurado

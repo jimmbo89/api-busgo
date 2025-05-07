@@ -471,7 +471,8 @@ const AuthController = {
         return res.status(400).json({ msg: "Usuario no encontrado" });
       }
 
-      // Validar la contraseña actual para cuentas estándar
+        // Si se proporciona currentPassword, validarla
+    if (currentPassword) {
       const passwordMatch = bcrypt.compareSync(currentPassword, user.password);
 
       if (!passwordMatch) {
@@ -480,6 +481,7 @@ const AuthController = {
           details: "La contraseña actual no es correcta.",
         });
       }
+    }
 
       // Encriptar la nueva contraseña
       const hashedNewPassword = bcrypt.hashSync(

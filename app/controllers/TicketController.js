@@ -68,7 +68,8 @@ const TicketController = {
     );
 
     const { branch_id, date, endDate } = req.body;
-    const workerId = req.worker.id;
+    //const workerId = req.worker.id;
+    const workerId = null;
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
@@ -86,6 +87,9 @@ const TicketController = {
       );
 
       if (!tickets.length) {
+        logger.info(
+          "TripController->getTicketDate: TicketsNotFound"
+        );
         return res.status(204).json({ msg: "TicketsNotFound" });
       }
 
@@ -199,8 +203,12 @@ const TicketController = {
 
       let ticket = await TicketRepository.create(req.body, { transaction: t });
 
-      const mappedTicket = {
+      let mappedTicket = {
         id: ticket.id,
+        branch_id: ticket.branch_id,
+        branchId: ticket.branch_id,
+        trip_id: ticket.trip_id,
+        tripId: ticket.trip_id,
         method: ticket.method,
         quantity: ticket.quantity,
         price: ticket.price,
@@ -221,7 +229,33 @@ const TicketController = {
       }
 
       await t.commit();
-      res.status(201).json({ ticket: ticketWithCodes?? ticket });
+      ticket = await TicketRepository.findById(ticket.id);
+      mappedTicket = {
+        id: ticket.id,
+        branchId: ticket.branch_id,
+        branch_id: ticket.branch_id,
+        tripId: ticket.trip_id,
+        trip_id: ticket.trip_id,
+        method: ticket.method,
+        quantity: ticket.quantity,
+        price: Number(ticket.price),
+        total: Number(ticket.total),
+        date: ticket.date,
+        schedule: ticket.trip.schedule,
+        print: ticket.print,
+        adults: ticket.adults,
+        minors: ticket.minors,
+        qr: ticket.qr,
+        barcode: ticket.barcode,
+        branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
+        rut: ticket.branch.rut,
+        address: ticket.branch.address,
+        phone: ticket.branch.phone,
+        tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+        tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
+        tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
+      };
+      res.status(201).json({ ticket: mappedTicket });
     } catch (error) {
       if (!t.finished) {
         await t.rollback();
@@ -295,19 +329,19 @@ const TicketController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
       if (method === "Efectivo") {
-        let ticket = await TicketRepository.create(req.body, {
+        ticket = await TicketRepository.create(req.body, {
           transaction: t,
         });
-        const mappedTicket = {
+        let mappedTicket = {
           id: ticket.id,
-          method: ticket.method,
-          quantity: ticket.quantity,
-          price: ticket.price,
-          total: ticket.total,
-          adults: ticket.adults,
-          minors: ticket.minors,
-          date: ticket.date,
-          sequenceNumber: ticket.sequenceNumber,
+            method: ticket.method,
+            quantity: ticket.quantity,
+            price: ticket.price,
+            total: ticket.total,
+            adults: ticket.adults,
+            minors: ticket.minors,
+            date: ticket.date,
+            sequenceNumber: ticket.sequenceNumber,
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
@@ -319,7 +353,33 @@ const TicketController = {
         };
         
         await t.commit();
-        res.status(201).json({ ticket: ticketWithCodes });
+        ticket = await TicketRepository.findById(ticket.id);
+        mappedTicket = {
+          id: ticket.id,
+          branchId: ticket.branch_id,
+          branch_id: ticket.branch_id,
+          tripId: ticket.trip_id,
+          trip_id: ticket.trip_id,
+          method: ticket.method,
+          quantity: ticket.quantity,
+          price: Number(ticket.price),
+          total: Number(ticket.total),
+          date: ticket.date,
+          schedule: ticket.trip.schedule,
+          print: ticket.print,
+          adults: ticket.adults,
+          minors: ticket.minors,
+          qr: ticket.qr,
+          barcode: ticket.barcode,
+          branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
+          rut: ticket.branch.rut,
+          address: ticket.branch.address,
+          phone: ticket.branch.phone,
+          tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+          tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
+          tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
+        };
+        res.status(201).json({ ticket: mappedTicket });
       } else {
         const paymentData = {
           amount: total,
@@ -346,7 +406,7 @@ const TicketController = {
             transaction: t,
           });
 
-          const mappedTicket = {
+          let mappedTicket = {
             id: ticket.id,
             method: ticket.method,
             quantity: ticket.quantity,
@@ -366,7 +426,34 @@ const TicketController = {
               barcodePath
             };
           await t.commit();
-          res.status(201).json({ ticket: ticketWithCodes });
+
+          ticket = await TicketRepository.findById(ticket.id);
+        mappedTicket = {
+          id: ticket.id,
+          branchId: ticket.branch_id,
+          branch_id: ticket.branch_id,
+          tripId: ticket.trip_id,
+          trip_id: ticket.trip_id,
+          method: ticket.method,
+          quantity: ticket.quantity,
+          price: Number(ticket.price),
+          total: Number(ticket.total),
+          date: ticket.date,
+          schedule: ticket.trip.schedule,
+          print: ticket.print,
+          adults: ticket.adults,
+          minors: ticket.minors,
+          qr: ticket.qr,
+          barcode: ticket.barcode,
+          branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
+          rut: ticket.branch.rut,
+          address: ticket.branch.address,
+          phone: ticket.branch.phone,
+          tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+          tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
+          tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
+        };
+        res.status(201).json({ ticket: mappedTicket });
         } else {
           logger.error("Error al crear el pago:", result.message);
           await t.commit();
@@ -399,49 +486,38 @@ const TicketController = {
         return res.status(404).json({ msg: "TicketNotFound" });
       }
 
+      ticket.print += 1;
+      await ticket.save();
       let mappedTicket = [];
-      if (ticket.print < 2) {
+      //if (ticket.print < 2) {
         // Incrementar el contador de impresiones
         mappedTicket = {
           id: ticket.id,
           branchId: ticket.branch_id,
           branch_id: ticket.branch_id,
-          user_id: ticket.user_id,
-          userId: ticket.user_id,
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
           method: ticket.method,
-          status: ticket.status,
           quantity: ticket.quantity,
           price: Number(ticket.price),
           total: Number(ticket.total),
-          seats: Array.isArray(ticket.seats)
-            ? ticket.seats // Si ya es un array, úsalo directamente
-            : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
-          promotions: Array.isArray(ticket.promotions)
-            ? ticket.promotions // Si ya es un array, úsalo directamente
-            : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
           date: ticket.date,
-          print: ticket.print + 1,
+          schedule: ticket.trip.schedule,
           adults: ticket.adults,
           minors: ticket.minors,
-          time: await TicketController.getCurrentTime(),
+          print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-          companyName: ticket.branch.company.name,
-          companyRut: ticket.branch.company.rut,
-          companyAddress: ticket.branch.company.address,
-          companyPhone: ticket.branch.company.phone,
-          userName: ticket.user.name, // Incluir los datos del usuario asociado
+          rut: ticket.branch.rut,
+          address: ticket.branch.address,
+          phone: ticket.branch.phone,
           tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
           tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
           tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
         };
-      }
+      //}
 
-      ticket.print += 1;
-      await ticket.save();
 
       logger.info(`Agregando incidencia de reimpresión`);
       const incidentBody = {

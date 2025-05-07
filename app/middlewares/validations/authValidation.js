@@ -22,9 +22,7 @@ const updatePasswordSchema = Joi.object({
         'number.base': 'El ID del usuario debe ser un número.',
         'number.integer': 'El ID del usuario debe ser un entero.',
     }),
-    currentPassword: Joi.string().allow('').optional().messages({
-        'string.base': 'La contraseña actual debe ser un texto.',
-    }),
+    currentPassword: Joi.string().allow(null).empty('').optional(),
     newPassword: Joi.string().min(5).required().messages({
         'any.required': 'La nueva contraseña es obligatoria.',
         'string.min': 'La nueva contraseña debe tener al menos 8 caracteres.',

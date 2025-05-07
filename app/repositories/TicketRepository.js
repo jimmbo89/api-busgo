@@ -87,22 +87,14 @@ const TicketRepository = {
   async findAllDate(branchId, date = null, endDate = null, workerId = null) {
     const today = new Date();
     const formattedToday = today.toISOString().split("T")[0];
-    const searchDate = date || formattedToday;
+    const searchDate = date && date.trim() !== "" ? date : formattedToday; // Usa date si existe, sino formattedToday
+
     const whereClause = {
       branch_id: branchId, // Siempre filtramos por branch_id
+      date: endDate && endDate.trim() !== "" 
+        ? { [Op.between]: [searchDate, endDate] } // Rango de fechas
+        : searchDate, // Fecha única (searchDate puede ser date o formattedToday)
     };
-    // Agregar condiciones de fecha solo si `date` está presente
-    if (date && date.trim() !== "") {
-      if (endDate && endDate.trim() !== "") {
-        // Si `date` y `endDate` están presentes, filtrar por rango de fechas
-        whereClause.date = {
-          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
-        };
-      } else {
-        // Si solo `date` está presente, filtrar por una sola fecha
-        whereClause.date = date;
-      }
-    }
     return await Ticket.findAll({
       attributes: [
         "id",
@@ -201,7 +193,7 @@ const TicketRepository = {
         {
           model: Branch,
           as: "branch",
-          attributes: ["id", "name"],
+          attributes: ["id", "name", "rut", "image", "address"],
           include: [
             {
               model: Company,

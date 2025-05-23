@@ -13,6 +13,7 @@ const {
   CompanyRepository,
   IncidentRepository,
   PromotionRepository,
+  TicketTypeRepository,
 } = require("../repositories");
 
 const TripController = {
@@ -118,11 +119,67 @@ const TripController = {
         })
       );
 
-      res.status(200).json({ trips: mappedTrips });
+       // Ordenar usando el método del controlador
+      const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
+
+      res.status(200).json({ trips: sortedTrips });
     } catch (error) {
       logger.error("TripController->index: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
     }
+  },
+
+  async sortTripsBySchedule(trips) {
+    // 1. Obtener fecha y hora actual en Chile
+    const now = new Date();
+    const chileanDate = now.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('-').reverse().join('-'); // Formato: YYYY-MM-DD
+
+    const chileanTime = now.toLocaleTimeString('es-CL', {
+        timeZone: 'America/Santiago',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+    }).replace('.', ''); // Formato: HH:MM
+
+    // 2. Función para crear timestamp comparable (fecha + hora)
+    const createTripTimestamp = (trip) => {
+        return `${trip.date}T${trip.schedule}:00`;
+    };
+
+    // 3. Función de comparación
+    const compareTrips = (a, b) => {
+        // a) Primero verificar viajes en curso (hoy, horario pasado pero no terminado)
+        const isTodayA = a.date === chileanDate;
+        const isTodayB = b.date === chileanDate;
+        
+        const isAInProgress = isTodayA && 
+                            a.schedule < chileanTime && 
+                            (!a.end || new Date(createTripTimestamp(a)) > now);
+        const isBInProgress = isTodayB && 
+                            b.schedule < chileanTime && 
+                            (!b.end || new Date(createTripTimestamp(b)) > now);
+
+        if (isAInProgress && !isBInProgress) return -1;
+        if (!isAInProgress && isBInProgress) return 1;
+        if (isAInProgress && isBInProgress) {
+            return new Date(createTripTimestamp(a)) - new Date(createTripTimestamp(b));
+        }
+
+        // b) Comparación por fecha + hora combinadas
+        const timestampA = createTripTimestamp(a);
+        const timestampB = createTripTimestamp(b);
+        
+        // Ordenar cronológicamente (más recientes primero)
+        return new Date(timestampB) - new Date(timestampA);
+    };
+
+    // 4. Ordenar y devolver
+    return [...trips].sort(compareTrips);
   },
 
   async getTripDate(req, res) {
@@ -199,9 +256,13 @@ const TripController = {
         })
       );
 
-      const promotions = await PromotionRepository.findByActiveStatus(true);
+      const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
 
-      res.status(200).json({ trips: mappedTrips, promotions: promotions });
+
+      const promotions = await PromotionRepository.findByActiveStatus(true);
+      const tickettypes  = await TicketTypeRepository.findByActiveStatus(1);
+
+      res.status(200).json({ trips: sortedTrips, promotions: promotions, tickettypes:  tickettypes});
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
@@ -280,9 +341,11 @@ const TripController = {
         })
       );
 
+       const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
+
       const promotions = await PromotionRepository.findByActiveStatus(true);
 
-      res.status(200).json({ trips: mappedTrips, promotions: promotions });
+      res.status(200).json({ trips: sortedTrips, promotions: promotions });
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });

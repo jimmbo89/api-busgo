@@ -17,7 +17,7 @@ app.use(session({
 const PORT = process.env.PORT || 8000;
 
 // Lista de orígenes permitidos
-const allowedOrigins = ['https://busgo.wezen.cl', 'http://localhost:3000'];
+const allowedOrigins = ['https://busgo.wezen.cl', 'http://localhost:3000', 'http://localhost:3001'];
 
 app.use(cors({
   origin: function (origin, callback) {

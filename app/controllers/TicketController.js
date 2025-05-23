@@ -31,7 +31,7 @@ const TicketController = {
         trip_id: ticket.trip_id,
         method: ticket.method,
         status: ticket.status,
-        quantity: ticket.quantity,
+        quantity: Number(ticket.quantity),
         price: Number(ticket.price),
         total: Number(ticket.total),
         seats: Array.isArray(ticket.seats)
@@ -40,6 +40,9 @@ const TicketController = {
         promotions: Array.isArray(ticket.promotions)
           ? ticket.promotions // Si ya es un array, úsalo directamente
           : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
+        tickettypes: Array.isArray(ticket.tickettypes)
+          ? ticket.tickettypes // Si ya es un array, úsalo directamente
+          : JSON.parse(ticket.tickettypes), // Si es una cadena JSON, parsearla
         adults: ticket.adults,
         minors: ticket.minors,
         qr: ticket.qr,
@@ -103,7 +106,7 @@ const TicketController = {
         trip_id: ticket.trip_id,
         method: ticket.method,
         status: ticket.status,
-        quantity: ticket.quantity,
+        quantity: Number(ticket.quantity),
         price: Number(ticket.price),
         total: Number(ticket.total),
         seats: Array.isArray(ticket.seats)
@@ -112,6 +115,9 @@ const TicketController = {
         promotions: Array.isArray(ticket.promotions)
           ? ticket.promotions // Si ya es un array, úsalo directamente
           : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
+        tickettypes: Array.isArray(ticket.tickettypes)
+          ? ticket.tickettypes // Si ya es un array, úsalo directamente
+          : JSON.parse(ticket.tickettypes),
         adults: ticket.adults ? ticket.adults : 0,
         minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
@@ -213,8 +219,6 @@ const TicketController = {
         quantity: ticket.quantity,
         price: ticket.price,
         total: ticket.total,
-        adults: ticket.adults,
-        minors: ticket.minors,
         date: ticket.date,
         sequenceNumber: ticket.sequenceNumber,
       };
@@ -243,12 +247,10 @@ const TicketController = {
         date: ticket.date,
         schedule: ticket.trip.schedule,
         print: ticket.print,
-        adults: ticket.adults,
-        minors: ticket.minors,
         qr: ticket.qr,
         barcode: ticket.barcode,
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-        rut: ticket.branch.rut,
+        rut: ticket.branch.company.rut,
         address: ticket.branch.address,
         phone: ticket.branch.phone,
         tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
@@ -367,12 +369,10 @@ const TicketController = {
           date: ticket.date,
           schedule: ticket.trip.schedule,
           print: ticket.print,
-          adults: ticket.adults,
-          minors: ticket.minors,
           qr: ticket.qr,
           barcode: ticket.barcode,
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-          rut: ticket.branch.rut,
+          rut: ticket.branch.company.rut,
           address: ticket.branch.address,
           phone: ticket.branch.phone,
           tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
@@ -441,8 +441,6 @@ const TicketController = {
           date: ticket.date,
           schedule: ticket.trip.schedule,
           print: ticket.print,
-          adults: ticket.adults,
-          minors: ticket.minors,
           qr: ticket.qr,
           barcode: ticket.barcode,
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
@@ -498,18 +496,16 @@ const TicketController = {
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
           method: ticket.method,
-          quantity: ticket.quantity,
+          quantity: Number(ticket.quantity),
           price: Number(ticket.price),
           total: Number(ticket.total),
           date: ticket.date,
           schedule: ticket.trip.schedule,
-          adults: ticket.adults,
-          minors: ticket.minors,
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-          rut: ticket.branch.rut,
+          rut: ticket.branch.company.rut,
           address: ticket.branch.address,
           phone: ticket.branch.phone,
           tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado

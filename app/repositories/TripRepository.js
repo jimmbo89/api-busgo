@@ -69,19 +69,34 @@ const TripRepository = {
 
   async findDate(branchId, workerId = null, date = null) {
     const today = new Date();
-    const formattedToday = today.toISOString().split("T")[0];
+    const formattedToday = today.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('-').reverse().join('-');
     const searchDate = date || formattedToday;
     // Construir el objeto `where` dinámicamente
     const whereClause = {
       branch_id: branchId, // Filtra por branch_id (siempre aplicado)
     };
 
-    // Agregar la condición de fecha solo si `date` está presente
-    //if (date) {
-      whereClause.date = {
-        [Op.eq]: searchDate, // Filtra por fecha
-      };
-    //}
+    // Si hay workerId, buscamos viajes del día O viajes que hayan empezado pero no terminado
+    if (workerId) {
+      whereClause[Op.or] = [
+        { date: { [Op.eq]: searchDate } }, // Viajes del día actual
+        { 
+          start: { [Op.lte]: today }, // Viajes que empezaron antes de ahora
+          end: { [Op.or]: [
+            { [Op.gte]: today }, // Y que terminen después de ahora
+            { [Op.is]: null } // O que no tengan fecha de fin
+          ]}
+        }
+      ];
+    } else {
+      // Si no hay workerId, solo filtramos por fecha
+      whereClause.date = { [Op.eq]: searchDate };
+    }
     return await Trip.findAll({
       attributes: [
         "id",

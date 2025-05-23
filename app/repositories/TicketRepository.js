@@ -39,6 +39,7 @@ const TicketRepository = {
         "qr",
         "barcode",
         "promotions",
+        'tickettypes'
       ],
       include: [
         {
@@ -86,7 +87,12 @@ const TicketRepository = {
 
   async findAllDate(branchId, date = null, endDate = null, workerId = null) {
     const today = new Date();
-    const formattedToday = today.toISOString().split("T")[0];
+    const formattedToday = today.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('-').reverse().join('-');
     const searchDate = date && date.trim() !== "" ? date : formattedToday; // Usa date si existe, sino formattedToday
 
     const whereClause = {
@@ -114,6 +120,7 @@ const TicketRepository = {
         "barcode",
         "print",
         "promotions",
+        "tickettypes"
       ],
       where: whereClause,
       include: [
@@ -188,6 +195,7 @@ const TicketRepository = {
         "barcode",
         "print",
         "promotions",
+        "tickettypes"
       ],
       include: [
         {
@@ -256,6 +264,7 @@ const TicketRepository = {
       transactionTip,
       transactionCashback,
       promotions,
+      tickettypes
     } = body;
 
     try {
@@ -279,6 +288,7 @@ const TicketRepository = {
         transactionTip,
         transactionCashback,
         promotions,
+        tickettypes
       });
 
       logger.info(`Ticket creado exitosamente (ID: ${ticket.id})`);
@@ -310,6 +320,7 @@ const TicketRepository = {
       "transactionTip",
       "transactionCashback",
       "promotions",
+      "tickettypes"
     ];
 
     const updatedData = Object.keys(body)

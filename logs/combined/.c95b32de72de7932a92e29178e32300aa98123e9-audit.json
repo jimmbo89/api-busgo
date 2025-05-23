@@ -1,0 +1,25 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 7
+    },
+    "auditLog": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\.c95b32de72de7932a92e29178e32300aa98123e9-audit.json",
+    "files": [
+        {
+            "date": 1747858693050,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2025-05-21.log",
+            "hash": "9ba035af09e583d03eb178bebcf6c4d4c89827daf0a92ccc0e0e791f33e46a2a"
+        },
+        {
+            "date": 1747924620490,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2025-05-22.log",
+            "hash": "9154923bde49b1bc7bdcfc1dd337f1699a4ad45100c5a8e9b93ef16d0bbff8ea"
+        },
+        {
+            "date": 1748001091132,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2025-05-23.log",
+            "hash": "be5f4a1a13a4a1bfb4ce42e58cd23f1f2b19f052181690bf4af191f4b5bc3fd0"
+        }
+    ],
+    "hashType": "sha256"
+}

@@ -139,6 +139,54 @@ const storeTicketSchema = Joi.object({
       'array.base': 'Las promociones deben ser un array',
       'array.includesRequiredUnknowns': 'Cada promoción debe cumplir con el esquema de validación',
     }),
+    tickettypes: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().required().messages({
+          'number.base': 'El ID del tipo de ticket debe ser un número',
+          'any.required': 'El ID del tipo de ticket es requerido',
+        }),
+        name: Joi.string().required().messages({
+          'string.base': 'El nombre debe ser una cadena de texto',
+          'any.required': 'El nombre es requerido',
+        }),
+        cant: Joi.number().integer().min(1).required().messages({
+          'number.base': 'La cantidad debe ser un número entero',
+          'number.min': 'La cantidad debe ser al menos 1',
+          'any.required': 'La cantidad es requerida',
+        }),
+        promotion_id: Joi.number().allow(null).optional().messages({
+          'number.base': 'El ID de promoción debe ser un número',
+        }),
+        namePromotion: Joi.string().allow('').optional().messages({
+          'string.base': 'El nombre de la promoción debe ser un texto',
+        }),
+        percentage: Joi.number().min(0).max(100).default(0).messages({
+          'number.base': 'El porcentaje debe ser un número',
+          'number.min': 'El porcentaje no puede ser menor que 0',
+          'number.max': 'El porcentaje no puede ser mayor que 100',
+        }),
+        discount: Joi.number().min(0).default(0).messages({
+          'number.base': 'El descuento debe ser un número',
+          'number.min': 'El descuento no puede ser negativo',
+        }),
+        showPromotionSelect: Joi.boolean().default(false).messages({
+          'boolean.base': 'showPromotionSelect debe ser un valor booleano',
+        }),
+        selectedPromotion: Joi.boolean()
+          .allow(null)
+          .default(false)
+          .messages({
+            'boolean.base': 'selectedPromotion debe ser un valor booleano o null',
+          }),
+    })
+  )
+  .allow(null)
+  .optional()
+  .messages({
+    'array.base': 'Los tipos de ticket deben ser un array',
+    'array.includesRequiredUnknowns': 'Cada tipo de ticket debe cumplir con el esquema de validación',
+  }),
 });
 
 const storeTicketWebSchema = Joi.object({
@@ -233,6 +281,54 @@ const storeTicketWebSchema = Joi.object({
       'array.base': 'Las promociones deben ser un array',
       'array.includesRequiredUnknowns': 'Cada promoción debe cumplir con el esquema de validación',
     }),
+    tickettypes: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().required().messages({
+          'number.base': 'El ID del tipo de ticket debe ser un número',
+          'any.required': 'El ID del tipo de ticket es requerido',
+        }),
+        name: Joi.string().required().messages({
+          'string.base': 'El nombre debe ser una cadena de texto',
+          'any.required': 'El nombre es requerido',
+        }),
+        cant: Joi.number().integer().min(1).required().messages({
+          'number.base': 'La cantidad debe ser un número entero',
+          'number.min': 'La cantidad debe ser al menos 1',
+          'any.required': 'La cantidad es requerida',
+        }),
+        promotion_id: Joi.number().allow(null).optional().messages({
+          'number.base': 'El ID de promoción debe ser un número',
+        }),
+        namePromotion: Joi.string().allow('').optional().messages({
+          'string.base': 'El nombre de la promoción debe ser un texto',
+        }),
+        percentage: Joi.number().min(0).max(100).default(0).messages({
+          'number.base': 'El porcentaje debe ser un número',
+          'number.min': 'El porcentaje no puede ser menor que 0',
+          'number.max': 'El porcentaje no puede ser mayor que 100',
+        }),
+        discount: Joi.number().min(0).default(0).messages({
+          'number.base': 'El descuento debe ser un número',
+          'number.min': 'El descuento no puede ser negativo',
+        }),
+        showPromotionSelect: Joi.boolean().default(false).messages({
+          'boolean.base': 'showPromotionSelect debe ser un valor booleano',
+        }),
+        selectedPromotion: Joi.boolean()
+          .allow(null)
+          .default(false)
+          .messages({
+            'boolean.base': 'selectedPromotion debe ser un valor booleano o null',
+          }),
+    })
+  )
+  .allow(null)
+  .optional()
+  .messages({
+    'array.base': 'Los tipos de ticket deben ser un array',
+    'array.includesRequiredUnknowns': 'Cada tipo de ticket debe cumplir con el esquema de validación',
+  }),
 });
 
 // Esquema para actualizar un Ticket
@@ -369,6 +465,54 @@ const updateTicketSchema = Joi.object({
       "number.base": "El vuelto debe ser un número.",
       "number.min": "El vuelto no puede ser negativo.",
     }),
+    tickettypes: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().required().messages({
+          'number.base': 'El ID del tipo de ticket debe ser un número',
+          'any.required': 'El ID del tipo de ticket es requerido',
+        }),
+        name: Joi.string().required().messages({
+          'string.base': 'El nombre debe ser una cadena de texto',
+          'any.required': 'El nombre es requerido',
+        }),
+        cant: Joi.number().integer().min(1).required().messages({
+          'number.base': 'La cantidad debe ser un número entero',
+          'number.min': 'La cantidad debe ser al menos 1',
+          'any.required': 'La cantidad es requerida',
+        }),
+        promotion_id: Joi.number().allow(null).optional().messages({
+          'number.base': 'El ID de promoción debe ser un número',
+        }),
+        namePromotion: Joi.string().allow('').optional().messages({
+          'string.base': 'El nombre de la promoción debe ser un texto',
+        }),
+        percentage: Joi.number().min(0).max(100).default(0).messages({
+          'number.base': 'El porcentaje debe ser un número',
+          'number.min': 'El porcentaje no puede ser menor que 0',
+          'number.max': 'El porcentaje no puede ser mayor que 100',
+        }),
+        discount: Joi.number().min(0).default(0).messages({
+          'number.base': 'El descuento debe ser un número',
+          'number.min': 'El descuento no puede ser negativo',
+        }),
+        showPromotionSelect: Joi.boolean().default(false).messages({
+          'boolean.base': 'showPromotionSelect debe ser un valor booleano',
+        }),
+        selectedPromotion: Joi.boolean()
+          .allow(null)
+          .default(false)
+          .messages({
+            'boolean.base': 'selectedPromotion debe ser un valor booleano o null',
+          }),
+    })
+  )
+  .allow(null)
+  .optional()
+  .messages({
+    'array.base': 'Los tipos de ticket deben ser un array',
+    'array.includesRequiredUnknowns': 'Cada tipo de ticket debe cumplir con el esquema de validación',
+  }),
 });
 
 // Esquema para validar el ID de un Ticket

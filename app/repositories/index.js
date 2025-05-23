@@ -19,6 +19,7 @@ const TuuRepository = require('./TuuRepository');
 const StructureRepository = require('./StructureRepository');
 const IncidentRepository = require('./IncidentRepository');
 const PromotionRepository = require('./PromotionRepository');
+const TicketTypeRepository = require('./TicketTypeRepository');
 
 module.exports = {
     DeviceRepository,
@@ -41,5 +42,6 @@ module.exports = {
     TuuRepository,
     StructureRepository,
     IncidentRepository,
-    PromotionRepository
+    PromotionRepository,
+    TicketTypeRepository
 };

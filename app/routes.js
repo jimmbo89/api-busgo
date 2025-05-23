@@ -27,6 +27,7 @@ const TuuController = require("./controllers/TuuController");
 const StructureController = require("./controllers/StructureController");
 const PromotionController = require("./controllers/PromotionController");
 const IncidentController = require("./controllers/IncidentController");
+const TicketTypeController = require("./controllers/TicketTypeController");
 
 //Middlewares
 const auth = require("./middlewares/auth");
@@ -142,6 +143,7 @@ const { paymentSchema, paymentDataSchema, } = require("./middlewares/validations
 const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = require("./middlewares/validations/structureValidation");
 const { storePromotionSchema, updatePromotionSchema, idPromotionSchema, activePromotionSchema } = require("./middlewares/validations/promotionValidation");
 const { branch_idIncidentSchema } = require("./middlewares/validations/incidentValidation");
+const { storeTicketTypeSchema, updateTicketTypeSchema, idTicketTypeSchema, activeTicketTypeSchema } = require("./middlewares/validations/tickettypeValidation");
 
 router.get("/", (req, res) => res.json({ hello: "World" }));
 
@@ -679,6 +681,15 @@ router.post("/promotion-show", validateSchema(idPromotionSchema), PromotionContr
 router.put("/promotion", validateSchema(updatePromotionSchema), PromotionController.update);
 router.post("/promotion-destroy", validateSchema(idPromotionSchema),PromotionController.destroy);
 router.post("/get-promotion-avtive", validateSchema(activePromotionSchema), PromotionController.getPromotionsByActiveStatus);
+
+//Rutas Ticket Type
+router.get("/ticket-type", TicketTypeController.index);
+router.get("/get-ticket-type", TicketTypeController.index_true);
+router.post("/ticket-type", validateSchema(storeTicketTypeSchema), TicketTypeController.store);
+router.post("/ticket-type-show", validateSchema(idTicketTypeSchema), TicketTypeController.show);
+router.put("/ticket-type", validateSchema(updateTicketTypeSchema), TicketTypeController.update);
+router.post("/ticket-type-destroy", validateSchema(idTicketTypeSchema),TicketTypeController.destroy);
+router.post("/get-ticket-type-avtive", validateSchema(activeTicketTypeSchema), TicketTypeController.getByActiveStatus);
 
 //Rutas Incidents
 router.post("/incident-date", validateSchema(branch_idIncidentSchema),IncidentController.getIncidents);

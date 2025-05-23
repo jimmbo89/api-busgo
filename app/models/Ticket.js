@@ -139,6 +139,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.JSON, // Tipo de dato JSON
       allowNull: true, // Puede ser nulo
     },
+     tickettypes: {
+      type: DataTypes.JSON, // Tipo de dato JSON
+      allowNull: true, // Puede ser nulo
+    },
     qr_status: {
       type: DataTypes.INTEGER,
       allowNull: true

@@ -233,6 +233,18 @@ const TripController = {
               : JSON.parse(trip.vehicle.structure.seatMap) // Si es un string, lo parseas a array
             : []; // Si no existe structure.seatMap, devuelves un array vacío
 
+            // Calcular abordando y pendiente considerando quantity
+        const totalPasajeros = trip.tickets 
+            ? trip.tickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
+            : 0;
+            
+        const boarding = trip.tickets 
+            ? trip.tickets.reduce((sum, ticket) => 
+                sum + ((ticket.qr_status !== null && ticket.qr_status !== 0) ? (ticket.quantity || 1) : 0), 0)
+            : 0;
+            
+        const pending = totalPasajeros - boarding;
+
           return {
             id: trip.id,
             trip_id: trip.id,
@@ -252,6 +264,8 @@ const TripController = {
             destinationImage: trip.route.destination.image,
             reservedSeats,
             seatMap: seatMap,
+            boarding,       // Number of passengers who have boarded (sum of quantities)
+            pending       // Number of passengers pending to board
           };
         })
       );

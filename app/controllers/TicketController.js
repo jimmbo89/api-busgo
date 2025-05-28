@@ -749,7 +749,7 @@ const TicketController = {
       };
       //generar qr y codigo de barra
       const { qrCodePath, barcodePath } =
-        await TicketRepository.generateTicketCodes(mappedTicket, null);
+        await TicketRepository.generateTicketCodes(mappedTicket, ticketMaped);
       res.status(200).json({ ticket: updatedTicket });
     } catch (error) {
       const errorMsg = error.details

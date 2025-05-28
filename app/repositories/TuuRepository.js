@@ -133,32 +133,6 @@ const TuuRepository = {
         },
       };
 
-      // Construir el cuerpo de la solicitud
-      /*const requestData = {
-        Amount: paymentData.amount,
-        Device: paymentData.device,
-        Description: paymentData.description || "Pago de compra de ticket",
-        DteType: paymentData.dteType || 48,
-        extraData: {
-          exemptAmount: paymentData.exemptAmount ?? 0, // Valor predeterminado 0 si no está definido
-          customFields: paymentData.customFields || [], // Array vacío si no hay campos personalizados
-          sourceName: paymentData || "POS Pagos",
-          sourceVersion: paymentData || "v1.17v0.2",
-        },
-      };
-
-      // Configurar las opciones de la solicitud
-      const options = {
-        method: "POST",
-        url: "https://integrations.payment.haulmer.com/PaymentRequest/Create",
-        headers: {
-          accept: "application/json",
-          "content-type": "application/json",
-          "X-API-Key": process.env.TUU_API_KEY, // Usar la API Key desde las variables de entorno
-        },
-        data: requestData,
-      };*/
-
       // Realizar la solicitud a la API
       const response = await axios.request(options);
 

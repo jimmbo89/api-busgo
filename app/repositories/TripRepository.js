@@ -148,7 +148,7 @@ const TripRepository = {
         {
           model: Ticket, // Incluir los tickets relacionados
           as: "tickets",
-          attributes: ["id", "seats"], // Suponiendo que los asientos están en el campo 'seat_numbers' (como un array)
+          attributes: ["id", "seats", "qr_status", "quantity"], // Suponiendo que los asientos están en el campo 'seat_numbers' (como un array)
         },
         {
           model: Worker, // Incluir los trabajadores relacionados
@@ -297,7 +297,7 @@ const TripRepository = {
     if (updatedFields.date && updatedFields.date !== trip.date) {
       whereClause.date = updatedFields.date;
     }
-    if (updatedFields.schedule && updatedFields.time !== trip.schedule) {
+    if (updatedFields.schedule && updatedFields.schedule !== trip.schedule) {
       whereClause.schedule = updatedFields.schedule;
     }
     if (updatedFields.branch_id && updatedFields.branch_id !== trip.branch_id) {

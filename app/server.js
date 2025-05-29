@@ -5,6 +5,7 @@ const app = express();
 const session = require('express-session');
 const { sequelize } = require('./models/index');
 const cors = require('cors');
+require('../config/scheduler'); 
 
 // Configuración de sesión
 app.use(session({

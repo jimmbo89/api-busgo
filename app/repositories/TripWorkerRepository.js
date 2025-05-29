@@ -64,7 +64,8 @@ const TripWorkerRepository = {
   },
 
   async create(body) {
-    const { branch_id, trip_id, worker_idc } = body;
+    const { branch_id, trip_id, worker_id, date } = body;
+    logger.info(`Creando relación TripWorker con ID: ${branch_id}`);
 
     try {
       const tripWorker = await TripWorker.create({

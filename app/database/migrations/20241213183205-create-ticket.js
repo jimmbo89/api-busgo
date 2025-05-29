@@ -58,11 +58,11 @@ module.exports = {
         defaultValue: 1
       },
       price: {
-        type: Sequelize.DECIMAL(10, 2),
+        type: Sequelize.DECIMAL(16, 2),
         allowNull: false
       },
       total: {
-        type: Sequelize.DECIMAL(14, 2),
+        type: Sequelize.DECIMAL(16, 2),
         allowNull: false,
         defaultValue: 0
       },

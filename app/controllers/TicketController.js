@@ -786,6 +786,9 @@ const TicketController = {
   },
 
   async getMonthlySales(req, res) {
+    logger.info(`${req.user.name} - Obtiene las ventas mensuales`);
+    logger.info("Datos recibidos al obtener las ventas mensuales");
+    logger.info(JSON.stringify(req.body));
     try {
       const { month, type, branch_id } = req.body;
       if (branch_id) {
@@ -834,26 +837,6 @@ const TicketController = {
         // Concatenar origen y destino
         const routeInfo = `${trip.route.origin.address} - ${trip.route.destination.address}`;
 
-        // Calcular el horario
-        /*let horario;
-        if (trip.end) {
-          // Si hay hora de finalización, usar start y end
-          horario = `${trip.start} - ${trip.end}`;
-        } else if (trip.start) {
-          // Si hay hora de inicio, sumar estimated a start
-          const estimatedTime = TicketController.addMinutesToTime(
-            trip.start,
-            trip.route.estimated
-          );
-          horario = `${trip.start} - ${estimatedTime}`;
-        } else {
-          // Si no hay hora de inicio, sumar estimated a schedule
-          const estimatedTime = TicketController.addMinutesToTime(
-            trip.schedule,
-            trip.route.estimated
-          );
-          horario = `${trip.schedule} - ${estimatedTime}`;
-        }*/
           let horario;
 
           if (trip.end) {

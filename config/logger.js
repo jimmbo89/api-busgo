@@ -46,18 +46,18 @@ const combinedLogDir = path.join(logDir, 'combined');
 try {
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
-    console.log(`Directorio de logs creado: ${logDir}`);
+    logger.info(`Directorio de logs creado: ${logDir}`);
   }
   if (!fs.existsSync(errorLogDir)) {
     fs.mkdirSync(errorLogDir, { recursive: true });
-    console.log(`Subdirectorio para errores creado: ${errorLogDir}`);
+    logger.info(`Subdirectorio para errores creado: ${errorLogDir}`);
   }
   if (!fs.existsSync(combinedLogDir)) {
     fs.mkdirSync(combinedLogDir, { recursive: true });
-    console.log(`Subdirectorio combinado creado: ${combinedLogDir}`);
+    logger.info(`Subdirectorio combinado creado: ${combinedLogDir}`);
   }
 } catch (err) {
-  console.error('Error crítico al crear directorios de logs:', err);
+  logger.error('Error crítico al crear directorios de logs:', err);
   process.exit(1); // Salir si no podemos crear los directorios
 }
 
@@ -103,12 +103,12 @@ const logger = winston.createLogger({
 });
 
 // 4. Verificación de que funciona
-logger.info('Logger configurado correctamente');
-logger.debug(`Los logs se guardarán en: ${logDir}`);
+//logger.info('Logger configurado correctamente');
+//logger.debug(`Los logs se guardarán en: ${logDir}`);
 
 // 5. Manejo de errores del propio logger
-logger.on('error', error => {
-  console.error('Error en el sistema de logging:', error);
-});
+//logger.on('error', error => {
+  //logger.error('Error en el sistema de logging:', error);
+//});
 
 module.exports = logger;

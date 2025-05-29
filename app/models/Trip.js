@@ -84,7 +84,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     },
     price: {
-      type: DataTypes.DECIMAL(10, 2), // Define el tipo de datos para el precio
+      type: DataTypes.DECIMAL(16, 2), // Define el tipo de datos para el precio
       allowNull: false, // Si el precio es obligatorio
       validate: {
         isDecimal: true, // Valida que el valor sea un decimal

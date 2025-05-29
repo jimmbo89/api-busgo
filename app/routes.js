@@ -144,6 +144,8 @@ const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = requ
 const { storePromotionSchema, updatePromotionSchema, idPromotionSchema, activePromotionSchema } = require("./middlewares/validations/promotionValidation");
 const { branch_idIncidentSchema } = require("./middlewares/validations/incidentValidation");
 const { storeTicketTypeSchema, updateTicketTypeSchema, idTicketTypeSchema, activeTicketTypeSchema } = require("./middlewares/validations/tickettypeValidation");
+const TripTemplateController = require("./controllers/TripTemplateController");
+const { storeTripTemplateSchema, updateTripTemplateSchema, idTripTemplateSchema, branchTripTemplateSchema } = require("./middlewares/validations/triptemplateValidation");
 
 router.get("/", (req, res) => res.json({ hello: "World" }));
 
@@ -690,6 +692,14 @@ router.post("/ticket-type-show", validateSchema(idTicketTypeSchema), TicketTypeC
 router.put("/ticket-type", validateSchema(updateTicketTypeSchema), TicketTypeController.update);
 router.post("/ticket-type-destroy", validateSchema(idTicketTypeSchema),TicketTypeController.destroy);
 router.post("/get-ticket-type-avtive", validateSchema(activeTicketTypeSchema), TicketTypeController.getByActiveStatus);
+
+//Rutas TripTemplate
+router.post("/get-trip-template", TripTemplateController.index);
+router.post("/trip-template", validateSchema(storeTripTemplateSchema), TripTemplateController.store);
+router.post("/trip-template-show", validateSchema(idTripTemplateSchema), TripTemplateController.show);
+router.put("/trip-template", validateSchema(updateTripTemplateSchema), TripTemplateController.update);
+router.post("/trip-template-destroy", validateSchema(idTripTemplateSchema),TripTemplateController.destroy);
+router.post("/get-trip-template-avtive", validateSchema(branchIdDeviceSchema), TripTemplateController.getActiveByBranch);
 
 //Rutas Incidents
 router.post("/incident-date", validateSchema(branch_idIncidentSchema),IncidentController.getIncidents);

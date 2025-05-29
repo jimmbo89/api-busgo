@@ -20,6 +20,7 @@ const StructureRepository = require('./StructureRepository');
 const IncidentRepository = require('./IncidentRepository');
 const PromotionRepository = require('./PromotionRepository');
 const TicketTypeRepository = require('./TicketTypeRepository');
+const TripTemplateRepository = require('./TripTemplateRepository');
 
 module.exports = {
     DeviceRepository,
@@ -43,5 +44,6 @@ module.exports = {
     StructureRepository,
     IncidentRepository,
     PromotionRepository,
-    TicketTypeRepository
+    TicketTypeRepository,
+    TripTemplateRepository
 };

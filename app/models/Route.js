@@ -29,6 +29,7 @@ module.exports = (sequelize, DataTypes) => {
       });
 
       Route.hasMany(models.Trip, { foreignKey: 'route_id', as: 'trips' });
+      Route.hasMany(models.TripTemplate, { foreignKey: 'route_id', as: 'triptemplates' });
     }
   }
   Route.init({

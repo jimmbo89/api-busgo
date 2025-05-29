@@ -34,6 +34,7 @@ module.exports = (sequelize, DataTypes) => {
     });
 
     Vehicle.hasMany(models.Trip, { foreignKey: 'vehicle_id', as: 'trips' });
+    Vehicle.hasMany(models.TripTemplate, { foreignKey: 'vehicle_id', as: 'triptemplates' });
     }
   }
   Vehicle.init({

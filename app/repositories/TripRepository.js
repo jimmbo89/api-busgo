@@ -214,6 +214,8 @@ const TripRepository = {
   },
 
   async create(body) {
+    logger.info("Creando viaje...");
+    logger.info(body);
     const {
       date,
       schedule,

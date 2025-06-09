@@ -81,16 +81,24 @@ const TripRepository = {
       branch_id: branchId, // Filtra por branch_id (siempre aplicado)
     };
 
-    // Si hay workerId, buscamos viajes del día O viajes que hayan empezado pero no terminado
     if (workerId) {
-      whereClause[Op.or] = [
-        { date: { [Op.eq]: searchDate } }, // Viajes del día actual
-        { 
-          start: { [Op.lte]: today }, // Viajes que empezaron antes de ahora
-          end: { [Op.or]: [
-            { [Op.gte]: today }, // Y que terminen después de ahora
-            { [Op.is]: null } // O que no tengan fecha de fin
-          ]}
+        whereClause[Op.or] = [
+        // Viajes del día actual (fecha normal)
+        { date: { [Op.eq]: searchDate } },
+        
+        // Viajes que:
+        // 1) empezaron antes de hoy
+        // 2) no han terminado (end es null)
+        // 3) arrival coincide con searchDate (hoy)
+        {
+          [Op.and]: [
+            { start: { [Op.lte]: today } },
+            { end: { [Op.is]: null } },
+            Sequelize.where(
+              Sequelize.fn('DATE', Sequelize.col('arrival')),
+              { [Op.eq]: searchDate }
+            )
+          ]
         }
       ];
     } else {
@@ -214,8 +222,8 @@ const TripRepository = {
   },
 
   async create(body) {
-    logger.info("Creando viaje...");
-    logger.info(body);
+    //logger.info("Creando viaje...");
+    //logger.info(body);
     const {
       date,
       schedule,
@@ -292,41 +300,76 @@ const TripRepository = {
     }
   },
 
-  async existsByUpdatedFields(trip, updatedFields) {
+  /*async existsByUpdatedFields(trip, updatedFields) {
     const whereClause = {};
 
-    // Verificamos solo los campos que están siendo enviados (modificados)
-    if (updatedFields.date && updatedFields.date !== trip.date) {
-      whereClause.date = updatedFields.date;
+    // Solo verificamos campos que son diferentes a los originales
+    if (updatedFields.date !== undefined && updatedFields.date !== trip.date) {
+        whereClause.date = updatedFields.date;
     }
-    if (updatedFields.schedule && updatedFields.schedule !== trip.schedule) {
-      whereClause.schedule = updatedFields.schedule;
+    if (updatedFields.schedule !== undefined && updatedFields.schedule !== trip.schedule) {
+        whereClause.schedule = updatedFields.schedule;
     }
-    if (updatedFields.branch_id && updatedFields.branch_id !== trip.branch_id) {
-      whereClause.branch_id = updatedFields.branch_id;
+    if (updatedFields.branch_id !== undefined && updatedFields.branch_id !== trip.branch_id) {
+        whereClause.branch_id = updatedFields.branch_id;
     }
-    if (
-      updatedFields.vehicle_id &&
-      updatedFields.vehicle_id !== trip.vehicle_id
-    ) {
-      whereClause.vehicle_id = updatedFields.vehicle_id;
+    if (updatedFields.vehicle_id !== undefined && updatedFields.vehicle_id !== trip.vehicle_id) {
+        whereClause.vehicle_id = updatedFields.vehicle_id;
     }
-    if (updatedFields.route_id && updatedFields.route_id !== trip.route_id) {
-      whereClause.route_id = updatedFields.route_id;
+    if (updatedFields.route_id !== undefined && updatedFields.route_id !== trip.route_id) {
+        whereClause.route_id = updatedFields.route_id;
     }
 
-    // Si alguno de los campos a actualizar está presente, verificamos si ya existe un viaje
+    // Si hay campos modificados, buscamos si ya existe otro viaje con esos valores
     if (Object.keys(whereClause).length > 0) {
-      whereClause.id = { [Op.ne]: trip.id }; // Excluir el viaje actual
+        whereClause.id = { [Op.ne]: trip.id }; // Excluir el viaje actual
 
-      const existingTrip = await Trip.findOne({ where: whereClause });
-
-      return existingTrip; // Devuelve el viaje encontrado si existe
+        const existingTrip = await Trip.findOne({ where: whereClause });
+        return existingTrip; // Si existe, significa que hay un duplicado
     }
 
-    return null; // No hay cambios en los campos, por lo que no hay duplicados
-  },
+    return null; // No hay cambios relevantes, no hay duplicado
+},*/
+async existsByUpdatedFields(trip, updatedFields) {
+    const whereClause = {};
 
+    // Solo verificamos campos que son diferentes a los originales
+    if (updatedFields.date !== undefined && updatedFields.date !== trip.date) {
+        whereClause.date = updatedFields.date;
+    } else {
+        whereClause.date = trip.date; // Mantener el valor original si no cambia
+    }
+    
+    if (updatedFields.schedule !== undefined && updatedFields.schedule !== trip.schedule) {
+        whereClause.schedule = updatedFields.schedule;
+    } else {
+        whereClause.schedule = trip.schedule; // Mantener el valor original si no cambia
+    }
+    
+    if (updatedFields.branch_id !== undefined && updatedFields.branch_id !== trip.branch_id) {
+        whereClause.branch_id = updatedFields.branch_id;
+    } else {
+        whereClause.branch_id = trip.branch_id; // Mantener el valor original si no cambia
+    }
+    
+    if (updatedFields.vehicle_id !== undefined && updatedFields.vehicle_id !== trip.vehicle_id) {
+        whereClause.vehicle_id = updatedFields.vehicle_id;
+    } else {
+        whereClause.vehicle_id = trip.vehicle_id; // Mantener el valor original si no cambia
+    }
+    
+    if (updatedFields.route_id !== undefined && updatedFields.route_id !== trip.route_id) {
+        whereClause.route_id = updatedFields.route_id;
+    } else {
+        whereClause.route_id = trip.route_id; // Mantener el valor original si no cambia
+    }
+
+    // Siempre excluir el viaje actual
+    whereClause.id = { [Op.ne]: trip.id };
+
+    const existingTrip = await Trip.findOne({ where: whereClause });
+    return existingTrip;
+},
   async updateTripWorkers(trip, body) {
     try {
       let { id: trip_id, branch_id, date, workers } = body; // Extraer los datos necesarios del body

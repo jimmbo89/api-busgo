@@ -377,16 +377,30 @@ const TripTemplateController = {
 
             const trip = await TripRepository.create(tripData, { transaction });
 
-            // Procesar workers
-            if (template.workers?.length > 0) {
-              await Promise.all(template.workers.map(async (worker) => {
-                await TripWorkerRepository.create({
-                  branch_id: template.branch_id,
-                  trip_id: trip.id,
-                  worker_id: worker.id,
-                  date: formattedToday
-                }, { transaction });
-              }));
+            if (template.workers) {
+              try {
+                // Convertir a array si es necesario
+                const workersArray = typeof template.workers === 'string' 
+                  ? JSON.parse(template.workers) 
+                  : template.workers;
+
+                // Verificar que sea un array válido
+                if (Array.isArray(workersArray) && workersArray.length > 0) {
+                  await Promise.all(workersArray.map(async (worker) => {
+                    if (worker && worker.id) { // Validación adicional
+                      await TripWorkerRepository.create({
+                        branch_id: template.branch_id,
+                        trip_id: trip.id,
+                        worker_id: worker.id,
+                        date: formattedToday
+                      }, { transaction });
+                    }
+                  }));
+                }
+              } catch (error) {
+                console.error('Error procesando workers:', error);
+                // Puedes agregar aquí manejo de errores adicional
+              }
             }
           }
         } catch (templateError) {

@@ -317,7 +317,7 @@ const TripController = {
 
       const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
-          const reservedSeats = trip.tickets
+          /*const reservedSeats = trip.tickets
             ? trip.tickets
                 .filter((ticket) => !ticket_id || ticket.id !== ticket_id) // Si ticketId está presente, excluye el ticket con ese id
                 .flatMap((ticket) => {
@@ -331,7 +331,18 @@ const TripController = {
             ? Array.isArray(trip.vehicle.structure.seatMap)
               ? trip.vehicle.structure.seatMap // Si ya es un array, lo usas directamente
               : JSON.parse(trip.vehicle.structure.seatMap) // Si es un string, lo parseas a array
-            : []; // Si no existe structure.seatMap, devuelves un array vacío
+            : []; // Si no existe structure.seatMap, devuelves un array vacío*/
+
+            const totalPasajeros = trip.tickets 
+            ? trip.tickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
+            : 0;
+            
+        const boarding = trip.tickets 
+            ? trip.tickets.reduce((sum, ticket) => 
+                sum + ((ticket.qr_status !== null && ticket.qr_status !== 0) ? (ticket.quantity || 1) : 0), 0)
+            : 0;
+            
+        const pending = totalPasajeros - boarding;
           return {
             id: trip.id,
             trip_id: trip.id,
@@ -349,17 +360,19 @@ const TripController = {
             originImage: trip.route.origin.image,
             destination: trip.route.destination.address,
             destinationImage: trip.route.destination.image,
-            reservedSeats,
-            seatMap: seatMap,
+            //reservedSeats,
+            //seatMap: seatMap,
+            boarding,       // Number of passengers who have boarded (sum of quantities)
+            pending       // Number of passengers pending to board
           };
         })
       );
 
        const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
 
-      const promotions = await PromotionRepository.findByActiveStatus(true);
+      //const promotions = await PromotionRepository.findByActiveStatus(true);
 
-      res.status(200).json({ trips: sortedTrips, promotions: promotions });
+      res.status(200).json({ trips: sortedTrips/*, promotions: promotions*/ });
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });

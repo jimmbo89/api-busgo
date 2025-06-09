@@ -801,10 +801,25 @@ const TicketController = {
           return res.status(404).json({ msg: "BranchNotFound" });
         }
       }
+
+      const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('-').reverse().join('-');
+      /*const { ticketsVendidos, ingresoGenerado } =
+        await TicketRepository.getMonthlySales(month, type, branch_id);*/
       const { ticketsVendidos, ingresoGenerado } =
-        await TicketRepository.getMonthlySales(month, type, branch_id);
-      const occupancyRate = await TicketRepository.getOccupancyRate(
+        await TicketRepository.getDailySales(formattedToday, type, branch_id);
+      /*const occupancyRate = await TicketRepository.getOccupancyRate(
         month,
+        type,
+        branch_id
+      );*/
+      const occupancyRate = await TicketRepository.getDailyOccupancyRate(
+        formattedToday,
         type,
         branch_id
       );
@@ -815,15 +830,28 @@ const TicketController = {
         branch_id
       );
 
-      const trips = await TicketRepository.getTripsWithDetails(
+      /*const trips = await TicketRepository.getTripsWithDetails(
         month,
+        type,
+        branch_id
+      );*/
+
+      const trips = await TicketRepository.getDailyTripsWithDetails(
+        formattedToday,
         type,
         branch_id
       );
 
-      const { totalIncidents, incidents } =
+      /*const { totalIncidents, incidents } =
         await IncidentRepository.getIncidentsByBranchMonth(
           month,
+          type,
+          branch_id
+        );*/
+
+      const { totalIncidents, incidents } =
+        await IncidentRepository.getIncidentsByBranchDay(
+          formattedToday,
           type,
           branch_id
         );

@@ -637,6 +637,35 @@ const TicketRepository = {
       ingresoGenerado: result.ingreso_generado || 0,
     };
   },
+  async getDailySales(date, type, branchId = null) {
+    const whereClause = {
+      [Op.and]: [
+        sequelize.where(
+          sequelize.fn("DATE", sequelize.col("date")),
+          date
+        ),
+      ],
+    };
+
+    // Si el type es "Sucursal", agregar la condición de branch_id
+    if (type === "Sucursal" && branchId) {
+      whereClause[Op.and].push({ branch_id: branchId });
+    }
+
+    const result = await Ticket.findOne({
+      attributes: [
+        [sequelize.fn("COUNT", sequelize.col("id")), "tickets_vendidos"],
+        [sequelize.fn("SUM", sequelize.col("total")), "ingreso_generado"],
+      ],
+      where: whereClause,
+      raw: true,
+    });
+
+    return {
+      ticketsVendidos: result?.tickets_vendidos || 0,
+      ingresoGenerado: result?.ingreso_generado || 0,
+    };
+  },
 
   async getOccupancyRate(month, type, branchId = null) {
     try {
@@ -687,6 +716,58 @@ const TicketRepository = {
       return Number(occupancyRate.toFixed(2)); // Redondear a 2 decimales
     } catch (error) {
       logger.error("Error al calcular la tasa de ocupación:", error);
+      throw error;
+    }
+  },
+  async getDailyOccupancyRate(date, type, branchId = null) {
+    try {
+      // Condiciones base
+      const whereClause = {
+        [Op.and]: [
+          sequelize.where(
+            sequelize.fn("DATE", sequelize.col("Trip.date")),
+            date // Usar la fecha completa YYYY-MM-DD
+          ),
+        ],
+      };
+
+      // Si type es "Sucursal", agregar la condición de branch_id
+      if (type === "Sucursal" && branchId) {
+        whereClause[Op.and].push({ branch_id: branchId });
+      }
+
+      // Obtener todos los viajes que cumplen con las condiciones
+      const trips = await Trip.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Ticket,
+            as: "tickets",
+            attributes: ["quantity"], // Incluir la columna quantity de los tickets
+            required: false, // Permitir viajes sin tickets
+          },
+        ],
+      });
+
+      // Calcular el total de viajes y el total de pasajeros manualmente
+      let totalTrips = 0;
+      let totalPassengers = 0;
+
+      trips.forEach((trip) => {
+        totalTrips += 1; // Cada viaje cuenta como 1
+        if (trip.tickets && trip.tickets.length > 0) {
+          trip.tickets.forEach((ticket) => {
+            totalPassengers += ticket.quantity || 0; // Sumar la cantidad de pasajeros de cada ticket
+          });
+        }
+      });
+
+      // Calcular la tasa de ocupación (promedio de pasajeros por viaje)
+      const occupancyRate = totalTrips > 0 ? totalPassengers / totalTrips : 0;
+
+      return Number(occupancyRate.toFixed(2)); // Redondear a 2 decimales
+    } catch (error) {
+      logger.error("Error al calcular la tasa de ocupación diaria:", error);
       throw error;
     }
   },
@@ -799,6 +880,75 @@ const TicketRepository = {
           attributes: ["id", "quantity", "total"],
           required: false,
           //where: {pay: 1}
+        },
+      ],
+    });
+  },
+
+  async getDailyTripsWithDetails(date, type, branchId) {
+    // Condiciones base
+    const whereClause = {
+      [Op.and]: [
+        sequelize.where(
+          sequelize.fn("DATE", sequelize.col("Trip.date")),
+          date
+        ), // Filtrar viajes del día específico
+      ],
+    };
+
+    // Si type es "Sucursal", agregar la condición de branch_id
+    if (type === "Sucursal" && branchId) {
+      whereClause[Op.and].push({ branch_id: branchId });
+    }
+
+    return await Trip.findAll({
+      attributes: [
+        "id",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
+      where: whereClause,
+      order: [['schedule', 'ASC']], // Ordenar por horario en lugar de fecha
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "seats", "image", "brand"],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "name", "estimated"],
+          include: [
+            {
+              model: Location,
+              as: "origin",
+              attributes: ["id", "address", "image"],
+            },
+            {
+              model: Location,
+              as: "destination",
+              attributes: ["id", "address", "image"],
+            },
+          ],
+        },
+        {
+          model: Ticket,
+          as: "tickets",
+          attributes: ["id", "quantity", "total"],
+          required: false,
         },
       ],
     });

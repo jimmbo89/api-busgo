@@ -132,6 +132,47 @@ const IncidentRepository = {
     }
   },
 
+  async getIncidentsByBranchDay(date, type, branchId = null) {
+    try {
+      const whereClause = {
+        [Op.and]: [
+          sequelize.where(
+            sequelize.fn("DATE", sequelize.col("date")),
+            date
+          ),
+        ],
+      };
+
+      // Si el tipo es "Sucursal" y hay un branchId, filtrar por branch_id
+      if (type === "Sucursal" && branchId) {
+        whereClause[Op.and].push({ branch_id: branchId });
+      }
+
+      // Obtener las incidencias
+      const incidents = await Incident.findAll({
+        where: whereClause,
+        include: [
+          {
+            model: Branch,
+            as: "branch",
+            attributes: ["name", "image"],
+          },
+        ],
+        order: [['date', 'DESC']], // Ordenar por fecha descendente (más recientes primero)
+      });
+
+      return {
+        totalIncidents: incidents.length,
+        incidents,
+      };
+    } catch (error) {
+      logger.error(
+        `Error en IncidentRepository->getIncidentsByBranchDay: ${error.message}`
+      );
+      throw error;
+    }
+  },
+
   async getIncidentsByBranchAndDate( branch_id, startDate = null, endDate = null ) {
     try {
       let dateFilter = {};

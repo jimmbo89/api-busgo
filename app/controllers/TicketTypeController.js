@@ -37,6 +37,8 @@ const TicketTypeController = {
   // Crear un nuevo tipo de pasaje
   async store(req, res) {
     logger.info(`${req.user.name} - Creando un nuevo tipo de pasaje`);
+    logger.info("datos recibidos al crear un tipo de pasajero");
+    logger.info(JSON.stringify(req.body));
 
     const existingTicketType = await TicketTypeRepository.existsByName(
       req.body.name
@@ -82,6 +84,8 @@ const TicketTypeController = {
   // Actualizar un tipo de pasaje
   async update(req, res) {
     logger.info(`${req.user.name} - Editando un tipo de pasaje`);
+    logger.info("datos recibidos al editar un tipo de pasajero");
+    logger.info(JSON.stringify(req.body));
     const { name, id } = req.body;
     
     try {

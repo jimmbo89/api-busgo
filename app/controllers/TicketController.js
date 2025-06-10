@@ -383,7 +383,7 @@ const TicketController = {
       } else {
         const paymentData = {
           amount: total,
-          device: device || "TJ44245N20440",
+          device: device || "TJ44243320217",
           description: "Compra de tickets",
           dteType: 48,
           exemptAmount: 0,

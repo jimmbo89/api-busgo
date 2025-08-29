@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Route, Location } = require('../models'); // Aquí usamos el modelo Route
+const { Route, Location, Sequelize, Branch } = require('../models'); // Aquí usamos el modelo Route
 const logger = require('../../config/logger'); // Logger para seguimiento
 
 const RouteRepository = {
@@ -88,6 +88,92 @@ const RouteRepository = {
   async delete(route) {
     return await route.destroy();
   },
+
+  // 👇 Nuevo: Obtener rutas asociadas a una branch (solo sus origin_id)
+  async findAssociatedRoutesByBranchId(branchId) {
+    return await Route.findAll({
+      attributes: ['origin_id'],
+      include: [
+        {
+          model: Branch,
+          as: 'branches',
+          where: { id: branchId },
+          attributes: [],
+          through: { attributes: [] },
+        },
+      ],
+      raw: true,
+    });
+  },
+
+  // 👇 Nuevo: Obtener rutas cuyo origin_id esté en el array dado
+  async findByOriginIds(originIds) {
+    if (!originIds.length) return [];
+
+    return await Route.findAll({
+      where: { origin_id: originIds },
+      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      include: [
+        {
+          model: Location,
+          as: 'origin',
+          attributes: ['id', 'address', 'image'],
+        },
+        {
+          model: Location,
+          as: 'destination',
+          attributes: ['id', 'address', 'image'],
+        },
+      ],
+    });
+  },
+
+  // 👇 Nuevo: Obtener rutas cuyo origin_id NO esté en uso por ninguna branch
+  async findRoutesWithUnusedOrigins() {
+  // Paso 1: Obtener los origin_id que están en uso por ALGUNA branch
+  const usedOriginIdsResult = await Route.findAll({
+  attributes: ['origin_id'],
+  include: [
+    {
+      model: Branch,
+      as: 'branches',
+      attributes: [],
+      through: { attributes: [] },
+      required: true, 
+    },
+  ],
+  where: {
+    origin_id: { [Op.ne]: null }
+  },
+  raw: true,
+});
+
+  logger.info('origenes empleados ya');
+  logger.info(JSON.stringify(usedOriginIdsResult));
+  const usedOriginIds = usedOriginIdsResult.map(r => r.origin_id);
+
+  // Paso 2: Buscar rutas cuyo origin_id NO esté en esa lista
+  const whereClause = usedOriginIds.length > 0
+    ? { origin_id: { [Op.notIn]: usedOriginIds } }
+    : {};
+
+  return await Route.findAll({
+    where: whereClause,
+    attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+    include: [
+      {
+        model: Location,
+        as: 'origin',
+        attributes: ['id', 'address', 'image'],
+      },
+      {
+        model: Location,
+        as: 'destination',
+        attributes: ['id', 'address', 'image'],
+      },
+    ],
+  });
+},
 };
 
 module.exports = RouteRepository;

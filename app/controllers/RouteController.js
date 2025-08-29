@@ -42,6 +42,61 @@ const RouteController = {
         }
     },
 
+  // 👇 Nuevo: Obtener rutas disponibles según branch
+  async getAvailableRoutesByBranch(req, res) {
+    const { branch_id } = req.body;
+
+    logger.info(`${req.user.name} - Buscando rutas disponibles para la branch ${branch_id}`);
+
+    try {
+      // 1. Buscar rutas asociadas a la branch
+      const associatedRoutes = await RouteRepository.findAssociatedRoutesByBranchId(branch_id);
+
+      let routesToReturn;
+
+      if (associatedRoutes.length > 0) {
+        logger.info("Hay rutas asociadas a la branch");
+        // Caso 1: Tiene rutas → obtener todas las rutas con esos origin_id
+        const originIds = [...new Set(associatedRoutes.map(r => r.origin_id))];
+        routesToReturn = await RouteRepository.findByOriginIds(originIds);
+      } else {
+        logger.info("No hay rutas asociadas a la branch");
+        // Caso 2: No tiene rutas → obtener rutas con origin_id no usado por ninguna branch
+        routesToReturn = await RouteRepository.findRoutesWithUnusedOrigins();
+        logger.info(JSON.stringify(routesToReturn));
+      }
+
+      // Si no hay rutas
+      if (!routesToReturn.length) {
+        return res.status(204).json({ msg: 'RoutesNotFound' });
+      }
+
+      // Mapear al formato común
+      const mappedRoutes = routesToReturn.map(route => ({
+        id: route.id,
+        name: route.name,
+        originId: route.origin_id,
+        origin_id: route.origin_id,
+        destinationId: route.destination_id,
+        destination_id: route.destination_id,
+        distance: route.distance,
+        estimated: route.estimated,
+        status: route.status,
+        originAddress: route.origin.address,
+        originImage: route.origin.image,
+        destinationAddress: route.destination.address,
+        destinationImage: route.destination.image,
+      }));
+
+      res.status(200).json({ routes: mappedRoutes });
+
+    } catch (error) {
+      const errorMsg = error.message || 'Error desconocido';
+      logger.error('RouteController->getAvailableRoutesByBranch: ' + errorMsg);
+      return res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
+  },
+
     // Crear una nueva ruta
     async store(req, res) {
         logger.info(`${req.user.name} - Crea una nueva ruta`);

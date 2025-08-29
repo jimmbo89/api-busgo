@@ -419,6 +419,7 @@ router.post(
 
 //Rutas Route
 router.get("/route", RouteController.index);
+router.post("/route-index-branch", RouteController.getAvailableRoutesByBranch);
 router.post("/route", validateSchema(storeRouteSchema), RouteController.store);
 router.post("/route-show", validateSchema(idRouteSchema), RouteController.show);
 router.put("/route", validateSchema(updateRouteSchema), RouteController.update);

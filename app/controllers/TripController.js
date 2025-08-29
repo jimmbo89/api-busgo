@@ -965,6 +965,8 @@ const TripController = {
         const origin = trip.route.origin;
         const destination = trip.route.destination;
         const tripName = origin.address + "-" + destination.address;
+        const tripOrigin = origin.address;
+        const tripDestination = destination.address;
         const tripTickets = trip.tickets || [];
 
         // Inicializar los totales por método de pago para este trip
@@ -1008,6 +1010,8 @@ const TripController = {
         // Formatear la información del trip
         return {
           nombre: tripName,
+          origin: tripOrigin,
+          destination: tripDestination,
           totalPasajes: tripPasajesVendidos,
           totalTramo: tripTotal,
           totalesPorMetodo: Object.keys(tripTotalsByMethod).map((method) => ({
@@ -1104,6 +1108,7 @@ const TripController = {
         tripTickets.forEach((ticket) => {
           const method = ticket.method.toUpperCase();
           const total = parseFloat(ticket.total);
+          const quantity = parseInt(ticket.quantity, 10);
 
           // Sumar al total general
           totalGeneral += total;

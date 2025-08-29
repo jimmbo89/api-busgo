@@ -18,7 +18,7 @@ const TripTemplateController = {
     logger.info(`${req.user.name} - Busca todas las plantillas de viaje`);
 
     try {
-      const filters = req.query; // Puedes pasar filtros como query params
+      const filters = req.body; // Puedes pasar filtros como query params
       const templates = await TripTemplateRepository.findAll(filters);
 
       if (!templates.length) {

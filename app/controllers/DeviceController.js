@@ -44,14 +44,14 @@ const DeviceController = {
         const branch = await BranchRepository.findById(branch_id);
             if (!branch) {
                 logger.error(`DeviceController->indexBranch: Sucursal no encontrada con ID ${branch_id}`);
-                return res.status(400).json({ msg: 'BranchNotFound' });
+                return res.status(204).json({ msg: 'BranchNotFound' });
             }
 
         try {
             const devices = await DeviceRepository.findByBranch(branch_id);
 
             if (!devices.length) {
-                return res.status(400).json({ msg: 'DevicesNotFound' });
+                return res.status(204).json({ msg: 'DevicesNotFound' });
             }
 
             const mappedDevices = devices.map(device => ({

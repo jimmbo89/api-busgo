@@ -1035,7 +1035,7 @@ const TicketController = {
           : tickets[0]?.branch?.name;
       let fecha = null;
       if (endDate && endDate.trim() !== "") {
-        fecha = date + "-" + endDate;
+        fecha = date + " al " + endDate;
       } else {
         fecha = date;
       }
@@ -1119,7 +1119,7 @@ const TicketController = {
       // Formatear la respuesta
       let fecha = null;
       if (endDate && endDate.trim() !== "") {
-        fecha = `${date} - ${endDate}`;
+        fecha = `${date} al ${endDate}`;
       } else {
         fecha = date;
       }

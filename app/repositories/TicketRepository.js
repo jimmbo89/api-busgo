@@ -954,87 +954,90 @@ const TicketRepository = {
     });
   },
 
-  async getTicketsSoldDate(type, id, date, endDate) {
-    const whereClause = {};
-    if (endDate && endDate.trim() !== "") {
-      whereClause.date = {
-        [Op.between]: [date, endDate], // Rango de fechas (inclusive)
-      };
-    } else {
-      // Filtrar por una sola fecha si no se proporciona endDate
-      whereClause.date = date;
-    }
+ async getTicketsSoldDate(type, id, date, endDate) {
+  const tripWhereClause = {};
 
-    if (type === "Company") {
-      whereClause["$branch.company_id$"] = id;
-    } else if (type === "Sucursal") {
-      whereClause.branch_id = id;
-    }
+  if (endDate && endDate.trim() !== "") {
+    tripWhereClause.date = { [Op.between]: [date, endDate] };
+  } else {
+    tripWhereClause.date = date;
+  }
 
-    const tickets = await Ticket.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: Branch,
-          as: "branch",
-          include: [
-            {
-              model: Company,
-              as: "company",
-            },
-          ],
-        },
-      ],
-    });
+  const tickets = await Ticket.findAll({
+    include: [
+      {
+        model: Trip,
+        as: 'trip',
+        where: tripWhereClause,
+        required: true,
+        include: [
+          {
+            model: Branch,
+            as: 'branch',
+            required: true,
+            include: [
+              {
+                model: Company,
+                as: 'company',
+                where: type === 'Company' ? { id } : null,
+                required: type === 'Company' // Si es por compañía, debe existir
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    // Si es por sucursal, ya se filtra por branch.id en el include anterior
+    // Pero si es por compañía, no necesitamos where extra aquí
+  });
 
-    return tickets;
-  },
+  return tickets;
+},
 
   async getTicketsSoldDateWorker(branchId, date, endDate, workerId) {
-    const whereClause = {
-      branch_id: branchId // Siempre filtramos por sucursal
-    };
+  const tripWhereClause = {};
 
-    // Manejo de fechas
-    if (endDate && endDate.trim() !== "") {
-      whereClause.date = {
-        [Op.between]: [date, endDate], // Rango de fechas (inclusive)
-      };
-    } else {
-      whereClause.date = date; // Filtro por fecha única
-    }
+  // Filtro de fecha
+  if (endDate && endDate.trim() !== "") {
+    tripWhereClause.date = { [Op.between]: [date, endDate] };
+  } else {
+    tripWhereClause.date = date;
+  }
 
-    const tickets = await Ticket.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: Branch,
-          as: "branch",
-          include: [
-            {
-              model: Company,
-              as: "company",
-            },
-          ],
-        },
-        {
-          model: Trip,
-          as: "trip",
-          required: true, // INNER JOIN con Trip
-          include: [
-            {
-              model: TripWorker,
-              as: "tripworkers",
-              where: { worker_id: workerId }, // Filtro por trabajador
-              required: true // INNER JOIN para asegurar relación
-            }
-          ]
-        }
-      ],
-    });
+  const tickets = await Ticket.findAll({
+    include: [
+      {
+        model: Trip,
+        as: 'trip',
+        where: tripWhereClause,
+        required: true, // INNER JOIN: el ticket debe tener un viaje
+        include: [
+          {
+            model: Branch,
+            as: 'branch',
+            where: { id: branchId }, // Filtrar por branch_id aquí
+            required: true, // INNER JOIN con branch
+            include: [
+              {
+                model: Company,
+                as: 'company',
+                required: false // Siempre incluir compañía, pero sin forzar existencia
+              }
+            ]
+          },
+          {
+            model: TripWorker,
+            as: 'tripworkers',
+            where: { worker_id: workerId },
+            required: true // El viaje debe tener al trabajador asignado
+          }
+        ]
+      }
+    ]
+  });
 
-    return tickets;
-  },
+  return tickets;
+}
 };
 
 module.exports = TicketRepository;

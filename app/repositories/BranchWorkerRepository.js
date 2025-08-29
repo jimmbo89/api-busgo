@@ -58,6 +58,41 @@ const BranchWorkerRepository = {
             ]
         });
     },
+
+    async findWorkersWithoutBranch() {
+    return await Worker.findAll({
+        attributes: [
+        'id',
+        'user_id',
+        'name',
+        'email',
+        'image',
+        'rut',
+        'address',
+        'phone',
+        'role_id',
+        ],
+        include: [
+        {
+            model: Role,
+            as: 'role',
+            attributes: ['id', 'name'],
+        },
+        {
+            model: BranchWorker,
+            as: 'branchWorkers', // Asegúrate de que este alias esté bien definido en el modelo Worker
+            required: false, // Esto hace un LEFT JOIN
+            where: {
+            worker_id: { [Op.col]: 'Worker.id' }, // Relación manual si es necesario
+            },
+            attributes: [], // No queremos datos de BranchWorker
+        },
+        ],
+        where: {
+        '$branchWorkers.worker_id$': { [Op.is]: null }, // Donde no existe relación
+        },
+    });
+    }
 };
 
 module.exports = BranchWorkerRepository;

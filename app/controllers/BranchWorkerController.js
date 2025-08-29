@@ -112,14 +112,14 @@ const BranchWorkerController = {
 
         const { branch_id, type } = req.body;
         
-            const branch = await Branch.findByPk(branch_id);
+            const branch = await BranchRepository.findById(branch_id);
             if (!branch) {
                 logger.error(`BranchWorkerController->branch_workers: Sucursal no encontrada con ID ${branch_id}`);
                 return res.status(404).json({ msg: 'BranchNotFound' });
             }
 
         try {
-          const workers = await WorkerRepository.findAll();
+          const workers = await BranchWorkerRepository.findWorkersWithoutBranch();
      
           // Mapeamos los resultados para obtener solo los IDs y nombres
           const mappedWorkers = workers.map((worker) => ({

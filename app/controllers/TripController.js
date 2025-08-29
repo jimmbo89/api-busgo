@@ -1034,7 +1034,7 @@ const TripController = {
       // Formatear la respuesta
       const response = {
         nombre: entityName,
-        fecha: endDate && endDate.trim() !== "" ? `${date} - ${endDate}` : date,
+        fecha: endDate && endDate.trim() !== "" ? `${date} al ${endDate}` : date,
         pasajesEmitidos: totalPasajesVendidos,
         reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray,
@@ -1156,7 +1156,7 @@ const TripController = {
       // Formatear la respuesta
       const response = {
         nombre: branch.name,
-        fecha: endDate && endDate.trim() !== "" ? `${date} - ${endDate}` : date,
+        fecha: endDate && endDate.trim() !== "" ? `${date} al ${endDate}` : date,
         pasajesEmitidos: totalPasajesVendidos,
         reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray,

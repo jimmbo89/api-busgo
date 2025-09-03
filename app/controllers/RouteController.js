@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const logger = require('../../config/logger'); // Logger para seguimiento
 const { Route, Location } = require('../models'); // Importar los modelos necesarios
-const { RouteRepository } = require('../repositories');
+const { RouteRepository, BranchRepository, BranchRouteRepository, LocationRepository } = require('../repositories');
 
 const RouteController = {
     // Obtener todas las rutas
@@ -103,7 +103,7 @@ const RouteController = {
         logger.info('Datos recibidos al crear una ruta:');
         logger.info(JSON.stringify(req.body));
 
-        const { name, origin_id, destination_id, distance, estimated, status } = req.body;
+        const { name, origin_id, destination_id, distance, estimated, status, branch_id, route_id, price } = req.body;
 
         try {
             const originLocation = await Location.findByPk(origin_id);
@@ -116,9 +116,26 @@ const RouteController = {
                 return res.status(404).json({ msg: 'DestinationLocationNotFound' });
             }
 
+            const branch = await BranchRepository.findById(branch_id);
+            if (!branch) {
+                logger.error(`BranchRouteController->store: Sucursal no encontrada con ID ${branch_id}`);
+                return res.status(404).json({ msg: 'BranchNotFound' });
+            }
+
+            if (route_id) {
+                const routeId = await RouteRepository.findById(route_id);
+            if (!routeId) {
+                logger.error(`BranchRouteController->store: Ruta no encontrada con ID ${route_id}`);
+                return res.status(404).json({ msg: 'RouteNotFound' });
+            }
+            }
+            
+
             const route = await RouteRepository.create(req.body);
 
-            res.status(201).json({ 'route': route });
+            req.body.route_id = route.id;
+            const branchRoute = await BranchRouteRepository.create(req.body);
+            res.status(201).json({ route: route, branchRoute: branchRoute });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
             logger.error('RouteController->store:' + errorMsg);
@@ -178,44 +195,72 @@ const RouteController = {
         logger.info('Datos recibidos al editar una ruta:');
         logger.info(JSON.stringify(req.body));
 
-        const { id, name, origin_id, destination_id, distance, estimated, status } = req.body;
+        const { id, name, origin_id, destination_id, distance, estimated, status, route_id, branch_id, price } = req.body;
 
         try {
-            const route = await Route.findByPk(id);
-            if (!route) {
-                return res.status(404).json({ msg: 'RouteNotFound' });
+            let branchroute = await BranchRouteRepository.findById(id);
+            if (!branchroute) {
+                return res.status(404).json({ msg: 'BranchRouteNotFound' });
             }
 
             if (origin_id) {
-                const originLocation = await Location.findByPk(origin_id);
+                const originLocation = await LocationRepository.findById(origin_id);
                 if (!originLocation) {
                     return res.status(404).json({ msg: 'OriginLocationNotFound' });
                 }
             }
 
             if (destination_id) {
-                const destinationLocation = await Location.findByPk(destination_id);
+                const destinationLocation = await LocationRepository.findById(
+                  destination_id
+                );
                 if (!destinationLocation) {
                     return res.status(404).json({ msg: 'DestinationLocationNotFound' });
                 }
             }
 
-            const fieldsToUpdate = ['name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'];
-        
-        // Filtrar campos en req.body y construir el objeto updatedData
-        const updatedData = Object.keys(req.body)
-            .filter(key => fieldsToUpdate.includes(key) && req.body[key] !== undefined)
-            .reduce((obj, key) => {
-                obj[key] = req.body[key];
-                return obj;
-            }, {});
-
-            // Actualizar la ruta solo si hay datos para cambiar
-            if (Object.keys(updatedData).length > 0) {
-                await route.update(updatedData);
-                logger.info(`Ruta actualizada exitosamente (ID: ${route.id})`);
+            //if (route_id) {
+                const route = await RouteRepository.findById(branchroute.route_id);
+            if (!route) {
+                logger.error(`BranchRouteController->update: Ruta no encontrada con ID ${branchroute.route_id}`);
+                return res.status(404).json({ msg: 'RouteNotFound' });
             }
-            res.status(200).json({ 'route': route });
+            //}
+        
+            // 5. Preparar datos para actualizar Route
+        const routeData = {};
+        if (name !== undefined) routeData.name = name;
+        if (origin_id !== undefined) routeData.origin_id = origin_id;
+        if (destination_id !== undefined) routeData.destination_id = destination_id;
+        if (distance !== undefined) routeData.distance = distance;
+        if (estimated !== undefined) routeData.estimated = estimated;
+        if (status !== undefined) routeData.status = status;
+
+        // 6. Actualizar la ruta si hay datos relevantes
+        let routeUpdate = null;
+        if (Object.keys(routeData).length > 0) {
+            routeUpdate = await RouteRepository.update(route, routeData);
+        } else {
+            routeUpdate = route; // No hubo cambios
+        }
+
+        // 7. Preparar datos para actualizar BranchRoute
+        const branchRouteData = {};
+        if (price !== undefined) branchRouteData.price = price;
+        if (route_id !== undefined) branchRouteData.route_id = route_id; // ¿cambiar a otra ruta?
+        // Nota: branch_id normalmente no se cambia
+
+        // 8. Actualizar BranchRoute si hay datos
+        let updatedBranchRoute = branchroute;
+        if (Object.keys(branchRouteData).length > 0) {
+            updatedBranchRoute = await BranchRouteRepository.update(branchroute, branchRouteData);
+        }
+
+        // 9. Respuesta exitosa
+        return res.status(200).json({
+            route: routeUpdate,
+            branchroute: updatedBranchRoute
+        });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
             logger.error('RouteController->update:' + errorMsg);
@@ -228,13 +273,16 @@ const RouteController = {
         logger.info(`${req.user.name} - Elimina la ruta con ID ${req.body.id}`);
 
         try {
-            const route = await Route.findByPk(req.body.id);
+            const branchroute = await BranchRouteRepository.findById(req.body.id);
 
-            if (!route) {
+            if (!branchroute) {
                 return res.status(404).json({ msg: 'RouteNotFound' });
             }
 
-            await route.destroy();
+            const { route_id } = branchroute;
+            await branchroute.destroy();
+            const route = await RouteRepository.findById(route_id);
+             await route.destroy();
             res.status(200).json({ msg: 'RouteDeleted' });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';

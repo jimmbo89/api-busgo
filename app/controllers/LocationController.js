@@ -1,6 +1,6 @@
 const logger = require('../../config/logger'); // Logger para seguimiento
 const { Location } = require('../models'); // Importar el modelo Location
-const {LocationRepository} = require('../repositories');
+const {LocationRepository, BranchRepository, BranchRouteRepository} = require('../repositories');
 
 const LocationController = {
     // Obtener todas las ubicaciones
@@ -35,6 +35,71 @@ const LocationController = {
         }
     },
 
+    async index_route(req, res) {
+    logger.info(`${req.user.name} - Entra a buscar las ubicaciones (origen y destino)`);
+
+    try {
+        const { branch_id } = req.body;
+
+        const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        logger.error(
+          `LocationController->index_route: Sucursal no encontrada con ID ${branch_id}`
+        );
+        return res.status(400).json({ msg: "BranchNotFound" });
+      }
+
+        const { origins, destinations } = await LocationRepository.findOriginsAndDestinationsByBranch(branch_id);
+
+        if (!origins.length && !destinations.length) {
+            return res.status(204).json({ msg: 'LocationsNotFound' });
+        }
+
+        const branchRoutes = await BranchRouteRepository.findByBranch(branch_id);
+
+        // Mapeo directo sin función auxiliar
+        res.status(200).json({
+            origins: origins.map(location => ({
+                id: location.id,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                address: location.address,
+                country: location.country,
+                city: location.city,
+                image: location.image,
+            })),
+            destinations: destinations.map(location => ({
+                id: location.id,
+                latitude: location.latitude,
+                longitude: location.longitude,
+                address: location.address,
+                country: location.country,
+                city: location.city,
+                image: location.image,
+            })),
+            branchroutes: branchRoutes.map((branchRoute) => {
+                const route = branchRoute.route;
+                return {
+                id: branchRoute.id,
+                branchId: branchRoute.branch_id,
+                branch_id: branchRoute.branch_id,
+                routeId: branchRoute.route_id,
+                route_id: branchRoute.route_id,
+                origin_id: route.origin_id,
+                destination_id: route.destination_id,
+            }
+            }),
+        });
+
+    } catch (error) {
+        const errorMsg = error.details
+            ? error.details.map(detail => detail.message).join(', ')
+            : error.message || 'Error desconocido';
+
+        logger.error('LocationController->index:' + errorMsg);
+        return res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
+},
     // Crear una nueva ubicación
     async store(req, res) {
         logger.info(`${req.user.name} - Crea una nueva ubicación`);

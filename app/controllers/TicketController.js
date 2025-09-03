@@ -917,18 +917,21 @@ const TicketController = {
           value: Number(ticketsVendidos),
           color: "#1976D2",
           icon: "mdi-ticket",
+          to: "#",
         },
         {
           title: "Ingreso Generado",
           value: Number(ingresoGenerado),
           color: "#4CAF50",
           icon: "mdi-cash-multiple",
+          to: "ticketdate",
         },
         {
           title: "Incidentes",
           value: Number(totalIncidents),
           color: "#F44336",
           icon: "mdi-alert",
+          to: "/incident",
         },
         {
           title: "Tasa de Ocupación",

@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Location } = require('../models');
+const { Location, BranchRoute, Route } = require('../models');
 const logger = require('../../config/logger'); // Logger para seguimiento
 const ImageService = require('../services/ImageService');
 
@@ -98,6 +98,213 @@ async update(location, body, file) {
 
     return await location.destroy();
   },
+
+async findOriginsAndDestinationsByBranch(branchId) {
+
+    // Paso 1: Obtener rutas asociadas a la sucursal
+    const branchRoutes = await BranchRoute.findAll({
+        where: { branch_id: branchId },
+        include: [
+            {
+                model: Route,
+                as: 'route',
+                include: [
+                    {
+                        model: Location,
+                        as: 'origin',
+                        attributes: ['id'] // solo necesitamos el id
+                    }
+                ]
+            }
+        ]
+    });
+
+    // Extraer los origin_ids válidos
+    const originIdsInBranch = branchRoutes
+        .map(br => br.route.origin?.id)
+        .filter(id => id);
+
+    let origins = [];
+    let destinations = [];
+
+    if (originIdsInBranch.length > 0) {
+        // Caso 1: Sí hay rutas → tomamos el primer origin_id (único esperado)
+        const originId = originIdsInBranch[0];
+
+        // Origen: la ubicación con ese ID
+        const origin = await Location.findByPk(originId, {
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+
+        origins = origin ? [origin] : [];
+
+        // Destinos: todas las ubicaciones que NO son este origen
+        destinations = await Location.findAll({
+            where: { id: { [Op.not]: originId } },
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+
+    } else {
+        // Caso 2: No hay rutas asociadas a esta sucursal
+
+        // Obtener todos los origin_id de rutas asociadas a CUALQUIER sucursal
+        const allBranchRoutes = await BranchRoute.findAll({
+            include: [
+                {
+                    model: Route,
+                    as: 'route',
+                    attributes: ['origin_id']
+                }
+            ],
+            attributes: []
+        });
+
+        const allOriginIdsInAnyBranch = [...new Set(
+            allBranchRoutes
+                .map(br => br.route.origin_id)
+                .filter(id => id)
+        )];
+
+        // Orígenes: ubicaciones que NUNCA han sido origen en rutas con sucursal
+        origins = await Location.findAll({
+            where: { 
+                id: allOriginIdsInAnyBranch.length > 0 
+                    ? { [Op.notIn]: allOriginIdsInAnyBranch } 
+                    : {} // Si no hay orígenes en ninguna sucursal, todos son válidos
+            },
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+
+        // Destinos: mismos que los orígenes (por coherencia con la lógica de "no ser origen en sucursales")
+        // Alternativa: podrías devolver todas las ubicaciones si prefieres más libertad
+        destinations = await Location.findAll({
+        include: [
+            { model: Route, as: 'originRoutes' },
+            { model: Route, as: 'destinationRoutes' }
+        ]
+    });
+    }
+
+    return { origins, destinations };
+}
+/**async findOriginsAndDestinationsByBranch(branchId) {
+    const { Op } = require('sequelize');
+
+    // Paso 1: Obtener rutas asociadas a la sucursal
+    const branchRoutes = await BranchRoute.findAll({
+        where: { branch_id: branchId },
+        include: [
+            {
+                model: Route,
+                as: 'route',
+                include: [
+                    {
+                        model: Location,
+                        as: 'origin',
+                        attributes: ['id']
+                    },
+                    {
+                        model: Location,
+                        as: 'destination',
+                        attributes: ['id']
+                    }
+                ]
+            }
+        ]
+    });
+
+    // Extraer los origin_ids y destination_ids válidos
+    const originIdsInBranch = branchRoutes
+        .map(br => br.route.origin?.id)
+        .filter(id => id);
+
+    const destinationIdsInBranch = branchRoutes
+        .map(br => br.route.destination?.id)
+        .filter(id => id);
+
+    let origins = [];
+    let destinations = [];
+
+    if (originIdsInBranch.length > 0) {
+        // Caso 1: Sí hay rutas → tomamos el primer origin_id (único esperado)
+        const originId = originIdsInBranch[0];
+
+        const origin = await Location.findByPk(originId, {
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+
+        origins = origin ? [origin] : [];
+
+        // ✅ NUEVO: Destinos = todas las ubicaciones que NO están en destinationIdsInBranch
+        // (independientemente de si son origen o no, la regla ahora es: no repetir destinos de rutas de esta sucursal)
+        destinations = await Location.findAll({
+            where: { 
+                id: destinationIdsInBranch.length > 0
+                    ? { [Op.notIn]: destinationIdsInBranch }
+                    : {} // Si no hay destinos aún, todos son válidos
+            },
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+
+    } else {
+        // Caso 2: No hay rutas asociadas a esta sucursal
+
+        const allBranchRoutes = await BranchRoute.findAll({
+            include: [
+                {
+                    model: Route,
+                    as: 'route',
+                    attributes: ['origin_id']
+                }
+            ],
+            attributes: []
+        });
+
+        const allOriginIdsInAnyBranch = [...new Set(
+            allBranchRoutes
+                .map(br => br.route.origin_id)
+                .filter(id => id)
+        )];
+
+        // Orígenes: ubicaciones que nunca han sido origen en ninguna sucursal
+        origins = await Location.findAll({
+            where: { 
+                id: allOriginIdsInAnyBranch.length > 0 
+                    ? { [Op.notIn]: allOriginIdsInAnyBranch } 
+                    : {}
+            },
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+
+        // Destinos: ✅ TODAS las ubicaciones (sin restricción, porque no hay rutas)
+        destinations = await Location.findAll({
+            include: [
+                { model: Route, as: 'originRoutes' },
+                { model: Route, as: 'destinationRoutes' }
+            ]
+        });
+    }
+
+    return { origins, destinations };
+} */
 };
 
 module.exports = LocationRepository;

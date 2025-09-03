@@ -1,3 +1,4 @@
+const logger = require('../../config/logger');
 const { BranchRoute, Branch, Route, Location } = require('../models');
 const { Op } = require('sequelize');
 
@@ -34,7 +35,7 @@ const BranchRouteRepository = {
                 { 
                     model: Route, 
                     as: 'route', 
-                    attributes: ['id', 'name', 'estimated', 'origin_id', 'destination_id'],
+                    attributes: ['id', 'name', 'estimated', 'origin_id', 'destination_id', 'distance'],
                     include: [
                         {
                           model: Location,
@@ -50,6 +51,45 @@ const BranchRouteRepository = {
                 }
             ]
         });
+    },
+
+    async findById(id) {
+        return await BranchRoute.findByPk(id, {
+                include: [
+                    { model: Branch, as: 'branch', attributes: ['id', 'name'] },
+                    { model: Route, as: 'route', attributes: ['id', 'name'] }
+                ]
+            });
+    },
+
+     async create(body) {      
+
+        const { branch_id, route_id, price } = body;
+        return await BranchRoute.create({
+                branch_id: branch_id,
+                route_id: route_id,
+                price: price
+            });
+    },
+
+    async update(branchRoute, body) {
+        const fieldsToUpdate = ['branch_id', 'route_id', 'price'];
+
+            // Filtrar campos en req.body y construir el objeto updatedData
+            const updatedData = Object.keys(body)
+                .filter(key => fieldsToUpdate.includes(key) && body[key] !== undefined)
+                .reduce((obj, key) => {
+                    obj[key] = body[key];
+                    return obj;
+                }, {});
+
+            // Actualizar la relación solo si hay datos para cambiar
+            if (Object.keys(updatedData).length > 0) {
+                await branchRoute.update(updatedData);
+                logger.info(`Relación sucursal-vehículo actualizada exitosamente (ID: ${branchRoute.id})`);
+            }
+
+            return branchRoute;
     },
 };
 

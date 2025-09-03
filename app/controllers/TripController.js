@@ -761,7 +761,7 @@ const TripController = {
             branch_id: trip.branch_id, // ID de la sucursal
             user_id: req.user.id, // ID del usuario que realiza la acción
             title: "Retraso en la salida del viaje",
-            description: `Realizó la salida del viaje ${trip.id} con un retrazo de (${humanReadable}).`,
+            description: `Realizó la salida del viaje ${trip.id} con un retraso de (${humanReadable}).`,
             details: {
               actualStart: await TripController.formatToMySQLDateTime(
                 actualStart

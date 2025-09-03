@@ -1,6 +1,6 @@
 const { BranchRoute, Branch, Route, sequelize } = require('../models');
 const logger = require('../../config/logger');
-const { BranchRouteRepository, BranchRepository } = require('../repositories');
+const { BranchRouteRepository, BranchRepository, LocationRepository, RouteRepository } = require('../repositories');
 
 const BranchRouteController = {
     // Obtener todas las relaciones Branch-Route
@@ -54,6 +54,9 @@ const BranchRouteController = {
                 name: route.name,
                 originName: route.origin.address,
                 origin_id: route.origin_id,
+                distance: route.distance,
+                estimated: route.estimated,
+                status: route.status,
                 originImage: route.origin.image,
                 destination_id: route.destination_id,
                 destinationName: route.destination.address,
@@ -75,13 +78,13 @@ const BranchRouteController = {
 
         const { branch_id, route_id, price } = req.body;
 
-        const branch = await Branch.findByPk(branch_id);
+        const branch = await BranchRepository.findById(branch_id);
         if (!branch) {
             logger.error(`BranchRouteController->store: Sucursal no encontrada con ID ${branch_id}`);
             return res.status(404).json({ msg: 'BranchNotFound' });
         }
 
-        const route = await Route.findByPk(route_id);
+        const route = await RouteRepository.findById(route_id);
         if (!route) {
             logger.error(`BranchRouteController->store: Ruta no encontrada con ID ${route_id}`);
             return res.status(404).json({ msg: 'RouteNotFound' });

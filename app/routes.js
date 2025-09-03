@@ -394,6 +394,7 @@ router.post(
 
 //Rutas Location
 router.get("/location", LocationController.index);
+router.post("/location-route",  validateSchema(branch_idTripSchema), LocationController.index_route);
 router.post(
   "/location",
   multerImage("image", "locations"),

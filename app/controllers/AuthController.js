@@ -410,9 +410,11 @@ const AuthController = {
 
       let branchData = [];
       let roleData = [];
-      if (user.worker.branchWorkers) {
-        branchData = user.worker.branchWorkers[0]?.branch;
-        roleData = user.worker.branchWorkers[0]?.role;
+      if (user.worker.branchWorkers && user.worker.branchWorkers.length > 0) {
+        const branchWorker = user.worker.branchWorkers[0];
+        branchData = { ...branchWorker.branch.get({ plain: true }) }; // Clonamos el branch (evita mutaciones inesperadas)
+        branchData.rut = branchWorker.branch.company?.rut || null;   // Añadimos el rut de la company
+        roleData = branchWorker.role;
       }
 
       // Respuesta exitosa

@@ -335,6 +335,14 @@ const AuthController = {
                 model: Role,
                 as: "role",
                 attributes: ["id", "name"],
+                include: [
+                  {
+                    model: Permission,
+                    as: "permissions", // Asumiendo que la relación se llama "permissions"
+                    attributes: ["name", "module"], // Incluir el nombre y la descripción del permiso
+                    through: { attributes: [] }, // Excluir la tabla intermedia si no necesitas sus atributos
+                  },
+                ],
               },
               {
                 model: BranchWorker,
@@ -352,6 +360,14 @@ const AuthController = {
                     model: Role,
                     as: "role", // Asumiendo que la relación se llama "permissions"
                     attributes: ["id", "name"],
+                     include: [
+                      {
+                        model: Permission,
+                        as: "permissions", // Asumiendo que la relación se llama "permissions"
+                        attributes: ["name", "module"], // Incluir el nombre y la descripción del permiso
+                        through: { attributes: [] }, // Excluir la tabla intermedia si no necesitas sus atributos
+                      },
+                    ],
                   },
                 ],
               },
@@ -377,6 +393,21 @@ const AuthController = {
         return res.status(400).json({ msg: "Credenciales inválidas" });
       }
 
+      let systemRolePermissions = [];
+      let branchRolePermissions = [];
+      systemRolePermissions = user.worker.role.permissions.map(
+        (permission) => {
+          return `${permission.name}, ${permission.module}`;
+        }
+      );
+
+      branchRolePermissions = user.worker.branchWorkers.flatMap(
+        (branchWorker) => {
+          return branchWorker.role.permissions.map((permission) => {
+            return `${permission.name}, ${permission.module}`;
+          });
+        }
+      );
       // Construimos el objeto del usuario con la estructura deseada
       const userNew = {
         id: user.id, // ID del usuario
@@ -417,6 +448,9 @@ const AuthController = {
         roleData = branchWorker.role;
       }
 
+      const allPermissions = [
+        ...new Set([...systemRolePermissions, ...branchRolePermissions]),
+      ];
       // Respuesta exitosa
       res.status(201).json({
         id: user.id,
@@ -429,6 +463,7 @@ const AuthController = {
         roleId: roleData ? roleData.id : user.worker.role_id,
         nameRole: roleData ? roleData.name : user.worker.role.name,
         branch: branchData,
+        permissions: allPermissions,
       });
     } catch (error) {
       const errorMsg = error.details

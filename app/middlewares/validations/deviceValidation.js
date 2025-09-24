@@ -107,8 +107,12 @@ const deviceCompanySchema = Joi.object({
     "string.base": "El campo serial debe ser una cadena de texto",
     "string.max": "El campo serial no debe exceder los 100 caracteres",
   }),
-  branch_id: Joi.number().allow(null).empty("").optional().messages({
+  company_id: Joi.number().allow(null).empty("").optional().messages({
     "number.base": "El campo company_id debe ser un número entero",
+  }),
+
+  branch_id: Joi.number().allow(null).empty("").optional().messages({
+    "number.base": "El campo branch_id debe ser un número entero",
   }),
 });
 

@@ -81,7 +81,7 @@ const DeviceController = {
     async isDeviceAssociatedWithCompany(req, res) {
         logger.info(`${req.body.mac??req.body.serial } - Verifica si un dispositivo está asociado a una compañía`);
     
-        const { mac, serial, companyId } = req.body;
+        const { mac, serial, company_id } = req.body;
     
         try {
             // Verificar si la compañía existe
@@ -92,7 +92,7 @@ const DeviceController = {
             }*/
     
             // Verificar si el dispositivo está asociado a la compañía
-            const isAssociated = await DeviceRepository.isDeviceAssociatedWithCompany(mac, serial, companyId);
+            const isAssociated = await DeviceRepository.isDeviceAssociatedWithCompany(mac, serial, company_id);
     
             // Respuesta
             res.status(200).json({ isAssociated });

@@ -14,6 +14,7 @@ const loginSchema = Joi.object({
     email: Joi.string().min(3).required(), // nombre entre 3 y 30 caracteres
     password: Joi.string().min(5).required(),     // contraseña de al menos 6 caracteres
     branch_id: Joi.number().integer().allow(null).optional().empty(""),     // contraseña de al menos 6 caracteres
+    platform: Joi.string().allow(null).optional().empty(""),
 });
 
 const updatePasswordSchema = Joi.object({

@@ -316,7 +316,7 @@ const AuthController = {
 
   async login_apk(req, res) {
     logger.info("Entrando a loguearse APk");
-
+    const platform = (req.body.platform || '').trim().toLowerCase();
     try {
       const user = await User.findOne({
         where: {
@@ -388,6 +388,47 @@ const AuthController = {
         return res.status(400).json({ msg: "Credenciales inválidas" });
       }
 
+      if (!user.worker || !user.worker.branchWorkers || user.worker.branchWorkers.length === 0) {
+        return res.status(400).json({
+          msg: "El usuario no está asociado a ninguna sucursal."
+        });
+      }
+
+      // Extraer todos los nombres de permisos del usuario (rol global + roles por sucursal)
+      const userPermissionNames = new Set([
+        // Permisos del rol global del trabajador
+        ...(user.worker.role?.permissions?.map(p => p.name) || []),
+        // Permisos de roles en cada sucursal asignada
+        ...user.worker.branchWorkers.flatMap(bw => 
+          bw.role?.permissions?.map(p => p.name) || []
+        )
+      ]);
+
+      // Validar según la plataforma
+      if (platform === 'buscheck') {
+        if (!userPermissionNames.has('view_checktickets')) {
+          return res.status(400).json({
+            msg: "No tiene permiso para acceder a la aplicación BusCheck."
+          });
+        }
+      } else if (platform === 'busgo') {
+        const allowedPermissions = [
+          'view_ticketsdate',
+          'view_tickettripsdate',
+          'view_tripsworker',
+          'view_saletickets'
+        ];
+
+        // Verificar si el usuario tiene AL MENOS UNO de los permisos permitidos
+        const hasAtLeastOne = allowedPermissions.some(perm => userPermissionNames.has(perm));
+
+        if (!hasAtLeastOne) {
+          return res.status(400).json({
+            msg: "No tiene permisos suficientes para acceder a la aplicación BusGo. Contacte al administrador."
+          });
+        }
+      }
+
       const isMatch = await bcrypt.compare(req.body.password, user.password);
       if (!isMatch) {
         return res.status(400).json({ msg: "Credenciales inválidas" });
@@ -397,14 +438,14 @@ const AuthController = {
       let branchRolePermissions = [];
       systemRolePermissions = user.worker.role.permissions.map(
         (permission) => {
-          return `${permission.name}, ${permission.module}`;
+          return `${permission.name}`;
         }
       );
 
       branchRolePermissions = user.worker.branchWorkers.flatMap(
         (branchWorker) => {
           return branchWorker.role.permissions.map((permission) => {
-            return `${permission.name}, ${permission.module}`;
+            return `${permission.name}`;
           });
         }
       );
@@ -451,6 +492,11 @@ const AuthController = {
       const allPermissions = [
         ...new Set([...systemRolePermissions, ...branchRolePermissions]),
       ];
+
+      const allPermissionNames = new Set([
+        ...user.worker.role.permissions.map(p => p.name),
+        ...user.worker.branchWorkers.flatMap(bw => bw.role.permissions.map(p => p.name))
+      ]);
       // Respuesta exitosa
       res.status(201).json({
         id: user.id,

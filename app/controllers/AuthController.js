@@ -234,13 +234,18 @@ const AuthController = {
         roleName = user.worker.role.name;
         role_id = user.worker.role_id;
        // Lista de roles que pueden acceder aunque no haya empresas
-        const allowedSystemRoles = ['Administrador',]; // Ajusta según tus nombres reales
+        //const allowedSystemRoles = ['Administrador',]; // Ajusta según tus nombres reales
 
         // Si no hay empresa asignada, verificar si el rol permite acceso global
         if (!companyData) {
-          if (!allowedSystemRoles.includes(roleName)) {
+          const allCompanies = await Company.findAll({ 
+            attributes: ['id', 'name', 'rut', 'address', 'phone', 'image'] 
+          });
+          companyData = allCompanies[0].get({ plain: true });
+          logger.info(`Usuario sin compañía asignada. Usando compañía única del sistema: ${companyData.name}`);
+          /*if (!allowedSystemRoles.includes(roleName)) {
             return res.status(400).json({ msg: "No tiene acceso: no pertenece a ninguna empresa y su rol no permite acceso global." });
-          }
+          }*/
           // Si el rol SÍ está permitido, continuar sin companyData (puede ser null)
           logger.info(`Acceso global permitido para rol: ${roleName}`);
         }

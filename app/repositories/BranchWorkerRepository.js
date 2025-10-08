@@ -92,7 +92,16 @@ const BranchWorkerRepository = {
         '$branchWorkers.worker_id$': { [Op.is]: null }, // Donde no existe relación
         },
     });
-    }
+    },
+
+    async updateRoleForWorker(workerId, newRoleId) {
+    await BranchWorker.update(
+      { role_id: newRoleId },
+      {
+        where: { worker_id: workerId }
+      }
+    );
+  }
 };
 
 module.exports = BranchWorkerRepository;

@@ -67,7 +67,7 @@ const TripRepository = {
     });
   },
 
-  async findDate(branchId, workerId = null, date = null) {
+  async findDate(branchId, workerId = null, date = null, ticket_id = null) {
     const today = new Date();
     const formattedToday = today.toLocaleDateString('es-CL', {
         timeZone: 'America/Santiago',

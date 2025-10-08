@@ -5,6 +5,7 @@ const app = express();
 const session = require('express-session');
 const { sequelize } = require('./models/index');
 const cors = require('cors');
+const logger = require('../config/logger');
 require('../config/scheduler'); 
 
 // Configuración de sesión
@@ -48,11 +49,11 @@ app.use('/api', require('./routes'));
 
 // Inicia el servidor y la conexión a la base de datos
 const server = app.listen(PORT, () => {
-  console.log(`Servidor escuchando en http://localhost:${PORT}`);
+  logger.info(`Servidor escuchando en http://localhost:${PORT}`);
   sequelize.authenticate().then(() => {
-    console.log('Conexión a la base de datos exitosa');
+    logger.info('Conexión a la base de datos exitosa');
   }).catch((error) => {
-    console.error('Error al conectar a la base de datos:', error);
+    logger.error('Error al conectar a la base de datos:', error);
     process.exit(1); // Sale si no puede conectar con la DB
   });
 });
@@ -60,16 +61,16 @@ const server = app.listen(PORT, () => {
 // Maneja la señal SIGINT para cerrar conexiones y el servidor
 process.on('SIGINT', async () => {
   try {
-    console.log('Cerrando la conexión a la base de datos...');
+    logger.info('Cerrando la conexión a la base de datos...');
     await sequelize.close(); // Cierra la conexión a la base de datos
-    console.log('Conexión a la base de datos cerrada.');
+    logger.info('Conexión a la base de datos cerrada.');
 
     server.close(() => {
-      console.log('Servidor cerrado.');
+      logger.info('Servidor cerrado.');
       process.exit(0); // Sale de la aplicación correctamente
     });
   } catch (error) {
-    console.error('Error al cerrar la conexión a la base de datos:', error);
+    logger.error('Error al cerrar la conexión a la base de datos:', error);
     process.exit(1); // Si ocurre un error, termina con código de error
   }
 });

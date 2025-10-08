@@ -6,6 +6,7 @@ const logger = require("../../config/logger"); // Logger para seguimiento
 const bcrypt = require("bcrypt");
 const authConfig = require("../../config/auth");
 const ImageService = require("../services/ImageService");
+const BranchWorkerRepository = require("./BranchWorkerRepository");
 
 const WorkerRepository = {
   // Obtener todos los trabajadores
@@ -177,6 +178,9 @@ const WorkerRepository = {
         return obj;
       }, {});
 
+       // 👇 Detectar si role_id está siendo actualizado
+    const isRoleIdChanging = updatedData.hasOwnProperty('role_id') && updatedData.role_id !== worker.role_id;
+
     // Actualizar email y/o user en la tabla users si están en el body
     if (body.email || body.user) {
       logger.info("entra a actualizar los datos de user");
@@ -214,6 +218,12 @@ const WorkerRepository = {
     if (Object.keys(updatedData).length > 0) {
       await worker.update(updatedData);
       logger.info(`Trabajador actualizado exitosamente (ID: ${worker.id})`);
+    }
+
+    if (isRoleIdChanging) {
+      const newRoleId = updatedData.role_id;
+      await BranchWorkerRepository.updateRoleForWorker(worker.id, newRoleId);
+      logger.info(`Rol actualizado en branch_worker para trabajador ID ${worker.id} → role_id: ${newRoleId}`);
     }
 
     return worker;

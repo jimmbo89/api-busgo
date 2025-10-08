@@ -100,7 +100,7 @@ const RoleController = {
 
         try {
           const { type } = req.body; // Supongamos que el tipo viene como parámetro en la URL
-          const roles = await RoleRepository.findByType(type);
+          const roles = await RoleRepository.findByType(null);
       
           if (!roles || roles.length === 0) {
             return res.status(404).json({ message: 'No se encontraron roles para el tipo especificado.' });

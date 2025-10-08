@@ -127,10 +127,12 @@ const BranchWorkerController = {
             worker_id: worker.id,
             name: worker.name,
             image: worker.image,
-            email: worker.email
+            email: worker.email,
+            role_id: worker.role_id,
+            roleName: worker.role.name
           }));
 
-          const roles = await RoleRepository.findByType(type);
+          const roles = await RoleRepository.findByType(null);
       
           if (!roles || roles.length === 0) {
             return res.status(404).json({ message: 'No se encontraron roles para el tipo especificado.' });

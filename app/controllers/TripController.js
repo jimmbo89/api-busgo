@@ -82,7 +82,7 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(branch_id, workerId, date);
+      const trips = await TripRepository.findDate(branch_id, workerId, date, null);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
@@ -183,10 +183,9 @@ const TripController = {
   },
 
   async getTripDate(req, res) {
-    logger.info(
-      `${req.user.name} - Entra a buscar los viajes de una fecha dada`
-    );
-
+    logger.info( `${req.user.name} - Entra a buscar los viajes de una fecha dada`);
+     logger.info("datos recibidos");
+    logger.info(JSON.stringify(req.body));
     const { ticket_id, branch_id, date } = req.body;
     //const workerId = req.worker.id;
     const workerId = null;
@@ -209,7 +208,7 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(branch_id, workerId, date);
+      const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
@@ -309,7 +308,7 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(branch_id, workerId, date);
+      const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });

@@ -62,11 +62,13 @@ const RoleRepository = {
 
   // Buscar un rol por ID
   async findByType(type) {
-    return await Role.findAll({
-        where: { type },
-        attributes: ['id', 'name', 'description', 'type'],
-      });
-  },
+  const whereClause = type != null ? { type } : {}; // Si type no es null ni undefined, filtra; si no, no aplica filtro
+
+  return await Role.findAll({
+    where: whereClause,
+    attributes: ['id', 'name', 'description', 'type'],
+  });
+}
 
 };
 

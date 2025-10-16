@@ -15,7 +15,7 @@ module.exports = {
       },
       mac: {
         type: Sequelize.STRING,
-        allowNull: false,
+        allowNull: true,
         unique: true
       },
       version: {

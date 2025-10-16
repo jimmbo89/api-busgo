@@ -92,10 +92,9 @@ const DeviceController = {
             }*/
     
             // Verificar si el dispositivo está asociado a la compañía
-            const isAssociated = await DeviceRepository.isDeviceAssociatedWithCompany(mac, serial, company_id);
-    
-            // Respuesta
-            res.status(200).json({ isAssociated });
+             const result = await DeviceRepository.isDeviceAssociatedWithCompany(mac, serial, company_id);
+
+            res.status(200).json(result);
         } catch (error) {
             logger.error('DeviceController->isDeviceAssociatedWithCompany: ' + error.message);
             res.status(500).json({ error: 'ServerError', details: error.message });

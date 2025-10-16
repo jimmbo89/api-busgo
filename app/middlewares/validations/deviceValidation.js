@@ -11,10 +11,9 @@ const storeDeviceSchema = Joi.object({
     "string.max": "El campo name no debe exceder los 255 caracteres",
     "any.required": "El campo name es obligatorio",
   }),
-  mac: Joi.string().max(50).required().messages({
+  mac: Joi.string().max(50).allow(null).empty("").optional().messages({
     "string.base": "El campo mac debe ser una cadena de texto",
     "string.max": "El campo mac no debe exceder los 50 caracteres",
-    "any.required": "El campo mac es obligatorio",
   }),
   version: Joi.string().max(50).allow(null).empty("").optional().messages({
     "string.base": "El campo version debe ser una cadena de texto",

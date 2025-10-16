@@ -18,46 +18,52 @@ const  DeviceRepository = {
 
     async isDeviceAssociatedWithCompany(mac, serial, companyId = null) {
         try {
-            // Construir dinámicamente el objeto `where`
             const whereClause = {};
-            if (mac) {
-                whereClause.mac = mac;
-            }
-            if (serial) {
-                whereClause.serial = serial;
-            }
+            if (mac) whereClause.mac = mac;
+            if (serial) whereClause.serial = serial;
 
-            // Si no hay ningún filtro (mac y serial son null), retornar false
             if (Object.keys(whereClause).length === 0) {
-                return false;
+                return {
+                    isAssociated: false,
+                    branchName: "Este dispositivo no tiene sucursal asociada"
+                };
             }
 
-            // Construir dinámicamente el objeto `include`
+            // Incluir siempre la sucursal (branch)
             const includeClause = [
                 {
                     model: Branch,
                     as: 'branch',
-                    include: [],
-                },
+                    attributes: ['name'], // Solo necesitamos el nombre
+                    // Si se pasa companyId, filtramos por compañía
+                    ...(companyId ? {
+                        include: [{
+                            model: Company,
+                            as: 'company',
+                            where: { id: companyId },
+                            attributes: [] // No necesitamos atributos de company
+                        }]
+                    } : {})
+                }
             ];
 
-            // Si companyId está presente, agregar el filtro de compañía
-            if (companyId) {
-                includeClause[0].include.push({
-                    model: Company,
-                    as: 'company',
-                    where: { id: companyId },
-                });
-            }
-
-            // Buscar el dispositivo
             const device = await Device.findOne({
                 where: whereClause,
                 include: includeClause,
+                attributes: ['id'] // Solo necesitamos saber si existe
             });
 
-            // Si se encuentra el dispositivo, retornar true
-            return !!device;
+            if (device && device.branch) {
+                return {
+                    isAssociated: true,
+                    branchName: device.branch.name
+                };
+            } else {
+                return {
+                    isAssociated: false,
+                    branchName: "Este dispositivo no tiene sucursal asociada"
+                };
+            }
         } catch (error) {
             throw new Error(`Error en DeviceRepository->isDeviceAssociatedWithCompany: ${error.message}`);
         }
@@ -147,11 +153,34 @@ const  DeviceRepository = {
     },
 
     async existsByMacOrSerial(mac, serial, excludeId = null) {
-        const whereClause = excludeId
-            ? { [Op.or]: [{ mac }, { serial }], id: { [Op.ne]: excludeId } }
-            : { [Op.or]: [{ mac }, { serial }] };
+    // Filtrar solo los campos que tienen valor
+    const conditions = [];
 
-        return await Device.findOne({ where: whereClause });
+    if (mac != null && mac !== '') {
+        conditions.push({ mac });
+    }
+
+    if (serial != null && serial !== '') {
+        conditions.push({ serial });
+    }
+
+    // Si no hay condiciones válidas, no hay nada que buscar
+    if (conditions.length === 0) {
+        return null;
+    }
+
+    // Construir la cláusula WHERE
+    let whereClause = { [Op.or]: conditions };
+
+    // Excluir ID si se proporciona
+    if (excludeId) {
+        whereClause = {
+        ...whereClause,
+        id: { [Op.ne]: excludeId }
+        };
+    }
+
+    return await Device.findOne({ where: whereClause });
     }
 };
 

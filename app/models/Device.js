@@ -43,7 +43,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     mac: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
       unique: true
     },
     version: {

@@ -119,6 +119,7 @@ const TripRepository = {
         "price",
       ],
       where: whereClause, // Usar el objeto `where` construido dinámicamente
+       order: [['date', 'ASC'], ['schedule', 'ASC']],
       include: [
         {
           model: Branch,

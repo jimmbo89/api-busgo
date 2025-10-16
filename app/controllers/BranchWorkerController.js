@@ -64,21 +64,13 @@ const BranchWorkerController = {
         }
     },
 
-    async worker_branches(req, res) {
+    async worker_branches1(req, res) {
         logger.info(`${req.user.name} - Busca todas las sucursales asociadas a un worker`);
         try {
-            let { worker_id } = req.body;
-
-            if (worker_id === undefined || worker_id === null || worker_id === 0) {
-                worker_id = req.worker.id;
-              }else {
-                const worker = await WorkerRepository.findById(worker_id);
-                if (!worker) {                    
-                logger.error(`BranchWorkerController->worker_branches: worker_id no proporcionado`);
-                return res.status(400).json({ msg: 'WorkerNotFound' });
-                }
-            }
-    
+            let { worker_id:bodyWorkerId } = req.body;
+            // Verifica si worker_id es undefined, null o 0
+            let worker_id = bodyWorkerId || req.worker.id;
+            
             // Buscar todas las relaciones Branch-Worker para el worker_id dado
             const workerBranches = await BranchWorkerRepository.findByWorker(worker_id);
     
@@ -105,6 +97,34 @@ const BranchWorkerController = {
             logger.error('BranchWorkerController->worker_branches: ' + errorMsg);
             res.status(500).json({ error: 'ServerError', details: errorMsg });
         }
+    },
+
+    async worker_branches(req, res) {
+    logger.info(`${req.user.name} - Busca todas las sucursales con workers, incluyendo siempre al worker actual`);
+    try {
+        const { worker_id: bodyWorkerId } = req.body;
+        const targetWorkerId = bodyWorkerId || req.worker.id;
+
+        // Llamada al repositorio: toda la lógica está encapsulada
+        const branches = await BranchWorkerRepository.findAllBranchesWithWorkersIncluding(targetWorkerId);
+
+        if (!branches || branches.length === 0) {
+        // Puedes decidir: ¿es error si no hay sucursales? O solo devolver array vacío.
+        return res.status(404).json({ msg: 'NoBranchesFound' });
+        }
+
+        res.status(200).json({ branches });
+    } catch (error) {
+        const errorMsg = error.message || 'Error desconocido';
+        logger.error('BranchWorkerController->worker_branches: ' + errorMsg);
+
+        // Manejo específico de errores conocidos
+        if (errorMsg === 'Target worker not found') {
+        return res.status(404).json({ msg: 'WorkerNotFound' });
+        }
+
+        res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
     },
     
     async getBranchWorkersRole(req, res) {

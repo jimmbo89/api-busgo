@@ -1176,11 +1176,9 @@ const TripController = {
   },
 
   async getTripsByBranchAndWorker(req, res) {
-    let { branch_id, date, endDate, worker_id } = req.body;
+    let { branch_id, date, endDate, worker_id:bodyWorkerId } = req.body;
     // Verifica si worker_id es undefined, null o 0
-    if (worker_id === undefined || worker_id === null || worker_id === 0) {
-      worker_id = req.worker.id;
-    }
+    let worker_id = bodyWorkerId || req.worker.id;
     // Validar si la sucursal o compañía existe
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {

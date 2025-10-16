@@ -1,5 +1,6 @@
 const { BranchWorker, Branch, Worker, Role, Vehicle } = require('../models');
 const { Op } = require('sequelize');
+const BranchRepository = require('./BranchRepository');
 
 const BranchWorkerRepository = {
     // Obtener todas las relaciones Branch-Vehicle con sus relaciones
@@ -58,6 +59,85 @@ const BranchWorkerRepository = {
             ]
         });
     },
+
+    async findAllBranchesWithWorkersIncluding(targetWorkerId) {
+    // 1. Obtener todas las sucursales
+    const allBranches = await BranchRepository.findAll();
+
+    if (!allBranches.length) {
+      return [];
+    }
+
+    const branchIds = allBranches.map(b => b.id);
+
+    // 2. Obtener todas las relaciones BranchWorker para esas sucursales
+    const branchWorkers = await BranchWorker.findAll({
+      where: {
+        branch_id: branchIds
+      },
+      include: [
+        {
+          model: Worker,
+          as: 'worker',
+          attributes: ['id', 'name', 'image']
+        },
+        {
+          model: Role,
+          as: 'role',
+          attributes: ['id', 'name']
+        }
+      ]
+    });
+
+    // 3. Obtener los datos del worker objetivo
+    const targetWorker = await Worker.findByPk(targetWorkerId, {
+        attributes: ['id', 'name', 'role_id'],
+        include: [{
+        model: Role,
+        as: 'role', // debe coincidir con tu relación
+        attributes: ['id', 'name']
+        }]
+    });
+
+    if (!targetWorker) {
+      throw new Error('Target worker not found');
+    }
+
+    // 4. Construir resultado
+    return allBranches.map(branch => {
+      const relationsForBranch = branchWorkers.filter(bw => bw.branch_id === branch.id);
+
+      const associatedWorkers = relationsForBranch.map(bw => ({
+        id: bw.worker.id,
+        name: bw.worker.name,
+        image: bw.worker.image,
+        role_id: bw.role_id,
+        role: bw.role ? { id: bw.role.id, name: bw.role.name } : null
+      }));
+
+      const isTargetIncluded = associatedWorkers.some(w => w.id === targetWorkerId);
+
+      const workers = isTargetIncluded
+        ? associatedWorkers
+        : [
+            ...associatedWorkers,
+            {
+              id: targetWorker.id,
+              name: targetWorker.name,
+              image: targetWorker.image,
+              role_id: targetWorker.role_id,
+              role: targetWorker.role.name
+            }
+          ];
+
+      return {
+        id: branch.id,
+        name: branch.name,
+        image: branch.image,
+        workers
+      };
+    });
+  },
 
     async findWorkersWithoutBranch() {
     return await Worker.findAll({

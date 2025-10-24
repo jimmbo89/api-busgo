@@ -33,13 +33,27 @@ const VehicleRepository = {
   },
 
   // Buscar un vehículo por RUT o placa, excluyendo un vehículo específico
-  async existsByRutOrPlate(rut = null, plate = null, excludeId = null) {
-    const whereClause = excludeId
-            ? { [Op.or]: [{ rut }, { plate }], id: { [Op.ne]: excludeId } }
-            : { [Op.or]: [{ rut }, { plate }] };
+ async existsByRutOrPlate(rut = null, plate = null, excludeId = null) {
+  const orConditions = [];
 
-    return await Vehicle.findOne({ where: whereClause });
-  },
+  if (rut != null) {
+    orConditions.push({ rut });
+  }
+  if (plate != null) {
+    orConditions.push({ plate });
+  }
+
+  // Si no se pasó ni rut ni plate, no hay condición de búsqueda
+  if (orConditions.length === 0) {
+    return null; // o throw new Error("Se requiere rut o plate");
+  }
+
+  const whereClause = excludeId
+    ? { [Op.and]: [{ [Op.or]: orConditions }, { id: { [Op.ne]: excludeId } }] }
+    : { [Op.or]: orConditions };
+
+  return await Vehicle.findOne({ where: whereClause });
+},
 
   // Crear un nuevo vehículo con manejo de imágenes
   async create(body, file) {

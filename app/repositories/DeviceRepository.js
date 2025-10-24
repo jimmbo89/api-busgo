@@ -17,56 +17,71 @@ const  DeviceRepository = {
     },
 
     async isDeviceAssociatedWithCompany(mac, serial, companyId = null) {
-        try {
-            const whereClause = {};
-            if (mac) whereClause.mac = mac;
-            if (serial) whereClause.serial = serial;
-
-            if (Object.keys(whereClause).length === 0) {
-                return {
-                    isAssociated: false,
-                    branchName: "Este dispositivo no tiene sucursal asociada"
-                };
-            }
-
-            // Incluir siempre la sucursal (branch)
-            const includeClause = [
-                {
-                    model: Branch,
-                    as: 'branch',
-                    attributes: ['name'], // Solo necesitamos el nombre
-                    // Si se pasa companyId, filtramos por compañía
-                    ...(companyId ? {
-                        include: [{
-                            model: Company,
-                            as: 'company',
-                            where: { id: companyId },
-                            attributes: [] // No necesitamos atributos de company
-                        }]
-                    } : {})
-                }
-            ];
-
-            const device = await Device.findOne({
-                where: whereClause,
-                include: includeClause,
-                attributes: ['id'] // Solo necesitamos saber si existe
-            });
-
-            if (device && device.branch) {
-                return {
-                    isAssociated: true,
-                    branchName: device.branch.name
-                };
-            } else {
-                return {
-                    isAssociated: false,
-                    branchName: "Este dispositivo no tiene sucursal asociada"
-                };
-            }
-        } catch (error) {
-            throw new Error(`Error en DeviceRepository->isDeviceAssociatedWithCompany: ${error.message}`);
+    try {
+        // Validar que al menos se pase mac o serial
+        if (!mac && !serial) {
+        return {
+            isAssociated: false,
+            branchName: "No se proporcionó dirección MAC ni número de serie"
+        };
         }
+
+        const whereClause = {};
+        if (mac) whereClause.mac = mac;
+        if (serial) whereClause.serial = serial;
+
+        // Buscar el dispositivo SIN filtrar por status aún
+        const device = await Device.findOne({
+        where: whereClause,
+        include: [{
+            model: Branch,
+            as: 'branch',
+            attributes: ['name'],
+            ...(companyId ? {
+            include: [{
+                model: Company,
+                as: 'company',
+                where: { id: companyId },
+                attributes: []
+            }]
+            } : {})
+        }],
+        attributes: ['id', 'status'] // 👈 Incluir 'status' para evaluarlo
+        });
+
+        // Caso 1: Dispositivo no existe
+        if (!device) {
+        return {
+            isAssociated: false,
+            branchName: "Dispositivo no registrado"
+        };
+        }
+
+        // Caso 2: Dispositivo existe pero está desactivado
+        if (device.status !== 1) {
+        return {
+            isAssociated: false,
+            branchName: "Dispositivo desactivado"
+        };
+        }
+
+        // Caso 3: Dispositivo activo pero sin sucursal
+        if (!device.branch) {
+        return {
+            isAssociated: false,
+            branchName: "Este dispositivo no tiene sucursal asociada"
+        };
+        }
+
+        // Caso 4: Todo correcto
+        return {
+        isAssociated: true,
+        branchName: device.branch.name
+        };
+
+    } catch (error) {
+        throw new Error(`Error en DeviceRepository->isDeviceAssociatedWithCompany: ${error.message}`);
+    }
     },
 
     async findById(id) {

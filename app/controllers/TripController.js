@@ -171,11 +171,23 @@ const TripController = {
         }
 
         // b) Comparación por fecha + hora combinadas
-        const timestampA = createTripTimestamp(a);
+       const timestampA = createTripTimestamp(a);
         const timestampB = createTripTimestamp(b);
-        
-        // Ordenar cronológicamente (más recientes primero)
-        return new Date(timestampB) - new Date(timestampA);
+
+        const dateA = new Date(timestampA);
+        const dateB = new Date(timestampB);
+
+        // Si ambos son futuros o pasados, ordenar por proximidad al presente
+        if (dateA < now && dateB < now) {
+          // Ambos pasados: mostrar el más reciente primero (menor diferencia)
+          return dateB - dateA; // DESCENDENTE para pasados (más reciente arriba)
+        } else if (dateA >= now && dateB >= now) {
+          // Ambos futuros: mostrar el más cercano primero (ASCENDENTE)
+          return dateA - dateB;
+        } else {
+          // Uno pasado, uno futuro: mostrar primero el futuro
+          return dateA >= now ? -1 : 1;
+        }
     };
 
     // 4. Ordenar y devolver

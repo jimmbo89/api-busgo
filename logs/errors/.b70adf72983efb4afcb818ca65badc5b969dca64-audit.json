@@ -6,19 +6,9 @@
     "auditLog": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\.b70adf72983efb4afcb818ca65badc5b969dca64-audit.json",
     "files": [
         {
-            "date": 1759234649228,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2025-09-30.log",
-            "hash": "88b3ad9f0afdffdf95871fbebd9936999a5dada5e687d26280451e6e57d21c5d"
-        },
-        {
-            "date": 1759926684838,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2025-10-08.log",
-            "hash": "3681f5e0ca3daaf4cb6cd3cb90176ff29b4baff173ce3d3472a2db5f09b977a9"
-        },
-        {
-            "date": 1760016741641,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2025-10-09.log",
-            "hash": "0955ab6689e07ced7812f7fb402a63e9f3b971f40f56f8f646c4424a60f0fcc2"
+            "date": 1761333462780,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2025-10-24.log",
+            "hash": "fa2b80e6fb32eb07a30edc86a4b8a1e30ffaec6f2bd5e228be501f8cfa04ad37"
         }
     ],
     "hashType": "sha256"

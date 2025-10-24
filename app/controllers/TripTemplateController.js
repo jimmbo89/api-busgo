@@ -334,6 +334,32 @@ const TripTemplateController = {
           );
 
           if (shouldGenerate) {
+             const now = new Date(); // Ej: Fri Oct 24 2025 17:48:00 GMT-0300
+
+            // Parsear la hora del template
+            const [hoursStr, minutesStr] = template.schedule.split(':');
+            const hours = parseInt(hoursStr, 10);
+            const minutes = parseInt(minutesStr, 10);
+
+            // ✅ Crear fecha de salida EN LA ZONA LOCAL (Chile)
+            const tripDateTime = new Date(
+              now.getFullYear(),
+              now.getMonth(),
+              now.getDate(),
+              hours,
+              minutes,
+              0,
+              0
+            );
+
+            logger.info(`Template ${template.id}: hora actual: ${now} | hora de salida: ${tripDateTime}`);
+
+            // Comparar directamente (ambas en la misma zona)
+            if (tripDateTime < now) {
+              logger.info(`Template ${template.id}: hora de salida ${template.schedule} ya pasó hoy. Omitiendo.`);
+              continue;
+            }
+
             let arrival = await TripTemplateController.calculateArrivalTime(
               formattedToday,
               template.schedule,

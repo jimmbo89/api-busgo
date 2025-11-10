@@ -170,6 +170,145 @@ const TripRepository = {
     });
   },
 
+  async findDateWeb(branchId, workerId = null, date = null, ticket_id = null) {
+  // Zona horaria fija para Chile
+  const timeZone = 'America/Santiago';
+
+  // Función auxiliar para formatear fecha en 'YYYY-MM-DD' en la zona horaria dada
+  const formatDate = (d) => {
+    return new Date(d).toLocaleDateString('sv-SE', { timeZone }); // 'sv-SE' da YYYY-MM-DD
+  };
+
+  const today = new Date();
+  const startDate = formatDate(today);
+  const endDate = formatDate(new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)); // +30 días
+  // Si se pasa una fecha específica, usamos solo esa (como antes)
+  const useRange = !date;
+  const searchDate = date || startDate;
+
+  const whereClause = {
+    branch_id: branchId,
+  };
+
+  if (workerId) {
+    if (useRange) {
+      // Rango de fechas + lógica de viajes activos
+      whereClause[Op.or] = [
+        // Viajes programados en el rango de fechas
+        {
+          date: {
+            [Op.gte]: startDate,
+            [Op.lte]: endDate,
+          },
+        },
+        // Viajes activos (sin end) cuyo arrival está en el rango
+        {
+          [Op.and]: [
+            { start: { [Op.lte]: new Date(endDate) } }, // start <= fin del rango
+            { end: { [Op.is]: null } },
+            Sequelize.where(
+              Sequelize.fn('DATE', Sequelize.col('arrival')),
+              {
+                [Op.gte]: startDate,
+                [Op.lte]: endDate,
+              }
+            ),
+          ],
+        },
+      ];
+    } else {
+      // Comportamiento original si se pasa una fecha específica
+      whereClause[Op.or] = [
+        { date: { [Op.eq]: searchDate } },
+        {
+          [Op.and]: [
+            { start: { [Op.lte]: today } },
+            { end: { [Op.is]: null } },
+            Sequelize.where(
+              Sequelize.fn('DATE', Sequelize.col('arrival')),
+              { [Op.eq]: searchDate }
+            ),
+          ],
+        },
+      ];
+    }
+  } else {
+    // Sin workerId: solo viajes con campo `date` en el rango
+    if (useRange) {
+      whereClause.date = {
+        [Op.gte]: startDate,
+        [Op.lte]: endDate,
+      };
+    } else {
+      whereClause.date = { [Op.eq]: searchDate };
+    }
+  }
+
+  return await Trip.findAll({
+    attributes: [
+      "id",
+      "date",
+      "schedule",
+      "arrival",
+      "start",
+      "end",
+      "branch_id",
+      "vehicle_id",
+      "route_id",
+      "price",
+    ],
+    where: whereClause,
+    order: [['date', 'ASC'], ['schedule', 'ASC']],
+    include: [
+      {
+        model: Branch,
+        as: "branch",
+        attributes: ["id", "name"],
+      },
+      {
+        model: Vehicle,
+        as: "vehicle",
+        attributes: ["id", "plate", "seats", "image"],
+        include: [
+          {
+            model: Structure,
+            as: "structure",
+          },
+        ],
+      },
+      {
+        model: Route,
+        as: "route",
+        attributes: ["id", "name"],
+        include: [
+          {
+            model: Location,
+            as: "origin",
+            attributes: ["id", "address", "image"],
+          },
+          {
+            model: Location,
+            as: "destination",
+            attributes: ["id", "address", "image"],
+          },
+        ],
+      },
+      {
+        model: Ticket,
+        as: "tickets",
+        attributes: ["id", "seats", "qr_status", "quantity"],
+      },
+      {
+        model: Worker,
+        as: "workers",
+        attributes: ["id", "name"],
+        through: { attributes: [] },
+        where: workerId ? { id: workerId } : {},
+      },
+    ],
+  });
+},
+
   async findById(id) {
     return await Trip.findByPk(id, {
       attributes: [

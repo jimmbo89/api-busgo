@@ -283,11 +283,11 @@ const TripController = {
 
       const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
 
-
+      const notDepartedTrips = sortedTrips.filter(trip => trip.start === null);
       const promotions = await PromotionRepository.findByActiveStatus(true);
       const tickettypes  = await TicketTypeRepository.findByActiveStatus(1);
 
-      res.status(200).json({ trips: sortedTrips, promotions: promotions, tickettypes:  tickettypes});
+      res.status(200).json({ trips: notDepartedTrips, allTrips: sortedTrips, promotions: promotions, tickettypes:  tickettypes});
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });

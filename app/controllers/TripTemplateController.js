@@ -319,8 +319,8 @@ const TripTemplateController = {
       const today = new Date();
       const formattedToday = await TripTemplateController.formatDateToYYYYMMDD(today);
 
-      logger.info(`Iniciando generación de viajes para ${formattedToday}`);
-      logger.info(`Plantillas a procesar: ${templates.length}`);
+      //logger.info(`Iniciando generación de viajes para ${formattedToday}`);
+      //logger.info(`Plantillas a procesar: ${templates.length}`);
 
       for (const template of templates) {
         try { // Nuevo try-catch interno para cada template
@@ -329,9 +329,7 @@ const TripTemplateController = {
             formattedToday
           );
           
-          logger.info(
-            `Template ${template.id} (${template.recurrence_pattern}) aplica para ${formattedToday}: ${shouldGenerate}`
-          );
+          //logger.info(`Template ${template.id} (${template.recurrence_pattern}) aplica para ${formattedToday}: ${shouldGenerate}`);
 
           if (shouldGenerate) {
              const now = new Date(); // Ej: Fri Oct 24 2025 17:48:00 GMT-0300
@@ -352,11 +350,11 @@ const TripTemplateController = {
               0
             );
 
-            logger.info(`Template ${template.id}: hora actual: ${now} | hora de salida: ${tripDateTime}`);
+            //logger.info(`Template ${template.id}: hora actual: ${now} | hora de salida: ${tripDateTime}`);
 
             // Comparar directamente (ambas en la misma zona)
             if (tripDateTime < now) {
-              logger.info(`Template ${template.id}: hora de salida ${template.schedule} ya pasó hoy. Omitiendo.`);
+              //logger.info(`Template ${template.id}: hora de salida ${template.schedule} ya pasó hoy. Omitiendo.`);
               continue;
             }
 
@@ -367,9 +365,7 @@ const TripTemplateController = {
             );
 
             if (!arrival) {
-              logger.error(
-                `No se pudo calcular hora de llegada para template ${template.id}`
-              );
+              //logger.error(`No se pudo calcular hora de llegada para template ${template.id}`);
               continue;
             }
 
@@ -386,7 +382,7 @@ const TripTemplateController = {
             });
 
             if (existingTrip) {
-              logger.info(`Ya existe un viaje duplicado para template ${template.id} - Continuando...`);
+              //logger.info(`Ya existe un viaje duplicado para template ${template.id} - Continuando...`);
               continue;
             }
 
@@ -424,13 +420,13 @@ const TripTemplateController = {
                   }));
                 }
               } catch (error) {
-                console.error('Error procesando workers:', error);
+                logger.error('Error procesando workers:', error);
                 // Puedes agregar aquí manejo de errores adicional
               }
             }
           }
         } catch (templateError) {
-          logger.error(`Error procesando template ${template.id}: ${templateError.message}`);
+          //logger.error(`Error procesando template ${template.id}: ${templateError.message}`);
           // Continuar con el siguiente template aunque este falle
           continue;
         }
@@ -459,7 +455,7 @@ const TripTemplateController = {
         !estimatedDuration ||
         !schedule.match(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/)
       ) {
-        logger.info("Validación fallida - parámetros inválidos");
+        //logger.info("Validación fallida - parámetros inválidos");
         return null;
       }
 
@@ -493,7 +489,7 @@ const TripTemplateController = {
         )} ` +
         `${pad(arrivalDate.getHours())}:${pad(arrivalDate.getMinutes())}:00`;
 
-      logger.info("Hora de llegada calculada:", formattedArrival);
+      //logger.info("Hora de llegada calculada:", formattedArrival);
       return formattedArrival;
     } catch (error) {
       logger.error("Error calculando hora de llegada:", error);
@@ -521,7 +517,7 @@ const TripTemplateController = {
       const date = new Date(year, month - 1, day); // mes es 0-based
       const dayOfWeek = date.getDay(); // 0 (domingo) a 6 (sábado)
 
-      logger.info(`Validando template ${template.id} para día ${dayOfWeek}`);
+      //logger.info(`Validando template ${template.id} para día ${dayOfWeek}`);
 
       switch (
         template.recurrence_pattern.toLowerCase() // case insensitive

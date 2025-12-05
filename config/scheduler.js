@@ -5,14 +5,14 @@ const TripTemplateController = require('../app/controllers/TripTemplateControlle
 const logger = require('./logger');
 
 async function runScheduledJob() {
-  logger.info(`${new Date().toISOString()} - Iniciando generación de viajes...`);
+  //logger.info(`${new Date().toISOString()} - Iniciando generación de viajes...`);
   
   const mockReq = { 
   body: {} // Aunque no lo uses, evita errores de destructuración
     };
-  const mockRes = {
+    const mockRes = {
     status: () => ({
-      json: (data) => logger.info('Resultado:', data)
+      json: () => {} // Sin log: función vacía
     })
   };
 
@@ -22,7 +22,7 @@ async function runScheduledJob() {
   } catch (error) {
     logger.error('Error en la tarea programada:', error);
   } finally {
-    logger.info(`${new Date().toISOString()} - Finalizada generación de viajes`);
+    //logger.info(`${new Date().toISOString()} - Finalizada generación de viajes`);
   }
 }
 
@@ -35,4 +35,4 @@ cron.schedule('* * * * *', runScheduledJob, {
   timezone: "America/Santiago"
 });
 
-logger.info('Programador de generación de viajes iniciado');
+//logger.info('Programador de generación de viajes iniciado');

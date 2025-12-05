@@ -229,15 +229,12 @@ const TripController = {
       const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
           const reservedSeats = trip.tickets
-            ? trip.tickets
-                .filter((ticket) => !ticket_id || ticket.id !== ticket_id) // Si ticketId está presente, excluye el ticket con ese id
-                .flatMap((ticket) => {
-                  // Asegúrate de parsear correctamente los asientos
-                  return Array.isArray(ticket.seats)
-                    ? ticket.seats // Si ya es un array, lo usas directamente
-                    : JSON.parse(ticket.seats); // Si es un string JSON, lo parseas
-                })
-            : [];
+          ? trip.tickets.flatMap((ticket) => {
+              return Array.isArray(ticket.seats)
+                ? ticket.seats
+                : JSON.parse(ticket.seats);
+            })
+          : [];
           const seatMap = trip.vehicle?.structure?.seatMap
             ? Array.isArray(trip.vehicle.structure.seatMap)
               ? trip.vehicle.structure.seatMap // Si ya es un array, lo usas directamente

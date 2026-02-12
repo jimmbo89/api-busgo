@@ -148,6 +148,22 @@ const TicketController = {
 
     req.body.user_id = req.user.id;
 
+    // Transformar ticketType antiguo a tickettypes nuevo
+  if (req.body.ticketType && !req.body.tickettypes) {
+    req.body.tickettypes = req.body.ticketType.map(type => ({
+      id: type.ticket_type_id || null,
+      name: type.ticket_type_name || '',
+      cant: type.quantity || 1,
+      promotion_id: type.promotion_id || null,
+      namePromotion: type.promotion_name || null,
+      percentage: 0, // Valor por defecto
+      discount: 0, // Valor por defecto
+      showPromotionSelect: false,
+      selectedPromotion: null
+    }));
+    delete req.body.ticketType; // Eliminar el campo antiguo
+  };
+
     const {
       branch_id,
       user_id,
@@ -344,6 +360,8 @@ const TicketController = {
             minors: ticket.minors,
             date: ticket.date,
             sequenceNumber: ticket.sequenceNumber,
+            trip_id: ticket.trip_id,  // Agregar trip_id
+            seats: ticket.seats       // Agregar seats para validación
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
@@ -416,6 +434,8 @@ const TicketController = {
             minors: ticket.minors,
             date: ticket.date,
             sequenceNumber: ticket.sequenceNumber,
+               trip_id: ticket.trip_id,  // Agregar trip_id
+            seats: ticket.seats       // Agregar seats para validacións
           };
           //generar qr y codigo de barra
           const { qrCodePath, barcodePath } =
@@ -546,115 +566,189 @@ const TicketController = {
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },
-
-  async verifyEncryptedQR(req, res) {
-    logger.info(`${req.user.name} - Verificando QR: ${req.body.qr}`);
-    // Validación del input
-    let qr = req.body.qr;
-    try {
-        // 1. Buscar ticket por QR encriptado
-        const ticket = await Ticket.findOne({ 
-            where: { qr: qr },
-        });
-
-        if (!ticket) {
-            return res.status(404).json({ msg: "QRNotFound" });
-        }
-       try {
-        let decryptedData = await TicketRepository.decryptData(ticket.qr);
+// Método auxiliar para validar datos desencriptados
+async validateDecryptedData(decryptedData, ticket) {
+  try {
+    const comparisons = {
+      id: { 
+        decrypted: decryptedData.id, 
+        ticket: ticket.id,
+        match: decryptedData.id == ticket.id
+      },
+      method: {
+        decrypted: decryptedData.method,
+        ticket: ticket.method,
+        match: decryptedData.method == ticket.method
+      },
+      total: {
+        decrypted: decryptedData.total,
+        ticket: ticket.total,
+        match: decryptedData.total == ticket.total
+      },
+      date: {
+        decrypted: decryptedData.date,
+        ticket: ticket.date,
+        match: new Date(decryptedData.date).getTime() === new Date(ticket.date).getTime()
+      },
+      trip_id: {
+        decrypted: decryptedData.trip_id,
+        ticket: ticket.trip_id,
+        match: decryptedData.trip_id == ticket.trip_id
+      },
+      seats: {
+        decrypted: decryptedData.seats,
+        ticket: ticket.seats,
+        match: JSON.stringify(decryptedData.seats) === JSON.stringify(ticket.seats)
+      }
+    };
     
-        // 3. Verificar coincidencia con los datos del ticket
-        const isValid = await TicketController.validateDecryptedData(decryptedData, ticket);
+    const isValid = comparisons.id.match && 
+                    comparisons.method.match && 
+                    comparisons.total.match && 
+                    comparisons.date.match &&
+                    comparisons.trip_id.match &&
+                    comparisons.seats.match;
+    
+    if (!isValid) {
+      logger.warn(`Validación fallida: ${JSON.stringify({
+        comparisons: Object.keys(comparisons).filter(key => !comparisons[key].match)
+      })}`);
+    }
+    
+    return isValid;
+  } catch (error) {
+    logger.error("Error en validateDecryptedData:", error);
+    return false;
+  }
+},
+  async verifyEncryptedQR(req, res) {
+  logger.info(`${req.user.name} - Verificando QR para trip_id ${req.body.trip_id}`);
+  
+  const { qr, trip_id } = req.body;
+  
+   try {
+    // 1. Buscar ticket por QR
+    const ticket = await TicketRepository.findByQRWithTrip(qr);
 
-        if (!isValid) {
-            logger.warn(`QR alterado para ticket ${ticket.id}`);
-            return res.status(400).json({ error: "TamperedQR" });
-        }
-        } catch (decryptError) {
-            logger.info("Error al desencriptar QR:", decryptError);
-            return res.status(400).json({ error: "InvalidQRFormat" });
-        }
+    // 2. Si no se encuentra el ticket
+    if (!ticket) {
+      return res.status(404).json({ 
+        success: false,
+        belongsToTrip: null,
+        alreadyScanned: null,
+        ticket_id: null,
+        seats: [],
+        message: "QR no válido o no encontrado"
+      });
+    }
 
+    // 3. Verificar si pertenece al viaje especificado
+    const belongsToTrip = Number(ticket.trip_id) === Number(trip_id);
+    
+    // 4. Desencriptar y validar
+    let isValid = false;
+    try {
+      const decryptedData = await TicketRepository.decryptData(ticket.qr);
+      isValid = await TicketController.validateDecryptedData(decryptedData, ticket);
+    } catch (error) {
+      logger.error("Error al validar QR:", error);
+    }
+    
+    if (!isValid) {
+      return res.status(400).json({ 
+        success: false,
+        belongsToTrip: null,
+        alreadyScanned: null,
+        ticket_id: null,
+        trip_id: trip_id,
+        seats: [],
+        message: "QR alterado o inválido"
+      });
+    }
 
-        // 4. Lógica de estado (qr_status)
-        let actionTaken = "Reescaneado";
-        const incidentDetails = {
-          ticket_id: ticket.id,
-          qr: req.body.qr,
-          previous_status: ticket.qr_status
-      };
+    // 5. Verificar si ya fue escaneado
+    const alreadyScanned = ticket.qr_status !== null && ticket.qr_status > 0;
 
-      if (ticket.qr_status === null) {
-          // Primer escaneo - Actualizar estado
-          ticket.qr_status = 1;
-          actionTaken = "Primero";
-          logger.info(`Primer escaneo del QR: ${ticket.id}`);
-          await ticket.save();
+    // 6. Si pertenece al viaje correcto, actualizar estado
+    let shouldUpdateStatus = false;
+    
+    if (belongsToTrip) {
+      if (!alreadyScanned) {
+        // Primer escaneo
+        ticket.qr_status = 1;
+        shouldUpdateStatus = true;
+        logger.info(`✓ Primer escaneo - Ticket ${ticket.id} para trip ${trip_id}`);
       } else {
-          ticket.qr_status += 1
-          // QR ya había sido escaneado antes
-          actionTaken = "Reescaneado";
-          logger.info(`QR re-escaneado: ${ticket.id} (Estado anterior: ${ticket.qr_status})`);
-          await ticket.save();
+        // Re-escaneo
+        ticket.qr_status += 1;
+        shouldUpdateStatus = true;
+        logger.warn(`⚠ Re-escaneo - Ticket ${ticket.id} para trip ${trip_id}`);
+        
+        // Registrar incidente
+        try {
           const incidentBody = {
             branch_id: ticket.branch_id,
             user_id: req.user.id,
-            title: `Escaneo de QR (${actionTaken})`,
-            description: `${req.user.name} escaneó el QR del ticket ${ticket.id}`,
+            title: `Re-escaneo QR - Viaje ${trip_id}`,
+            description: `${req.user.name} re-escaneó ticket ${ticket.id}`,
             details: {
-                ...incidentDetails,
-                new_status: ticket.qr_status,
-                action: actionTaken
+              ticket_id: ticket.id,
+              trip_id: trip_id,
+              actual_trip_id: ticket.trip_id,
+              scan_count: ticket.qr_status,
+              timestamp: new Date()
             },
-            date: new Date()
-        };
-  
-        await IncidentRepository.create(incidentBody);
-      }
-        // 5. Respuesta con datos desencriptados
-        res.status(200).json({
-            ticket_id: ticket.id,
-            qr_status: ticket.qr_status,
-            action: actionTaken === "Primero" ? true : false,
-        });
-
-    } catch (error) {
-        logger.error("Error en verifyEncryptedQR:", error);
-        res.status(500).json({ error: "ServerError" });
-    }
-  },
-// Método auxiliar para validar datos desencriptados
-  async validateDecryptedData(decryptedData, ticket) {
-    const comparisons = {
-        id: { 
-            decrypted: decryptedData.id, 
-            ticket: ticket.id,
-            typeDecrypted: typeof decryptedData.id,
-            typeTicket: typeof ticket.id,
-            match: decryptedData.id == ticket.id
-        },
-        method: {
-            decrypted: decryptedData.method,
-            ticket: ticket.method,
-            match: decryptedData.method == ticket.method
-        },
-        total: {
-          decrypted: decryptedData.total,
-          ticket: ticket.total,
-          match: decryptedData.total == ticket.total
-      },
-        date: {
-            decrypted: new Date(decryptedData.date),
-            ticket: new Date(ticket.date),
-            match: new Date(decryptedData.date).getTime() === new Date(ticket.date).getTime()
+            date: new Date(),
+            status: 1
+          };
+          
+          await IncidentRepository.create(incidentBody);
+        } catch (incidentError) {
+          logger.error("Error al crear incidente:", incidentError);
         }
+      }
+    }
+
+    // 7. Guardar cambios
+    if (shouldUpdateStatus) {
+      await ticket.save();
+    }
+
+    // 8. Preparar respuesta UNIFICADA
+    const response = {
+      success: true,
+      belongsToTrip: belongsToTrip,
+      alreadyScanned: alreadyScanned,
+      ticket_id: ticket.id,
+      trip_id: trip_id,
+      actual_trip_id: ticket.trip_id,
+      seats: ticket.seats || []
     };
+
+    // 9. Agregar mensaje según el caso
+    if (!belongsToTrip) {
+      response.message = `Ticket pertenece al viaje ${ticket.trip_id}`;
+    } else if (alreadyScanned) {
+      response.message = `Ticket ya escaneado ${ticket.qr_status} vez/veces`;
+    } else {
+      response.message = "Ticket válido y escaneado exitosamente";
+    }
+
+    res.status(200).json(response);
+
+  } catch (error) {
+    logger.error("Error en verifyEncryptedQR:", error);
     
-    return comparisons.id.match && 
-          comparisons.method.match && 
-          comparisons.total.match && 
-          comparisons.date.match;
-  },
+    res.status(500).json({ 
+      success: false,
+      belongsToTrip: null,
+      alreadyScanned: null,
+      ticket_id: null,
+      seats: [],
+      message: "Error interno del servidor"
+    });
+  }
+},
     async getCurrentTime() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, "0"); // Asegura dos dígitos

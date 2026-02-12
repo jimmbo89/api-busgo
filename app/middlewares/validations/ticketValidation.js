@@ -187,6 +187,12 @@ const storeTicketSchema = Joi.object({
     'array.base': 'Los tipos de ticket deben ser un array',
     'array.includesRequiredUnknowns': 'Cada tipo de ticket debe cumplir con el esquema de validación',
   }),
+  ticketType: Joi.array()
+  .items(Joi.object().unknown()) // Acepta cualquier estructura interna
+  .optional()
+  .messages({
+    'array.base': 'ticketType debe ser un array',
+  }),
 });
 
 const storeTicketWebSchema = Joi.object({
@@ -513,6 +519,12 @@ const updateTicketSchema = Joi.object({
     'array.base': 'Los tipos de ticket deben ser un array',
     'array.includesRequiredUnknowns': 'Cada tipo de ticket debe cumplir con el esquema de validación',
   }),
+  ticketType: Joi.array()
+  .items(Joi.object().unknown()) // Acepta cualquier estructura interna
+  .optional()
+  .messages({
+    'array.base': 'ticketType debe ser un array',
+  }),
 });
 
 // Esquema para validar el ID de un Ticket
@@ -627,6 +639,14 @@ const qrEncryptedSchema = Joi.object({
       "string.empty": "El QR no puede estar vacío",
       "string.pattern.base": "El formato del QR encriptado no es válido",
       "any.required": "El QR es obligatorio"
+    }),
+  trip_id: Joi.number()
+    .integer()
+    .required()
+    .messages({
+      "number.base": "El trip_id debe ser un número",
+      "number.integer": "El trip_id debe ser un número entero",
+      "any.required": "El trip_id es obligatorio"
     })
 });
 module.exports = {

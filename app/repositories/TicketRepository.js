@@ -523,18 +523,18 @@ const TicketRepository = {
         const secretKey = crypto.createHash("sha256").update(baseKey).digest();
         const iv = Buffer.from("2017111319891230", "utf8");
         
-        logger.info("Input recibido:", {
+        logger.info(`Input recibido:, ${JSON.stringify({
             encryptedData: encryptedData,
             iv: iv,
             secretKey: secretKey.toString('hex')
-        });
+        })}`);
 
         const decipher = crypto.createDecipheriv("aes-256-cbc", secretKey, iv);
         let decrypted = decipher.update(encryptedData, "hex", "utf8");
         decrypted += decipher.final("utf8");
         
         const result = JSON.parse(decrypted);
-        logger.info("Desencriptación exitosa:", result);
+        logger.info(`Desencriptación exitosa: ${JSON.stringify(result)}`);
         return result;
         
     } catch (error) {
@@ -1037,6 +1037,33 @@ const TicketRepository = {
   });
 
   return tickets;
+},
+
+async findByQRWithTrip(qr) {
+  try {
+    const ticket = await Ticket.findOne({ 
+      where: { qr: qr },
+      include: [{
+        model: Trip,
+        as: 'trip'
+      }]
+    });
+
+    if (!ticket) {
+      logger.warn(`Ticket no encontrado para QR: ${qr?.substring(0, 20)}...`);
+      return null;
+    }
+
+    logger.debug(`Ticket encontrado: ID ${ticket.id}, Trip ID ${ticket.trip_id}`);
+    return ticket;
+  } catch (error) {
+    logger.error("Error en findByQRWithTrip:", {
+      error: error.message,
+      qrLength: qr?.length,
+      stack: error.stack
+    });
+    throw error;
+  }
 }
 };
 

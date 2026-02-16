@@ -631,15 +631,20 @@ const ticketSoldDateWorkerSchema = Joi.object({
 });
 
 const qrEncryptedSchema = Joi.object({
-  qr: Joi.string()
+  qr: Joi.alternatives()
+    .try(
+      Joi.string().trim().min(1),
+      Joi.number().integer().positive()
+    )
     .required()
-    .pattern(/^[a-f0-9]+$/) // Hexadecimal para AES encriptado
     .messages({
-      "string.base": "El QR debe ser una cadena hexadecimal",
-      "string.empty": "El QR no puede estar vacío",
-      "string.pattern.base": "El formato del QR encriptado no es válido",
+      "alternatives.types": "El QR debe ser un texto o un número entero positivo",
       "any.required": "El QR es obligatorio"
-    }),
+    })
+    .custom((value, helpers) => {
+      // Convertir siempre a string para consistencia interna
+      return String(value);
+    }, 'Convert qr to string'),
   trip_id: Joi.number()
     .integer()
     .required()

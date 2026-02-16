@@ -1064,6 +1064,58 @@ async findByQRWithTrip(qr) {
     });
     throw error;
   }
+},
+
+async findBySequenceNumberWithTrip(sequenceNumber) {
+  try {
+    const ticket = await Ticket.findOne({ 
+      where: { sequenceNumber: sequenceNumber },
+      include: [{
+          model: Trip,
+          as: "trip",
+          attributes: ["id", "date", "schedule", "start", "end"],
+          include: [
+            {
+              model: Vehicle,
+              as: "vehicle",
+              attributes: ["id", "plate", "image", "seats"],
+            },
+            {
+              model: Route,
+              as: "route",
+              attributes: ["id", "name"],
+              include: [
+                {
+                  model: Location,
+                  as: "origin",
+                  attributes: ["id", "address", "image"],
+                },
+                {
+                  model: Location,
+                  as: "destination",
+                  attributes: ["id", "address", "image"],
+                },
+              ],
+            },
+          ],
+        },]
+    });
+
+    if (!ticket) {
+      logger.warn(`Ticket no encontrado para sequenceNumber: ${sequenceNumber}`);
+      return null;
+    }
+
+    logger.debug(`Ticket encontrado: ID ${ticket.id}, Trip ID ${ticket.trip_id}, SequenceNumber: ${ticket.sequenceNumber}`);
+    return ticket;
+  } catch (error) {
+    logger.error("Error en findBySequenceNumberWithTrip:", {
+      error: error.message,
+      sequenceNumber: sequenceNumber,
+      stack: error.stack
+    });
+    throw error;
+  }
 }
 };
 

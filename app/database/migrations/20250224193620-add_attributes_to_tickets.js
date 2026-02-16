@@ -8,7 +8,7 @@ module.exports = {
       allowNull: true, // Puede ser null
     });
     await queryInterface.addColumn("tickets", "sequenceNumber", {
-      type: Sequelize.STRING(12), // Cadena de texto de 12 dígitos
+      type: Sequelize.STRING(50), // Cadena de texto de 12 dígitos
       allowNull: true, // Puede ser null
     });
     await queryInterface.addColumn("tickets", "extraData", {

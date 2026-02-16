@@ -115,7 +115,7 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true,
     },
     sequenceNumber: {
-      type: DataTypes.STRING(12),
+      type: DataTypes.STRING(50),
       allowNull: true,
     },
     extraData: {

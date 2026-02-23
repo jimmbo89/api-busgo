@@ -137,7 +137,8 @@ const {
   ticketSoldDateSchema,
   storeTicketWebSchema,
   qrEncryptedSchema,
-  ticketSoldDateWorkerSchema
+  ticketSoldDateWorkerSchema,
+  ticketReportSchema
 } = require("./middlewares/validations/ticketValidation");
 const { paymentSchema, paymentDataSchema, } = require("./middlewares/validations/tuuValidation");
 const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = require("./middlewares/validations/structureValidation");
@@ -546,30 +547,14 @@ router.post(
 
 //Rutas Trip
 router.get("/trip", TripController.index);
-router.post(
-  "/get-trip-date",
-  validateSchema(branchTicketTripSchema),
-  TripController.getTripDate
-);
-router.post(
-  "/get-trip-branch-date",
-  validateSchema(branchTicketTripSchema),
-  TripController.index_branch_date
-);
+router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );
+router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
 router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
 router.post("/trip-show", validateSchema(idTripSchema), TripController.show);
 router.post("/trip-update", validateSchema(updateTripSchema), TripController.update);
-router.post(
-  "/trip-destroy",
-  validateSchema(idTripSchema),
-  TripController.destroy
-);
-router.post(
-  "/get-routes-vehicle-workers",
-  validateSchema(branch_idTripSchema),
-  TripController.getRouteVehicleBranch
-);
+router.post("/trip-destroy", validateSchema(idTripSchema), TripController.destroy );
+router.post("/get-routes-vehicle-workers", validateSchema(branch_idTripSchema), TripController.getRouteVehicleBranch );
 router.post("/trips-tickets-date", validateSchema(ticketSoldDateSchema), TripController.getTripsTicketsDate);
 router.post("/trips-tickets-date-worker", validateSchema(ticketSoldDateWorkerSchema), TripController.getTripsTicketsDateWorker);
 
@@ -644,6 +629,7 @@ router.post(
 router.post("/ticket-sold-date-worker", validateSchema(ticketSoldDateWorkerSchema), TicketController.getTicketsSoldDateWorker);
 
 router.post("/verify-qr-ticket", validateSchema(qrEncryptedSchema),TicketController.verifyEncryptedQR);
+router.post("/get-tickets-print-report", validateSchema(ticketReportSchema), TicketController.getTicketsPrintReport);
 
 //Api Tuu
 router.post("/tuu", validateSchema(paymentSchema), TuuController.store);

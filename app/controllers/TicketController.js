@@ -499,7 +499,7 @@ const TicketController = {
     logger.info(`${req.user.name} - Busca un ticket con ID ${req.body.id}`);
 
     try {
-      const ticket = await TicketRepository.findById(req.body.id);
+      const ticket = await TicketRepository.findByIdOrSequence(req.body.id);
 
       if (!ticket) {
         return res.status(404).json({ msg: "TicketNotFound" });
@@ -520,6 +520,7 @@ const TicketController = {
           quantity: Number(ticket.quantity),
           price: Number(ticket.price),
           total: Number(ticket.total),
+          sequenceNumber: Number(ticket.sequenceNumber),
           date: ticket.date,
           schedule: ticket.trip.schedule,
           print: ticket.print,
@@ -1212,6 +1213,100 @@ async verifyEncryptedQR(req, res) {
       res.status(500).json({ error: error.message });
     }
   },
+
+  // TicketController.js
+
+  /**
+   * Reporte general de tickets indicando estado de impresión.
+   * Devuelve TODOS los tickets, marcando cuáles son incidencias.
+   */
+  async getTicketsPrintReport(req, res) {
+    logger.info(`${req.user.name} - Solicita reporte de estado de impresión de tickets`);
+    logger.info("Filtros: " + JSON.stringify(req.body));
+
+    const { ticket_id, date, branch_id, limit } = req.body;
+
+    try {
+      // 1. Obtener TODOS los tickets (sin filtrar por print)
+      const tickets = await TicketRepository.findWithPrintStatus({
+        ticket_id,
+        date,
+        branch_id,
+        limit
+      });
+
+      if (!tickets.length) {
+        return res.status(204).json({ msg: "NoTicketsFound" });
+      }
+
+      // 2. Mapeo con Lógica de Negocio de Incidencias
+      const mappedTickets = tickets.map(ticket => {
+        const printCount = ticket.print || 1; // Por seguridad, default a 1
+        const reprintCount = printCount - 1;
+        
+        // DEFINICIÓN DE ESTADO
+        const isIncident = printCount > 1;
+        const statusLabel = isIncident 
+          ? `Incidencia (${reprintCount} reimpresione${reprintCount === 1 ? 's' : 's'})` 
+          : 'Impresión Normal';
+        
+        // Tipo de incidente para facilitar filtrado en frontend si se requiere
+        const incidentType = isIncident ? 'REPRINT_INCIDENT' : 'NORMAL';
+
+        return {
+          id: ticket.id,
+          sequenceNumber: ticket.sequenceNumber, // Útil para reportes SII/Internos
+          branch_id: ticket.branch_id,
+          trip_id: ticket.trip_id,
+          
+          // Datos del viaje
+          routeName: ticket.trip?.route?.name || 'N/A',
+          origin: ticket.trip?.route?.origin?.address,
+          destination: ticket.trip?.route?.destination?.address,
+          schedule: ticket.trip?.schedule,
+          date: ticket.date,
+          
+          // Datos económicos
+          price: Number(ticket.price),
+          total: Number(ticket.total),
+          quantity: Number(ticket.quantity),
+          method: ticket.method,
+          
+          // --- CAMPOS CLAVE SOLICITADOS ---
+          print_count: printCount,          // Total de veces impreso (1, 2, 3...)
+          reprint_count: reprintCount,      // Cantidad de reimpresiones (0, 1, 2...)
+          is_incident: isIncident,          // Booleano: true si print > 1
+          status_label: statusLabel,        // Texto legible: "Incidencia (2 reimpresiones)"
+          incident_type: incidentType,      // Código para lógica: 'REPRINT_INCIDENT' | 'NORMAL'
+          last_modified: ticket.updatedAt,  // Cuándo ocurrió la última acción
+          // ------------------------------
+
+          // Contexto
+          branchName: ticket.branch?.name,
+          companyRut: ticket.branch?.company?.rut,
+          userName: ticket.user?.name,
+          userEmail: ticket.user?.email
+        };
+      });
+
+      // 3. Estadísticas rápidas (Opcional, pero muy útil en reportes)
+      const stats = {
+        total_tickets: mappedTickets.length,
+        normal_prints: mappedTickets.filter(t => !t.is_incident).length,
+        incidents: mappedTickets.filter(t => t.is_incident).length,
+        total_reprints_count: mappedTickets.reduce((sum, t) => sum + t.reprint_count, 0)
+      };
+
+      return res.status(200).json({
+        stats, // Resumen rápido
+        tickets: mappedTickets
+      });
+
+    } catch (error) {
+      logger.error(`TicketController->getTicketsPrintReport: ${error.message}`);
+      return res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  }
 };
 
 module.exports = TicketController;

@@ -195,7 +195,8 @@ const TicketRepository = {
         "barcode",
         "print",
         "promotions",
-        "tickettypes"
+        "tickettypes",
+        "sequenceNumber"
       ],
       include: [
         {
@@ -242,6 +243,81 @@ const TicketRepository = {
       ],
     });
   },
+
+  async findByIdOrSequence(searchValue) {
+  return await Ticket.findOne({
+    where: {
+      [Op.or]: [
+        { id: searchValue },
+        { sequenceNumber: searchValue }
+      ]
+    },
+    attributes: [
+      "id",
+      "branch_id",
+      "user_id",
+      "trip_id",
+      "method",
+      "status",
+      "quantity",
+      "price",
+      "total",
+      "seats",
+      "date",
+      "adults",
+      "minors",
+      "qr",
+      "barcode",
+      "print",
+      "promotions",
+      "tickettypes",
+      "sequenceNumber" // Recomendado agregarlo a los attributes si lo vas a usar
+    ],
+    include: [
+      {
+        model: Branch,
+        as: "branch",
+        attributes: ["id", "name", "rut", "image", "address"],
+        include: [
+          {
+            model: Company,
+            as: "company",
+            attributes: ["id", "name", "rut", "image", "address"],
+          },
+        ],
+      },
+      {
+        model: User,
+        as: "user",
+        attributes: ["id", "name", "email"],
+      },
+      {
+        model: Trip,
+        as: "trip",
+        attributes: ["id", "date", "schedule", "start", "end"],
+        include: [
+          {
+            model: Route,
+            as: "route",
+            attributes: ["id", "name"],
+            include: [
+              {
+                model: Location,
+                as: "origin",
+                attributes: ["id", "address"],
+              },
+              {
+                model: Location,
+                as: "destination",
+                attributes: ["id", "address"],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+},
 
   async create(body) {
     const {
@@ -1116,7 +1192,68 @@ async findBySequenceNumberWithTrip(sequenceNumber) {
     });
     throw error;
   }
-}
+},
+
+async findWithPrintStatus(filters) {
+    const { ticket_id, date, branch_id, limit = 100 } = filters;
+    const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('-').reverse().join('-');
+    const searchDate = date || formattedToday;
+    const whereClause = {
+      branch_id: branch_id,
+      date: searchDate
+    };
+
+    if (ticket_id) {
+      whereClause.id = ticket_id;
+    }
+
+    return await Ticket.findAll({
+      where: whereClause,
+      limit: parseInt(limit),
+      order: [['createdAt', 'DESC']], // Orden cronológico inverso (más nuevos primero)
+      include: [
+        {
+          model: Trip,
+          as: 'trip',
+          attributes: ['id', 'date', 'schedule', 'arrival'],
+          include: [
+            {
+              model: Route,
+              as: 'route',
+              attributes: ['id', 'name'],
+              include: [
+                { model: Location, as: 'origin', attributes: ['address'] },
+                { model: Location, as: 'destination', attributes: ['address'] }
+              ]
+            }
+          ]
+        },
+        {
+          model: Branch,
+          as: 'branch',
+          attributes: ['id', 'name', 'address', 'phone'],
+          include: [
+            {
+              model: Company,
+              as: 'company',
+              attributes: ['rut']
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'name', 'email']
+        }
+      ]
+    });
+  }
 };
 
 module.exports = TicketRepository;

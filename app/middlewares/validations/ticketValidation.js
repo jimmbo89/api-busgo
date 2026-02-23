@@ -654,6 +654,14 @@ const qrEncryptedSchema = Joi.object({
       "any.required": "El trip_id es obligatorio"
     })
 });
+
+const ticketReportSchema = Joi.object({
+  branch_id: Joi.number().integer().required(), // Requerido para saber de qué sucursal es el reporte
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional().allow(null), // Si no viene, podrías traer hoy o todos (según tu lógica)
+  ticket_id: Joi.number().integer().optional().allow(null), // Opcional: si quieres ver uno específico dentro del reporte
+  limit: Joi.number().integer().default(100).optional()
+});
+
 module.exports = {
   storeTicketSchema,
   updateTicketSchema,
@@ -663,5 +671,6 @@ module.exports = {
   ticketSoldDateSchema,
   storeTicketWebSchema,
   qrEncryptedSchema,
-  ticketSoldDateWorkerSchema
+  ticketSoldDateWorkerSchema,
+  ticketReportSchema
 };

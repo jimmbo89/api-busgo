@@ -1198,14 +1198,49 @@ const TripController = {
     }
 
     try {
-      // Obtener los tickets vendidos en la fecha dada
+      // Obtener los trips que no han finalizado
       const trips = await TripRepository.findTripsByBranchAndWorker(
         branch_id,
         date,
         endDate,
         worker_id
       );
-      const mappedTrips = trips.map((trip) => {
+
+      // Obtener fecha actual en zona horaria de Chile para comparación
+      const now = new Date();
+      const chileanDate = now.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).split('-').reverse().join('-'); // Formato: YYYY-MM-DD
+
+      // Ordenar los trips según la lógica requerida:
+      // 1. Viajes de otro día primero (date < chileanDate)
+      // 2. Viajes del día actual ordenados por schedule
+      // 3. Dentro de cada grupo, ordenar por schedule ASC
+      const sortedTripsData = trips.sort((a, b) => {
+        const isTodayA = a.date === chileanDate;
+        const isTodayB = b.date === chileanDate;
+
+        // Si A es de otro día y B es de hoy, A va primero
+        if (!isTodayA && isTodayB) return -1;
+        // Si B es de otro día y A es de hoy, B va primero
+        if (isTodayA && !isTodayB) return 1;
+
+        // Si ambos son del mismo día (ambos hoy o ambos otro día)
+        // Ordenar por schedule ASC
+        if (a.schedule < b.schedule) return -1;
+        if (a.schedule > b.schedule) return 1;
+
+        // Si tienen el mismo schedule, ordenar por fecha ASC
+        if (a.date < b.date) return -1;
+        if (a.date > b.date) return 1;
+
+        return 0;
+      });
+
+      const mappedTrips = sortedTripsData.map((trip) => {
         // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
         const passenger = trip.tickets.reduce(
           (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
@@ -1215,9 +1250,11 @@ const TripController = {
         return {
           id: trip.id,
           date: trip.date,
+          schedule: trip.schedule,
+          arrival: trip.arrival,
           start: trip.start,
           end: trip.end,
-          vehicleName: trip.vehicle.plate,
+          plate: trip.vehicle.plate,
           vehicleImage: trip.vehicle.image,
           name: trip.route.name,
           origin: trip.route.origin.address,

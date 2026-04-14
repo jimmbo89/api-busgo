@@ -173,10 +173,8 @@ const tripWorkerDateSchema = Joi.object({
   }),
   date: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/) // Expresión regular para validar el formato YYYY-MM-DD
-    .required()
     .messages({
       "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
-      "any.required": "El campo date es requerido",
     }),
   endDate: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD

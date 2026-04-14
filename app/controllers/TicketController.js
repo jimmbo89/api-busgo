@@ -542,15 +542,31 @@ const TicketController = {
         branch_id: ticket.branch_id, // ID de la sucursal
         user_id: req.user.id, // ID del usuario que realiza la acción
         title: "Reimpresión de ticket",
-        description: `${req.user.name} solicitó la reimpresión del ticket: ${ticket.id} por ${ticket.print} ocasión`,
+        description: `${req.user.name} imprime ticket: ${ticket.sequenceNumber} por ${ticket.print} ocasión`,
         details: {
           print: ticket.print,
           ticket_id: ticket.id,
+          sequenceNumber: ticket.sequenceNumber,
           method: ticket.method,
           quantity: ticket.quantity,
           price: ticket.price,
           total: ticket.total,
           trip_id: ticket.trip_id,
+
+          transactionNumber: ticket.sequenceNumber || ticket.id,
+    
+          // 2. Ruta: origen y destino (direcciones)
+          routeOrigin: ticket.trip?.route?.origin?.address || null,
+          routeDestination: ticket.trip?.route?.destination?.address || null,
+          
+          // 3. Hora de salida y hora de llegada del viaje
+          // Ajusta los nombres de las propiedades según tu modelo Sequelize/MySQL
+          departureTime: ticket.trip?.start || null,
+          arrivalTime: ticket.trip?.end || null,
+          
+          // 4. (Opcional) Nombres adicionales para mayor claridad en el reporte
+          routeName: ticket.trip?.route?.name || null,
+          branchName: ticket.branch?.name || null,
         },
         date: new Date(), // Fecha actual
       };

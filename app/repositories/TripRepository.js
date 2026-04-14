@@ -699,24 +699,61 @@ async existsByUpdatedFields(trip, updatedFields) {
   },
 
   async findTripsByBranchAndWorker(branchId, date, endDate, workerId) {
+    // Obtener fecha actual en zona horaria de Chile (America/Santiago)
+    const now = new Date();
+    const todayChile = now.toLocaleDateString('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('-').reverse().join('-'); // Formato: YYYY-MM-DD
+
+    // Si no se proporciona date, usar la fecha actual de Chile
+    const searchDate = date || todayChile;
+
     const whereClause = {
       branch_id: branchId, // Siempre filtramos por branch_id
     };
+
+    // Construir la cláusula WHERE para incluir solo viajes activos/pendientes:
+    // 1. Viajes que NO han iniciado (start IS NULL) - sin importar la fecha
+    // 2. Viajes que han iniciado pero NO han finalizado (start IS NOT NULL AND end IS NULL) - sin importar la fecha
+    // EXCLUIR: Viajes que ya finalizaron (end IS NOT NULL)
+    whereClause[Op.or] = [
+      // Caso 1: Viajes que aún no han iniciado
+      { start: { [Op.is]: null } },
+      // Caso 2: Viajes que iniciaron pero no han finalizado
+      {
+        [Op.and]: [
+          { start: { [Op.not]: null } },
+          { end: { [Op.is]: null } }
+        ]
+      }
+    ];
+
+    // Si se proporciona endDate, filtramos también por rango de fechas
+    // Esto limita la búsqueda a un rango específico de dates
     if (endDate && endDate.trim() !== "") {
-      whereClause.date = {
-        [Op.between]: [date, endDate], // Rango de fechas (inclusive)
-      };
+      // Agregamos la condición de fecha al filtro con AND
+      whereClause[Op.and] = whereClause[Op.and] || [];
+      whereClause[Op.and].push({
+        date: {
+          [Op.between]: [searchDate, endDate],
+        }
+      });
     } else {
-      // Filtrar por una sola fecha si no se proporciona endDate
-      whereClause.date = date;
+      // Si no hay endDate, filtramos por la fecha de búsqueda (date o todayChile)
+      whereClause[Op.and] = whereClause[Op.and] || [];
+      whereClause[Op.and].push({ date: searchDate });
     }
+
     return await Trip.findAll({
       include: [
         {
           model: Ticket,
           as: "tickets",
           attributes: ["quantity"], // No seleccionamos columnas individuales de Ticket
-          required: true,
+          required: false, // LEFT JOIN: incluye viajes incluso sin tickets
         },
         {
           model: TripWorker, // Asume que TripWorker es el modelo de la tabla de unión
@@ -749,6 +786,10 @@ async existsByUpdatedFields(trip, updatedFields) {
         },
       ],
       where: whereClause,
+      order: [
+        ['date', 'ASC'],      // Primero ordenar por fecha (viajes de otros días primero)
+        ['schedule', 'ASC']   // Luego por horario de salida
+      ],
     });
   },
 };

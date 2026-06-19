@@ -22,6 +22,8 @@ const VehicleController = {
                 brand: vehicle.brand,
                 model: vehicle.model,
                 plate: vehicle.plate,
+                internal_number: vehicle.internal_number,
+                internalNumber: vehicle.internal_number,
                 rut: vehicle.rut,
                 seats: vehicle.seats,
                 state: vehicle.state,
@@ -47,7 +49,7 @@ const VehicleController = {
         logger.info('Datos recibidos al crear un vehículo');
         logger.info(JSON.stringify(req.body));
 
-        const { brand, model, plate, rut, seats, state, structure_id } = req.body;
+        const { brand, model, plate, internal_number, rut, seats, state, structure_id } = req.body;
         
         // Verificar si le empresa existe
         const structure = await StructureRepository.findById(structure_id);
@@ -56,14 +58,18 @@ const VehicleController = {
             return res.status(404).json({ msg: 'StructureNotFound' });
         }
 
-            // Verificar si ya existe un vehículo con el mismo rut
-            const existingVehicle = await VehicleRepository.existsByRutOrPlate(rut, plate);
+            // Verificar si ya existe un vehículo con el mismo rut, placa o número interno
+            const existingVehicle = await VehicleRepository.existsByRutOrPlate(
+                rut,
+                plate,
+                internal_number
+            );
             logger.info(JSON.stringify(existingVehicle));
             if (existingVehicle) {
-                logger.error(`El rut o placa ya está registrado en otro vehículo: ${existingVehicle.rut} o ${existingVehicle.plate}`);
+                logger.error(`El rut, placa o número interno ya está registrado en otro vehículo: ${existingVehicle.rut} o ${existingVehicle.plate} o ${existingVehicle.internal_number}`);
                 return res.status(400).json({ 
-                    error: 'DuplicateRutPlate', 
-                    msg: 'El rut o plate ya está registrado en otro vehículo.' 
+                    error: 'DuplicateVehicleIdentifier', 
+                    msg: 'El rut, la placa o el número interno ya está registrado en otro vehículo.' 
                 });
             }
 
@@ -98,6 +104,8 @@ const VehicleController = {
                 brand: vehicle.brand,
                 model: vehicle.model,
                 plate: vehicle.plate,
+                internal_number: vehicle.internal_number,
+                internalNumber: vehicle.internal_number,
                 rut: vehicle.rut,
                 seats: vehicle.seats,
                 state: vehicle.state,
@@ -123,7 +131,7 @@ const VehicleController = {
         logger.info('Datos recibidos al editar un vehículo');
         logger.info(JSON.stringify(req.body));
 
-        const { id, brand, model, plate, rut, seats, state, structure_id } = req.body;
+        const { id, brand, model, plate, internal_number, rut, seats, state, structure_id } = req.body;
 
         try {
             const vehicle = await VehicleRepository.findById(id);
@@ -131,15 +139,20 @@ const VehicleController = {
                 return res.status(404).json({ msg: 'VehicleNotFound' });
             }
 
-            // Verificar si el rut ya existe en otro vehículo
-            if (rut || plate) {
-                const existingVehicle = await VehicleRepository.existsByRutOrPlate(rut, plate, id);
+            // Verificar si el rut, la placa o el número interno ya existe en otro vehículo
+            if (rut || plate || internal_number) {
+                const existingVehicle = await VehicleRepository.existsByRutOrPlate(
+                    rut,
+                    plate,
+                    internal_number,
+                    id
+                );
 
                 if (existingVehicle) {
-                    logger.error(`El rut o placa ya está registrado en otro vehículo: ${existingVehicle.rut} o ${existingVehicle.plate}`);
+                    logger.error(`El rut, placa o número interno ya está registrado en otro vehículo: ${existingVehicle.rut} o ${existingVehicle.plate} o ${existingVehicle.internal_number}`);
                     return res.status(400).json({
-                        error: 'DuplicateRutPlate',
-                        msg: 'El rut o placa ya está registrado en otro vehículo.'
+                        error: 'DuplicateVehicleIdentifier',
+                        msg: 'El rut, la placa o el número interno ya está registrado en otro vehículo.'
                     });
                 }
             }

@@ -6,14 +6,14 @@ const PromotionRepository = {
   // Obtener todas las promociones
   async findAll() {
     return await Promotion.findAll({
-      attributes: ['id', 'name', 'description', 'percentage', 'active'],
+      attributes: ['id', 'name', 'description', 'percentage', 'discount_type', 'active'],
     });
   },
 
   // Buscar una promoción por ID
   async findById(id) {
     return await Promotion.findByPk(id, {
-      attributes: ['id', 'name', 'description', 'percentage', 'active'],
+      attributes: ['id', 'name', 'description', 'percentage', 'discount_type', 'active'],
     });
   },
 
@@ -25,12 +25,13 @@ const PromotionRepository = {
 
   // Crear una nueva promoción
   async create(body) {
-    const { name, description, percentage, active } = body;
+    const { name, description, percentage, discount_type, active } = body;
 
     const promotion = await Promotion.create({
       name,
       description,
       percentage,
+      discount_type: discount_type || 'monto',
       active,
     });
 
@@ -39,7 +40,7 @@ const PromotionRepository = {
 
   // Actualizar una promoción
   async update(promotion, body) {
-    const fieldsToUpdate = ['name', 'description', 'percentage', 'active'];
+    const fieldsToUpdate = ['name', 'description', 'percentage', 'discount_type', 'active'];
 
     const updatedData = Object.keys(body)
       .filter((key) => fieldsToUpdate.includes(key) && body[key] !== undefined)
@@ -65,7 +66,7 @@ const PromotionRepository = {
   async findByActiveStatus(active) {
     return await Promotion.findAll({
       where: { active },
-      attributes: ['id', 'name', 'description', 'percentage', 'active'],
+      attributes: ['id', 'name', 'description', 'percentage', 'discount_type', 'active'],
     });
   },
 };

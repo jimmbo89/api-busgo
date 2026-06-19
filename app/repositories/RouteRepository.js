@@ -1,30 +1,29 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Route, Location, Sequelize, Branch } = require('../models'); // Aquí usamos el modelo Route
-const logger = require('../../config/logger'); // Logger para seguimiento
+const { Route, Location, Sequelize, Branch, BranchRoute } = require('../models');
+const logger = require('../../config/logger');
 
 const RouteRepository = {
-  // Obtener todas las rutas
   async findAll() {
     return await Route.findAll({
       attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      order: [['createdAt', 'ASC']],
       include: [
         {
-          model: Location, // Relación con el modelo de origen
+          model: Location,
           as: 'origin',
-          attributes: ['id', 'address', 'image'], // Atributos a incluir de la tabla de origen
+          attributes: ['id', 'address', 'image'],
         },
         {
-          model: Location, // Relación con el modelo de destino
+          model: Location,
           as: 'destination',
-          attributes: ['id', 'address', 'image'], // Atributos a incluir de la tabla de destino
+          attributes: ['id', 'address', 'image'],
         },
       ],
     });
   },
 
-  // Buscar una ruta por ID
   async findById(id) {
     return await Route.findByPk(id, {
       attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
@@ -43,13 +42,11 @@ const RouteRepository = {
     });
   },
 
-  // Buscar una ruta por nombre, excluyendo una ruta específica
   async existsByName(name, excludeId = null) {
     const whereCondition = excludeId ? { name, id: { [Op.ne]: excludeId } } : { name };
     return await Route.findOne({ where: whereCondition });
   },
 
-  // Crear una nueva ruta
   async create(body) {
     const { name, origin_id, destination_id, distance, estimated, status } = body;
 
@@ -65,7 +62,6 @@ const RouteRepository = {
     return route;
   },
 
-  // Actualizar una ruta
   async update(route, body) {
     const fieldsToUpdate = ['name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'];
 
@@ -84,12 +80,10 @@ const RouteRepository = {
     return await route.update(updatedData);
   },
 
-  // Eliminar una ruta
   async delete(route) {
     return await route.destroy();
   },
 
-  // 👇 Nuevo: Obtener rutas asociadas a una branch (solo sus origin_id)
   async findAssociatedRoutesByBranchId(branchId) {
     return await Route.findAll({
       attributes: ['origin_id'],
@@ -106,13 +100,22 @@ const RouteRepository = {
     });
   },
 
-  // 👇 Nuevo: Obtener rutas cuyo origin_id esté en el array dado
-  async findByOriginIds(originIds) {
-    if (!originIds.length) return [];
+  async findUnassociatedRoutesByBranchId(branchId) {
+    const associatedRouteIds = await BranchRoute.findAll({
+      where: { branch_id: branchId },
+      attributes: ['route_id'],
+      raw: true,
+    });
+
+    const routeIds = associatedRouteIds.map((item) => item.route_id);
+    const whereClause = routeIds.length > 0
+      ? { id: { [Op.notIn]: routeIds } }
+      : {};
 
     return await Route.findAll({
-      where: { origin_id: originIds },
+      where: whereClause,
       attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      order: [['createdAt', 'ASC']],
       include: [
         {
           model: Location,
@@ -128,52 +131,72 @@ const RouteRepository = {
     });
   },
 
-  // 👇 Nuevo: Obtener rutas cuyo origin_id NO esté en uso por ninguna branch
-  async findRoutesWithUnusedOrigins() {
-  // Paso 1: Obtener los origin_id que están en uso por ALGUNA branch
-  const usedOriginIdsResult = await Route.findAll({
-  attributes: ['origin_id'],
-  include: [
-    {
-      model: Branch,
-      as: 'branches',
-      attributes: [],
-      through: { attributes: [] },
-      required: true, 
-    },
-  ],
-  where: {
-    origin_id: { [Op.ne]: null }
+  async findByOriginIds(originIds) {
+    if (!originIds.length) return [];
+
+    return await Route.findAll({
+      where: { origin_id: originIds },
+      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      order: [['createdAt', 'ASC']],
+      include: [
+        {
+          model: Location,
+          as: 'origin',
+          attributes: ['id', 'address', 'image'],
+        },
+        {
+          model: Location,
+          as: 'destination',
+          attributes: ['id', 'address', 'image'],
+        },
+      ],
+    });
   },
-  raw: true,
-});
 
-  logger.info('origenes empleados ya');
-  logger.info(JSON.stringify(usedOriginIdsResult));
-  const usedOriginIds = usedOriginIdsResult.map(r => r.origin_id);
-
-  // Paso 2: Buscar rutas cuyo origin_id NO esté en esa lista
-  const whereClause = usedOriginIds.length > 0
-    ? { origin_id: { [Op.notIn]: usedOriginIds } }
-    : {};
-
-  return await Route.findAll({
-    where: whereClause,
-    attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
-    include: [
-      {
-        model: Location,
-        as: 'origin',
-        attributes: ['id', 'address', 'image'],
+  async findRoutesWithUnusedOrigins() {
+    const usedOriginIdsResult = await Route.findAll({
+      attributes: ['origin_id'],
+      include: [
+        {
+          model: Branch,
+          as: 'branches',
+          attributes: [],
+          through: { attributes: [] },
+          required: true,
+        },
+      ],
+      where: {
+        origin_id: { [Op.ne]: null }
       },
-      {
-        model: Location,
-        as: 'destination',
-        attributes: ['id', 'address', 'image'],
-      },
-    ],
-  });
-},
+      raw: true,
+    });
+
+    logger.info('origenes empleados ya');
+    logger.info(JSON.stringify(usedOriginIdsResult));
+    const usedOriginIds = usedOriginIdsResult.map(r => r.origin_id);
+
+    const whereClause = usedOriginIds.length > 0
+      ? { origin_id: { [Op.notIn]: usedOriginIds } }
+      : {};
+
+    return await Route.findAll({
+      where: whereClause,
+      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      order: [['createdAt', 'ASC']],
+      include: [
+        {
+          model: Location,
+          as: 'origin',
+          attributes: ['id', 'address', 'image'],
+        },
+        {
+          model: Location,
+          as: 'destination',
+          attributes: ['id', 'address', 'image'],
+        },
+      ],
+    });
+  },
 };
 
 module.exports = RouteRepository;

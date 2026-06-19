@@ -49,6 +49,4 @@ const logger = winston.createLogger({
   ]
 });
 
-logger.info(`Logger configurado. Logs en: ${logDir}`);
-
 module.exports = logger;

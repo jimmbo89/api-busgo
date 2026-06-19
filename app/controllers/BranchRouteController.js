@@ -1,6 +1,6 @@
-const { BranchRoute, Branch, Route, sequelize } = require('../models');
+const { BranchRoute, Branch, Route } = require('../models');
 const logger = require('../../config/logger');
-const { BranchRouteRepository, BranchRepository, LocationRepository, RouteRepository } = require('../repositories');
+const { BranchRouteRepository, BranchRepository, RouteRepository } = require('../repositories');
 
 const BranchRouteController = {
     // Obtener todas las relaciones Branch-Route
@@ -29,40 +29,79 @@ const BranchRouteController = {
 
     async branch_routes(req, res) {
         logger.info(`${req.user.name} - Busca todas las relaciones Branch-Route`);
-        const { branch_id } = req.body;
-        
-        const branch = await BranchRepository.findById(branch_id);
-        if (!branch) {
-            logger.error(`BranchRouteController->branch_routes: Sucursal no encontrada con ID ${branch_id}`);
-            return res.status(404).json({ msg: 'BranchNotFound' });
+        const rawBranchId = req.body?.branch_id;
+        const branch_id = rawBranchId === null || rawBranchId === undefined || rawBranchId === '' || rawBranchId === 'null'
+            ? null
+            : rawBranchId;
+
+        if (branch_id) {
+            const branch = await BranchRepository.findById(branch_id);
+            if (!branch) {
+                logger.error(`BranchRouteController->branch_routes: Sucursal no encontrada con ID ${branch_id}`);
+                return res.status(404).json({ msg: 'BranchNotFound' });
+            }
         }
+
         try {
             const branchRoutes = await BranchRouteRepository.findByBranch(branch_id, {
-                order: [['created_at', 'ASC']] // ASC para más antiguo primero, DESC para más reciente primero
+                order: [['createdAt', 'ASC']]
             });
 
-            // Mapeamos los resultados para obtener solo los IDs y nombres
-            const mappedBranchRoutes = branchRoutes.map((branchRoute) => {
-                const route = branchRoute.route;
-                return {
-                id: branchRoute.id,
-                branchId: branchRoute.branch_id,
-                branch_id: branchRoute.branch_id,
-                price: branchRoute.price,
-                routeId: branchRoute.route_id,
-                route_id: branchRoute.route_id,
-                name: route.name,
-                originName: route.origin.address,
-                origin_id: route.origin_id,
-                distance: route.distance,
-                estimated: route.estimated,
-                status: route.status,
-                originImage: route.origin.image,
-                destination_id: route.destination_id,
-                destinationName: route.destination.address,
-                destinationImage: route.destination.image,
+            let mappedBranchRoutes = [];
+
+            if (branch_id) {
+                mappedBranchRoutes = branchRoutes.map((branchRoute) => {
+                    const route = branchRoute.route;
+                    return {
+                        id: branchRoute.id,
+                        branchRouteId: branchRoute.id,
+                        branchId: branchRoute.branch_id,
+                        branch_id: branchRoute.branch_id,
+                        price: branchRoute.price,
+                        routeId: branchRoute.route_id,
+                        route_id: branchRoute.route_id,
+                        name: route.name,
+                        originName: route.origin.address,
+                        origin_id: route.origin_id,
+                        distance: route.distance,
+                        estimated: route.estimated,
+                        status: route.status,
+                        originImage: route.origin.image,
+                        destination_id: route.destination_id,
+                        destinationName: route.destination.address,
+                        destinationImage: route.destination.image,
+                    };
+                });
+            } else {
+                const routes = await RouteRepository.findAll();
+                const branchRouteByRouteId = new Map(
+                    branchRoutes.map((branchRoute) => [branchRoute.route_id, branchRoute])
+                );
+
+                mappedBranchRoutes = routes.map((route) => {
+                    const branchRoute = branchRouteByRouteId.get(route.id);
+
+                    return {
+                        id: branchRoute ? branchRoute.id : route.id,
+                        branchRouteId: branchRoute ? branchRoute.id : null,
+                        branchId: branchRoute ? branchRoute.branch_id : null,
+                        branch_id: branchRoute ? branchRoute.branch_id : null,
+                        price: branchRoute ? branchRoute.price : null,
+                        routeId: route.id,
+                        route_id: route.id,
+                        name: route.name,
+                        originName: route.origin.address,
+                        origin_id: route.origin_id,
+                        distance: route.distance,
+                        estimated: route.estimated,
+                        status: route.status,
+                        originImage: route.origin.image,
+                        destination_id: route.destination_id,
+                        destinationName: route.destination.address,
+                        destinationImage: route.destination.image,
+                    };
+                });
             }
-            });
 
             res.status(200).json({ 'branchRoutes': mappedBranchRoutes });
         } catch (error) {
@@ -76,7 +115,7 @@ const BranchRouteController = {
     async store(req, res) {
         logger.info(`${req.user.name} - Crea una nueva relación Branch-Route`);
 
-        const { branch_id, route_id, price } = req.body;
+        const { branch_id, route_id } = req.body;
 
         const branch = await BranchRepository.findById(branch_id);
         if (!branch) {
@@ -94,7 +133,7 @@ const BranchRouteController = {
             const branchRoute = await BranchRoute.create({
                 branch_id: branch_id,
                 route_id: route_id,
-                price: price
+                price: req.body.price ?? null
             });
             res.status(201).json({ msg: 'BranchRouteCreated', branchRoute });
         } catch (error) {

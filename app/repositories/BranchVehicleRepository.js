@@ -41,7 +41,7 @@ const BranchVehicleRepository = {
         return await BranchVehicle.findByPk(id, {
             include: [
                 { model: Branch, as: 'branch', attributes: ['id', 'name'] },
-                { model: Vehicle, as: 'vehicle', attributes: ['id', 'plate', 'image'] }
+                { model: Vehicle, as: 'vehicle', attributes: ['id', 'plate', 'internal_number', 'image'] }
             ]
         });
     },

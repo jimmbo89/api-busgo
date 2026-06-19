@@ -60,6 +60,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: true,
     },
+    internal_number: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     rut: {
       type: DataTypes.STRING,
       allowNull: true,

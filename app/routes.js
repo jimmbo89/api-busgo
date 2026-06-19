@@ -119,6 +119,7 @@ const {
   storeTripSchema,
   updateTripSchema,
   idTripSchema,
+  changeTripSchema,
   branch_idTripSchema,
   tripWorkerDateSchema,
 } = require("./middlewares/validations/tripValidation");
@@ -395,7 +396,7 @@ router.post(
 
 //Rutas Location
 router.get("/location", LocationController.index);
-router.post("/location-route",  validateSchema(branch_idTripSchema), LocationController.index_route);
+router.post("/location-route", LocationController.index_route);
 router.post(
   "/location",
   multerImage("image", "locations"),
@@ -465,7 +466,6 @@ router.post(
 router.get("/branch-route", BranchRouteController.index);
 router.post(
   "/branch-routes",
-  validateSchema(branch_idTripSchema),
   BranchRouteController.branch_routes
 );
 router.post(
@@ -553,6 +553,7 @@ router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),Tr
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
 router.post("/trip-show", validateSchema(idTripSchema), TripController.show);
 router.post("/trip-update", validateSchema(updateTripSchema), TripController.update);
+router.post("/trip-change-trip", validateSchema(changeTripSchema), TripController.changeTrip);
 router.post("/trip-destroy", validateSchema(idTripSchema), TripController.destroy );
 router.post("/get-routes-vehicle-workers", validateSchema(branch_idTripSchema), TripController.getRouteVehicleBranch );
 router.post("/trips-tickets-date", validateSchema(ticketSoldDateSchema), TripController.getTripsTicketsDate);

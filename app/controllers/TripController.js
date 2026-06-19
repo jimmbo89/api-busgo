@@ -1,4 +1,4 @@
-const { Worker, TripWorker } = require("../models");
+const { Worker, TripWorker, sequelize } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 const {
   TripRepository,
@@ -47,6 +47,8 @@ const TripController = {
             seats: trip.vehicle.seats,
             branchName: trip.branch.name, // Incluir los datos de la sucursal asociada
             vehicleName: trip.vehicle.plate, // Incluir los datos del vehículo asociado
+            internal_number: trip.vehicle.internal_number,
+            internalNumber: trip.vehicle.internal_number,
             vehicleImage: trip.vehicle.image, // Incluir los datos del vehículo asociado
             name: trip.route.name, // Incluir los datos de la ruta asociada
             origin: trip.route.origin.address,
@@ -107,6 +109,8 @@ const TripController = {
             seats: trip.vehicle.seats,
             branchName: trip.branch.name, // Incluir los datos de la sucursal asociada
             vehicleName: trip.vehicle.plate, // Incluir los datos del vehículo asociado
+            internal_number: trip.vehicle.internal_number,
+            internalNumber: trip.vehicle.internal_number,
             vehicleImage: trip.vehicle.image, // Incluir los datos del vehículo asociado
             name: trip.route.name, // Incluir los datos de la ruta asociada
             origin: trip.route.origin.address,
@@ -263,6 +267,8 @@ const TripController = {
             end: trip.end,
             seats: trip.vehicle.seats,
             plate: trip.vehicle.plate,
+            internal_number: trip.vehicle.internal_number,
+            internalNumber: trip.vehicle.internal_number,
             imageVehicle: trip.vehicle.image,
             name: trip.route.name, // Incluir los datos de la ruta asociada
             origin: trip.route.origin.address,
@@ -281,8 +287,16 @@ const TripController = {
       const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
 
       const notDepartedTrips = sortedTrips.filter(trip => trip.start === null);
-      const promotions = await PromotionRepository.findByActiveStatus(true);
-      const tickettypes  = await TicketTypeRepository.findByActiveStatus(1);
+      const promotions = (await PromotionRepository.findByActiveStatus(true)).map((promotion) => ({
+        ...promotion.toJSON(),
+        discountType: promotion.discount_type,
+      }));
+      const tickettypes  = (await TicketTypeRepository.findByActiveStatus(1)).map((ticketType) => ({
+        ...ticketType.toJSON(),
+        adjustmentType: ticketType.adjustment_type,
+        valueType: ticketType.value_type,
+        adjustmentValue: ticketType.adjustment_value,
+      }));
 
       res.status(200).json({ trips: notDepartedTrips, allTrips: sortedTrips, promotions: promotions, tickettypes:  tickettypes});
     } catch (error) {
@@ -361,6 +375,8 @@ const TripController = {
             end: trip.end,
             seats: trip.vehicle.seats,
             plate: trip.vehicle.plate,
+            internal_number: trip.vehicle.internal_number,
+            internalNumber: trip.vehicle.internal_number,
             imageVehicle: trip.vehicle.image,
             name: trip.route.name, // Incluir los datos de la ruta asociada
             origin: trip.route.origin.address,
@@ -533,6 +549,8 @@ const TripController = {
         price: trip.price,
         branchName: trip.branch.name, // Incluir los datos de la sucursal asociada
         vehicleName: trip.vehicle.plate, // Incluir los datos del vehículo asociado
+        internal_number: trip.vehicle.internal_number,
+        internalNumber: trip.vehicle.internal_number,
         vehicleImage: trip.vehicle.image, // Incluir los datos del vehículo asociado
         routeName: trip.route.name, // Incluir los datos de la ruta asociada
         origin: trip.route.origin.address,
@@ -837,6 +855,212 @@ const TripController = {
     }
   },
 
+  getSoldSeatSummary(trip) {
+    const tickets = trip.tickets || [];
+    const soldSeatNumbers = [];
+    let soldSeatCount = 0;
+
+    tickets.forEach((ticket) => {
+      let parsedSeats = [];
+
+      if (Array.isArray(ticket.seats)) {
+        parsedSeats = ticket.seats;
+      } else if (typeof ticket.seats === "string") {
+        try {
+          const decodedSeats = JSON.parse(ticket.seats);
+          parsedSeats = Array.isArray(decodedSeats) ? decodedSeats : [];
+        } catch (error) {
+          parsedSeats = [];
+        }
+      }
+
+      const numericSeats = parsedSeats
+        .map((seat) => Number(seat))
+        .filter((seat) => Number.isFinite(seat) && seat > 0);
+
+      soldSeatNumbers.push(...numericSeats);
+
+      if (numericSeats.length > 0) {
+        soldSeatCount += numericSeats.length;
+      } else {
+        soldSeatCount += Number(ticket.quantity || 0);
+      }
+    });
+
+    return {
+      soldSeatCount,
+      soldSeatNumbers,
+    };
+  },
+
+  getOccupiedSeatNumbers(trip) {
+    const tickets = trip.tickets || [];
+    const occupiedSeatNumbers = [];
+
+    tickets.forEach((ticket) => {
+      let parsedSeats = [];
+
+      if (Array.isArray(ticket.seats)) {
+        parsedSeats = ticket.seats;
+      } else if (typeof ticket.seats === "string") {
+        try {
+          const decodedSeats = JSON.parse(ticket.seats);
+          parsedSeats = Array.isArray(decodedSeats) ? decodedSeats : [];
+        } catch (error) {
+          parsedSeats = [];
+        }
+      }
+
+      const numericSeats = parsedSeats
+        .map((seat) => Number(seat))
+        .filter((seat) => Number.isFinite(seat) && seat > 0);
+
+      occupiedSeatNumbers.push(...numericSeats);
+    });
+
+    return occupiedSeatNumbers;
+  },
+
+  async changeTrip(req, res) {
+    logger.info(`${req.user.name} - Mueve tickets de un viaje a otro`);
+    logger.info("Datos recibidos al mover tickets entre viajes");
+    logger.info(JSON.stringify(req.body));
+
+    const { id, new_trip_id } = req.body;
+
+    try {
+      const sourceTrip = await TripRepository.findByIdWithTickets(id);
+      if (!sourceTrip) {
+        return res.status(404).json({
+          msg: "TripNotFound",
+          details: "No se encontro el viaje origen desde el que intentas mover los pasajes.",
+        });
+      }
+
+      const targetTrip = await TripRepository.findByIdWithTickets(new_trip_id);
+      if (!targetTrip) {
+        return res.status(404).json({
+          msg: "TargetTripNotFound",
+          details: "No se encontro el viaje destino al que intentas mover los pasajes.",
+        });
+      }
+
+      if (Number(sourceTrip.id) === Number(targetTrip.id)) {
+        return res.status(400).json({
+          msg: "SameTripTransfer",
+          details: "El viaje origen y el viaje destino no pueden ser el mismo.",
+        });
+      }
+
+      if (sourceTrip.start) {
+        return res.status(400).json({
+          msg: "SourceTripAlreadyStarted",
+          details:
+            "No se pueden mover los pasajes porque el viaje origen ya tiene la salida registrada.",
+        });
+      }
+
+      if (targetTrip.start) {
+        return res.status(400).json({
+          msg: "TargetTripAlreadyStarted",
+          details:
+            "No se pueden mover los pasajes porque el viaje destino ya tiene la salida registrada.",
+        });
+      }
+
+      const sourceTickets = sourceTrip.tickets || [];
+      if (!sourceTickets.length) {
+        return res.status(400).json({
+          msg: "SourceTripWithoutTickets",
+          details: "El viaje origen no tiene pasajes vendidos para mover al nuevo viaje.",
+        });
+      }
+
+      const { soldSeatCount } = TripController.getSoldSeatSummary(
+        sourceTrip
+      );
+      const targetVehicleSeats = Number(targetTrip.vehicle?.seats || 0);
+      const occupiedSeatNumbers = TripController.getOccupiedSeatNumbers(targetTrip);
+      const occupiedSeatSet = new Set(occupiedSeatNumbers);
+      const availableSeatNumbers = [];
+
+      for (let seatNumber = 1; seatNumber <= targetVehicleSeats; seatNumber += 1) {
+        if (!occupiedSeatSet.has(seatNumber)) {
+          availableSeatNumbers.push(seatNumber);
+        }
+      }
+
+      if (soldSeatCount > availableSeatNumbers.length) {
+        return res.status(400).json({
+          msg: "TargetTripWithoutEnoughSeats",
+          details: `No se pueden mover los pasajes porque el viaje destino solo tiene ${availableSeatNumbers.length} asientos libres y necesitas reubicar ${soldSeatCount} asientos ya vendidos.`,
+        });
+      }
+
+      const ticketUpdates = [];
+      let seatCursor = 0;
+
+      sourceTickets.forEach((ticket) => {
+        let parsedSeats = [];
+
+        if (Array.isArray(ticket.seats)) {
+          parsedSeats = ticket.seats;
+        } else if (typeof ticket.seats === "string") {
+          try {
+            const decodedSeats = JSON.parse(ticket.seats);
+            parsedSeats = Array.isArray(decodedSeats) ? decodedSeats : [];
+          } catch (error) {
+            parsedSeats = [];
+          }
+        }
+
+        const currentSeatCount = parsedSeats.length > 0
+          ? parsedSeats.length
+          : Number(ticket.quantity || 0);
+
+        const reassignedSeats = availableSeatNumbers.slice(
+          seatCursor,
+          seatCursor + currentSeatCount
+        );
+
+        seatCursor += currentSeatCount;
+
+        ticketUpdates.push({
+          ticket,
+          body: {
+            trip_id: targetTrip.id,
+            branch_id: targetTrip.branch_id,
+            date: targetTrip.date,
+            seats: reassignedSeats,
+          },
+        });
+      });
+
+      await sequelize.transaction(async (transaction) => {
+        for (const ticketUpdate of ticketUpdates) {
+          await ticketUpdate.ticket.update(ticketUpdate.body, { transaction });
+        }
+      });
+
+      const refreshedTargetTrip = await TripRepository.findByIdWithTickets(targetTrip.id);
+      const movedTicketIds = ticketUpdates.map(({ ticket }) => ticket.id);
+
+      return res.status(200).json({
+        msg: "TripTicketsMoved",
+        details: `Se movieron ${ticketUpdates.length} pasajes del viaje ${sourceTrip.id} al viaje ${targetTrip.id}, reasignando ${soldSeatCount} asientos disponibles del viaje destino.`,
+        movedTickets: movedTicketIds,
+        trip: refreshedTargetTrip,
+      });
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+
+      logger.error("TripController->changeTrip:" + errorMsg);
+      return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
   // Eliminar un viaje
   async destroy(req, res) {
     logger.info(`${req.user.name} - Elimina el viaje con ID ${req.body.id}`);
@@ -865,9 +1089,7 @@ const TripController = {
     logger.info(`${req.user.name} - Entra a la ruta unificada de viajes`);
 
     try {
-      const routes = await BranchRouteRepository.findByBranch(
-        req.body.branch_id
-      );
+      const routes = await RouteRepository.findAll();
       const branchVehicles = await BranchVehicleRepository.findByBranch(
         req.body.branch_id
       );
@@ -876,25 +1098,26 @@ const TripController = {
       );
 
       // Mapeamos los resultados para obtener solo los IDs y nombres
-      const mappedRoutes = routes.map((branchroute) => {
+      const mappedRoutes = routes.map((route) => {
         return {
-          id: branchroute.route_id,
-          name: branchroute.route.name,
-          originId: branchroute.route.origin_id,
-          origin_id: branchroute.route.origin_id,
-          destinationId: branchroute.route.destination_id,
-          destination_id: branchroute.route.destination_id,
-          originAddress: branchroute.route.origin.address,
-          originImage: branchroute.route.origin.image,
-          destinationAddress: branchroute.route.destination.address,
-          destinationImage: branchroute.route.destination.image,
-          price: branchroute.price,
-          estimated: branchroute.route.estimated,
+          id: route.id,
+          name: route.name,
+          originId: route.origin_id,
+          origin_id: route.origin_id,
+          destinationId: route.destination_id,
+          destination_id: route.destination_id,
+          originAddress: route.origin.address,
+          originImage: route.origin.image,
+          destinationAddress: route.destination.address,
+          destinationImage: route.destination.image,
+          estimated: route.estimated,
         };
       });
       const mappedBranchVehicles = branchVehicles.map((branchVehicle) => ({
         id: branchVehicle.vehicle_id,
         vehicleName: branchVehicle.vehicle.plate,
+        internal_number: branchVehicle.vehicle.internal_number,
+        internalNumber: branchVehicle.vehicle.internal_number,
         vehicleImage: branchVehicle.vehicle.image,
         brand: branchVehicle.vehicle.brand,
         seats: branchVehicle.vehicle.seats,
@@ -1246,6 +1469,10 @@ const TripController = {
           (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
           0
         );
+        const totalAmount = trip.tickets.reduce(
+          (sum, ticket) => sum + (parseFloat(ticket.total) || 0),
+          0
+        );
 
         return {
           id: trip.id,
@@ -1255,6 +1482,8 @@ const TripController = {
           start: trip.start,
           end: trip.end,
           plate: trip.vehicle.plate,
+          internal_number: trip.vehicle.internal_number,
+          internalNumber: trip.vehicle.internal_number,
           vehicleImage: trip.vehicle.image,
           name: trip.route.name,
           origin: trip.route.origin.address,
@@ -1262,10 +1491,16 @@ const TripController = {
           destination: trip.route.destination.address,
           destinationImage: trip.route.destination.image,
           passenger, // Usar la suma calculada
+          totalAmount,
         };
       });
 
-      res.status(200).json({ trips: mappedTrips });
+      const totalGeneral = mappedTrips.reduce(
+        (sum, trip) => sum + (trip.totalAmount || 0),
+        0
+      );
+
+      res.status(200).json({ trips: mappedTrips, totalGeneral });
     } catch (error) {
       logger.error(
         "Error en TripController->getTripsByBranchAndWorker:",

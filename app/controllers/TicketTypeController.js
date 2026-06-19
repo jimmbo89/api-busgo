@@ -8,7 +8,13 @@ const TicketTypeController = {
 
     try {
       const ticketTypes = await TicketTypeRepository.findAll();
-      res.status(200).json({ ticketTypes });
+      const mappedTicketTypes = ticketTypes.map((ticketType) => ({
+        ...ticketType.toJSON(),
+        adjustmentType: ticketType.adjustment_type,
+        valueType: ticketType.value_type,
+        adjustmentValue: ticketType.adjustment_value,
+      }));
+      res.status(200).json({ ticketTypes: mappedTicketTypes });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -24,7 +30,13 @@ const TicketTypeController = {
 
     try {
       const ticketTypes = await TicketTypeRepository.findByActiveStatus(1); // 1 para activos
-      res.status(200).json({ 'tickettypes' : ticketTypes });
+      const mappedTicketTypes = ticketTypes.map((ticketType) => ({
+        ...ticketType.toJSON(),
+        adjustmentType: ticketType.adjustment_type,
+        valueType: ticketType.value_type,
+        adjustmentValue: ticketType.adjustment_value,
+      }));
+      res.status(200).json({ 'tickettypes' : mappedTicketTypes });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -54,7 +66,15 @@ const TicketTypeController = {
 
     try {
       const ticketType = await TicketTypeRepository.create(req.body);
-      res.status(201).json({ msg: "TicketTypeCreated", ticketType });
+      res.status(201).json({
+        msg: "TicketTypeCreated",
+        ticketType: {
+          ...ticketType.toJSON(),
+          adjustmentType: ticketType.adjustment_type,
+          valueType: ticketType.value_type,
+          adjustmentValue: ticketType.adjustment_value,
+        },
+      });
     } catch (error) {
       logger.error("Error en TicketTypeController->store: " + error.message);
       res.status(500).json({ error: "ServerError" });
@@ -71,7 +91,14 @@ const TicketTypeController = {
         return res.status(204).json({ msg: "TicketTypeNotFound" });
       }
 
-      res.status(200).json({ 'tickettype' : ticketType });
+      res.status(200).json({
+        'tickettype' : {
+          ...ticketType.toJSON(),
+          adjustmentType: ticketType.adjustment_type,
+          valueType: ticketType.value_type,
+          adjustmentValue: ticketType.adjustment_value,
+        },
+      });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -111,7 +138,15 @@ const TicketTypeController = {
         req.body
       );
 
-      res.status(200).json({ msg: "TicketTypeUpdated", updatedTicketType });
+      res.status(200).json({
+        msg: "TicketTypeUpdated",
+        updatedTicketType: {
+          ...updatedTicketType.toJSON(),
+          adjustmentType: updatedTicketType.adjustment_type,
+          valueType: updatedTicketType.value_type,
+          adjustmentValue: updatedTicketType.adjustment_value,
+        },
+      });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -160,7 +195,14 @@ const TicketTypeController = {
         });
       }
 
-      return res.status(200).json({ ticketTypes });
+      const mappedTicketTypes = ticketTypes.map((ticketType) => ({
+        ...ticketType.toJSON(),
+        adjustmentType: ticketType.adjustment_type,
+        valueType: ticketType.value_type,
+        adjustmentValue: ticketType.adjustment_value,
+      }));
+
+      return res.status(200).json({ ticketTypes: mappedTicketTypes });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")

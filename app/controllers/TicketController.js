@@ -56,6 +56,9 @@ const TicketController = {
         destinationImage: ticket.trip.route.destination.image, // Incluir los detalles del viaje asociado
         tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
         schedule: ticket.trip.schedule, // Incluir los detalles del viaje asociado
+        vehiclePlate: ticket.trip.vehicle?.plate,
+        internal_number: ticket.trip.vehicle?.internal_number,
+        internalNumber: ticket.trip.vehicle?.internal_number,
       }));
 
       res.status(200).json({ tickets: mappedTickets });
@@ -131,6 +134,9 @@ const TicketController = {
         destinationImage: ticket.trip.route.destination.image, // Incluir los detalles del viaje asociado
         tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
         schedule: ticket.trip.schedule, // Incluir los detalles del viaje asociado
+        vehiclePlate: ticket.trip.vehicle?.plate,
+        internal_number: ticket.trip.vehicle?.internal_number,
+        internalNumber: ticket.trip.vehicle?.internal_number,
       }));
 
       res.status(200).json({ tickets: mappedTickets });
@@ -153,9 +159,13 @@ const TicketController = {
     req.body.tickettypes = req.body.ticketType.map(type => ({
       id: type.ticket_type_id || null,
       name: type.ticket_type_name || '',
+      adjustment_type: type.adjustment_type || "descuento",
+      value_type: type.value_type || "monto",
+      adjustment_value: type.adjustment_value ?? 0,
       cant: type.quantity || 1,
       promotion_id: type.promotion_id || null,
       namePromotion: type.promotion_name || null,
+      discount_type: type.discount_type || "monto",
       percentage: 0, // Valor por defecto
       discount: 0, // Valor por defecto
       showPromotionSelect: false,
@@ -263,6 +273,9 @@ const TicketController = {
         total: Number(ticket.total),
         date: ticket.date,
         schedule: ticket.trip.schedule,
+        vehiclePlate: ticket.trip.vehicle?.plate,
+        internal_number: ticket.trip.vehicle?.internal_number,
+        internalNumber: ticket.trip.vehicle?.internal_number,
         print: ticket.print,
         qr: ticket.qr,
         barcode: ticket.barcode,
@@ -387,6 +400,9 @@ const TicketController = {
           total: Number(ticket.total),
           date: ticket.date,
           schedule: ticket.trip.schedule,
+          vehiclePlate: ticket.trip.vehicle?.plate,
+          internal_number: ticket.trip.vehicle?.internal_number,
+          internalNumber: ticket.trip.vehicle?.internal_number,
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
@@ -461,6 +477,9 @@ const TicketController = {
           total: Number(ticket.total),
           date: ticket.date,
           schedule: ticket.trip.schedule,
+          vehiclePlate: ticket.trip.vehicle?.plate,
+          internal_number: ticket.trip.vehicle?.internal_number,
+          internalNumber: ticket.trip.vehicle?.internal_number,
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
@@ -523,6 +542,9 @@ const TicketController = {
           sequenceNumber: Number(ticket.sequenceNumber),
           date: ticket.date,
           schedule: ticket.trip.schedule,
+          vehiclePlate: ticket.trip.vehicle?.plate,
+          internal_number: ticket.trip.vehicle?.internal_number,
+          internalNumber: ticket.trip.vehicle?.internal_number,
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
@@ -833,6 +855,9 @@ async verifyEncryptedQR(req, res) {
         tripName: ticketMaped.trip.route.name, // Incluir los detalles del viaje asociado
         tripOrigin: ticketMaped.trip.route.origin.address, // Incluir los detalles del viaje asociado
         tripDestination: ticketMaped.trip.route.destination.address, // Incluir los detalles del viaje asociado
+        vehiclePlate: ticketMaped.trip.vehicle?.plate,
+        internal_number: ticketMaped.trip.vehicle?.internal_number,
+        internalNumber: ticketMaped.trip.vehicle?.internal_number,
       };
       //generar qr y codigo de barra
       const { qrCodePath, barcodePath } =
@@ -988,6 +1013,8 @@ async verifyEncryptedQR(req, res) {
           date: trip.date,
           vehicleImage: vehicle.image,
           vehiclePlate: vehicle.plate,
+          internal_number: vehicle.internal_number,
+          internalNumber: vehicle.internal_number,
           vehicleBrand: vehicle.brand,
           route: routeInfo, // Origen y destino concatenados
           estimated: trip.route.estimated,
@@ -1084,6 +1111,7 @@ async verifyEncryptedQR(req, res) {
         date,
         endDate
       );
+      const trips = await TripRepository.getTripsDate(type, id, date, endDate);
 
       // Inicializar las variables para calcular los totales
       const totalsByMethod = {}; // Objeto para almacenar los totales por método de pago
@@ -1094,7 +1122,6 @@ async verifyEncryptedQR(req, res) {
       tickets.forEach((ticket) => {
         const method = ticket.method.toUpperCase(); // Convertir a mayúsculas para consistencia
         const total = parseFloat(ticket.total); // Convertir a número
-        const quantity = parseInt(ticket.quantity, 10); // Convertir a número entero
 
         if (!totalsByMethod[method]) {
           totalsByMethod[method] = {
@@ -1118,11 +1145,54 @@ async verifyEncryptedQR(req, res) {
         cantidad: totalsByMethod[method].cantidad, // Cantidad de pasajes
       }));
 
+      const tripsSummary = trips.map((trip) => {
+        const origin = trip.route.origin;
+        const destination = trip.route.destination;
+        const tripName = origin.address + "-" + destination.address;
+        const tripOrigin = origin.address;
+        const tripDestination = destination.address;
+        const tripTickets = trip.tickets || [];
+
+        const tripTotalsByMethod = {};
+        let tripTotal = 0;
+        let tripPasajesVendidos = 0;
+
+        tripTickets.forEach((ticket) => {
+          const method = ticket.method.toUpperCase();
+          const total = parseFloat(ticket.total);
+
+          if (!tripTotalsByMethod[method]) {
+            tripTotalsByMethod[method] = {
+              total: 0,
+              cantidad: 0,
+            };
+          }
+
+          tripTotalsByMethod[method].total += total;
+          tripTotalsByMethod[method].cantidad += 1;
+          tripTotal += total;
+          tripPasajesVendidos += 1;
+        });
+
+        return {
+          nombre: tripName,
+          origin: tripOrigin,
+          destination: tripDestination,
+          totalPasajes: tripPasajesVendidos,
+          totalTramo: tripTotal,
+          totalesPorMetodo: Object.keys(tripTotalsByMethod).map((method) => ({
+            metodo: method,
+            total: tripTotalsByMethod[method].total,
+            cantidad: tripTotalsByMethod[method].cantidad,
+          })),
+        };
+      });
+
       // Obtener el nombre de la entidad (Company o Branch)
       const entityName =
         type === "Company"
-          ? tickets[0]?.branch?.company?.name // Usar el alias correcto
-          : tickets[0]?.branch?.name;
+          ? tickets[0]?.branch?.company?.name || trips[0]?.branch?.company?.name
+          : tickets[0]?.branch?.name || trips[0]?.branch?.name;
       let fecha = null;
       if (endDate && endDate.trim() !== "") {
         fecha = date + " al " + endDate;
@@ -1137,6 +1207,7 @@ async verifyEncryptedQR(req, res) {
         reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray, // Array de totales por método de pago
         totales: totalGeneral, // Total general en dinero
+        tramos: tripsSummary,
       };
 
       res.json(response);

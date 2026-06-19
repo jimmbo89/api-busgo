@@ -31,6 +31,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.DOUBLE,
       allowNull: false,
     },
+    discount_type: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "monto",
+    },
     active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

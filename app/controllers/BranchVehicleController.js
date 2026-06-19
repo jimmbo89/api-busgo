@@ -15,7 +15,9 @@ const BranchVehicleController = {
                 branchName: branchVehicle.branch.name,
                 vehicleId: branchVehicle.vehicle_id,
                 vehicle_id: branchVehicle.vehicle_id,
-                vehicleName: branchVehicle.vehicle.plate
+                vehicleName: branchVehicle.vehicle.plate,
+                internal_number: branchVehicle.vehicle.internal_number,
+                internalNumber: branchVehicle.vehicle.internal_number
             }));
 
             res.status(200).json({ 'branchVehicles': mappedBranchVehicles });
@@ -46,6 +48,8 @@ const BranchVehicleController = {
                 vehicleId: branchVehicle.vehicle_id,
                 vehicle_id: branchVehicle.vehicle_id,
                 plate: branchVehicle.vehicle.plate,
+                internal_number: branchVehicle.vehicle.internal_number,
+                internalNumber: branchVehicle.vehicle.internal_number,
                 brand: branchVehicle.vehicle.brand,
                 model: branchVehicle.vehicle.model,
                 image: branchVehicle.vehicle.image,
@@ -113,7 +117,9 @@ const BranchVehicleController = {
                 branchId: branchVehicle.branch_id,
                 branchName: branchVehicle.branch.name,
                 vehicleId: branchVehicle.vehicle_id,
-                vehicleName: branchVehicle.vehicle.plate
+                vehicleName: branchVehicle.vehicle.plate,
+                internal_number: branchVehicle.vehicle.internal_number,
+                internalNumber: branchVehicle.vehicle.internal_number
             };
             res.status(200).json({ 'branchVehicle': mappedBranchVehicle });
         } catch (error) {

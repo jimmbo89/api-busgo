@@ -28,6 +28,21 @@ module.exports = (sequelize, DataTypes) => {
         type: DataTypes.STRING,
         allowNull: true,
       },
+      adjustment_type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "descuento",
+      },
+      value_type: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "monto",
+      },
+      adjustment_value: {
+        type: DataTypes.DOUBLE,
+        allowNull: false,
+        defaultValue: 0,
+      },
       active: {
         type: DataTypes.BOOLEAN,
         allowNull: false,

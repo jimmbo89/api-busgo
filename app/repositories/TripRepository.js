@@ -38,7 +38,7 @@ const TripRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "seats", "image"],
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
           include: [
             {
               model: Structure,
@@ -129,7 +129,7 @@ const TripRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "seats", "image"],
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
           include: [
             {
               model: Structure,
@@ -268,7 +268,7 @@ const TripRepository = {
       {
         model: Vehicle,
         as: "vehicle",
-        attributes: ["id", "plate", "seats", "image"],
+        attributes: ["id", "plate", "internal_number", "seats", "image"],
         include: [
           {
             model: Structure,
@@ -332,7 +332,7 @@ const TripRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "image"],
+          attributes: ["id", "plate", "internal_number", "image"],
           include: [
             {
               model: Structure,
@@ -356,6 +356,63 @@ const TripRepository = {
               attributes: ["id", "address", "image"], // Atributos a incluir de la tabla de destino
             },
           ],
+        },
+      ],
+    });
+  },
+
+  async findByIdWithTickets(id) {
+    return await Trip.findByPk(id, {
+      attributes: [
+        "id",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
+          include: [
+            {
+              model: Structure,
+              as: "structure",
+            },
+          ],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "name"],
+          include: [
+            {
+              model: Location,
+              as: "origin",
+              attributes: ["id", "address", "image"],
+            },
+            {
+              model: Location,
+              as: "destination",
+              attributes: ["id", "address", "image"],
+            },
+          ],
+        },
+        {
+          model: Ticket,
+          as: "tickets",
+          attributes: ["id", "seats", "quantity"],
         },
       ],
     });
@@ -752,7 +809,7 @@ async existsByUpdatedFields(trip, updatedFields) {
         {
           model: Ticket,
           as: "tickets",
-          attributes: ["quantity"], // No seleccionamos columnas individuales de Ticket
+          attributes: ["quantity", "total"], // Necesario para calcular pasajeros y monto por viaje
           required: false, // LEFT JOIN: incluye viajes incluso sin tickets
         },
         {
@@ -765,7 +822,7 @@ async existsByUpdatedFields(trip, updatedFields) {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "image"],
+          attributes: ["id", "plate", "internal_number", "image"],
         },
         {
           model: Route,

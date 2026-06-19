@@ -60,7 +60,7 @@ const TicketRepository = {
             {
               model: Vehicle,
               as: "vehicle",
-              attributes: ["id", "plate", "image", "seats"],
+              attributes: ["id", "plate", "internal_number", "image", "seats"],
             },
             {
               model: Route,
@@ -143,7 +143,7 @@ const TicketRepository = {
             {
               model: Vehicle,
               as: "vehicle",
-              attributes: ["id", "plate", "image", "seats"],
+              attributes: ["id", "plate", "internal_number", "image", "seats"],
             },
             {
               model: Route,
@@ -921,7 +921,7 @@ const TicketRepository = {
         "price",
       ],
       where: whereClause,
-      order: [['date', 'ASC']],
+      order: [['createdAt', 'ASC']],
       include: [
         {
           model: Branch,
@@ -931,7 +931,7 @@ const TicketRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "seats", "image", "brand"],
+          attributes: ["id", "plate", "internal_number", "seats", "image", "brand"],
         },
         {
           model: Route,
@@ -991,7 +991,7 @@ const TicketRepository = {
         "price",
       ],
       where: whereClause,
-      order: [['schedule', 'ASC']], // Ordenar por horario en lugar de fecha
+      order: [['createdAt', 'ASC']], // Orden cronológico de creación
       include: [
         {
           model: Branch,
@@ -1001,7 +1001,7 @@ const TicketRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "seats", "image", "brand"],
+          attributes: ["id", "plate", "internal_number", "seats", "image", "brand"],
         },
         {
           model: Route,
@@ -1154,7 +1154,7 @@ async findBySequenceNumberWithTrip(sequenceNumber) {
             {
               model: Vehicle,
               as: "vehicle",
-              attributes: ["id", "plate", "image", "seats"],
+              attributes: ["id", "plate", "internal_number", "image", "seats"],
             },
             {
               model: Route,

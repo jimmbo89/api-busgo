@@ -14,6 +14,8 @@ const VehicleWorkerController = {
                 id: vehicleWorker.id,
                 vehicleId: vehicleWorker.vehicle_id,
                 vehiclePlate: vehicleWorker.vehicle.plate,
+                internal_number: vehicleWorker.vehicle.internal_number,
+                internalNumber: vehicleWorker.vehicle.internal_number,
                 workerId: vehicleWorker.worker_id,
                 workerName: vehicleWorker.worker.name
             }));
@@ -101,6 +103,8 @@ const VehicleWorkerController = {
                 id: vehicleWorker.id,
                 vehicleId: vehicleWorker.vehicle_id,
                 vehiclePlate: vehicleWorker.vehicle.plate,
+                internal_number: vehicleWorker.vehicle.internal_number,
+                internalNumber: vehicleWorker.vehicle.internal_number,
                 workerId: vehicleWorker.worker_id,
                 workerName: vehicleWorker.worker.name
             };

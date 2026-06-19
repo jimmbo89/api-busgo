@@ -40,6 +40,8 @@ const TripTemplateController = {
           ? template.workers // Si ya es un array, úsalo directamente
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         vehicleName: template.vehicle.plate, // Incluir los datos del vehículo asociado
+        internal_number: template.vehicle.internal_number,
+        internalNumber: template.vehicle.internal_number,
         vehicleImage: template.vehicle.image, // Incluir los datos del vehículo asociado
         name: template.route.name, // Incluir los datos de la ruta asociada
         origin: template.route.origin.address,
@@ -98,6 +100,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
+        internal_number: template.vehicle.internal_number,
+        internalNumber: template.vehicle.internal_number,
         route_name: template.route.name,
         origin_address: template.route.origin.address,
         destination_address: template.route.destination.address,
@@ -200,6 +204,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
+        internal_number: template.vehicle.internal_number,
+        internalNumber: template.vehicle.internal_number,
         route_name: template.route.name,
         origin_address: template.route.origin.address,
         destination_address: template.route.destination.address,
@@ -267,6 +273,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
+        internal_number: template.vehicle.internal_number,
+        internalNumber: template.vehicle.internal_number,
         route_name: template.route.name,
         origin_address: template.route.origin.address,
         destination_address: template.route.destination.address,

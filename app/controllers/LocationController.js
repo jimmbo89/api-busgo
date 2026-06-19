@@ -39,17 +39,27 @@ const LocationController = {
     logger.info(`${req.user.name} - Entra a buscar las ubicaciones (origen y destino)`);
 
     try {
-        const { branch_id } = req.body;
+        const rawBranchId = req.body?.branch_id;
+        const branch_id = rawBranchId === null || rawBranchId === undefined || rawBranchId === '' || rawBranchId === 'null'
+            ? null
+            : rawBranchId;
 
-        const branch = await BranchRepository.findById(branch_id);
-      if (!branch) {
-        logger.error(
-          `LocationController->index_route: Sucursal no encontrada con ID ${branch_id}`
-        );
-        return res.status(400).json({ msg: "BranchNotFound" });
-      }
+        if (branch_id) {
+            const branch = await BranchRepository.findById(branch_id);
+            if (!branch) {
+                logger.error(
+                    `LocationController->index_route: Sucursal no encontrada con ID ${branch_id}`
+                );
+                return res.status(400).json({ msg: "BranchNotFound" });
+            }
+        }
 
-        const { origins, destinations } = await LocationRepository.findOriginsAndDestinationsByBranch(branch_id);
+        const { origins, destinations } = branch_id
+            ? await LocationRepository.findOriginsAndDestinationsByBranch(branch_id)
+            : {
+                origins: await LocationRepository.findAll(),
+                destinations: await LocationRepository.findAll(),
+            };
 
         if (!origins.length && !destinations.length) {
             return res.status(204).json({ msg: 'LocationsNotFound' });

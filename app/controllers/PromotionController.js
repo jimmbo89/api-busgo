@@ -8,7 +8,11 @@ const PromotionController = {
 
     try {
       const promotions = await PromotionRepository.findAll();
-      res.status(200).json({ promotions: promotions });
+      const mappedPromotions = promotions.map((promotion) => ({
+        ...promotion.toJSON(),
+        discountType: promotion.discount_type,
+      }));
+      res.status(200).json({ promotions: mappedPromotions });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -23,7 +27,11 @@ const PromotionController = {
 
     try {
       const promotions = await PromotionRepository.findByActiveStatus(true);
-      res.status(200).json({ promotions: promotions });
+      const mappedPromotions = promotions.map((promotion) => ({
+        ...promotion.toJSON(),
+        discountType: promotion.discount_type,
+      }));
+      res.status(200).json({ promotions: mappedPromotions });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -53,7 +61,13 @@ const PromotionController = {
 
     try {
       const promotion = await PromotionRepository.create(req.body);
-      res.status(201).json({ msg: "PromotionCreated", promotion });
+      res.status(201).json({
+        msg: "PromotionCreated",
+        promotion: {
+          ...promotion.toJSON(),
+          discountType: promotion.discount_type,
+        },
+      });
     } catch (error) {
       logger.error("Error en PromotionController->store: " + error.message);
       res.status(500).json({ error: "ServerError" });
@@ -70,7 +84,12 @@ const PromotionController = {
         return res.status(204).json({ msg: "PromotionNotFound" });
       }
 
-      res.status(200).json({ promotion: promotion });
+      res.status(200).json({
+        promotion: {
+          ...promotion.toJSON(),
+          discountType: promotion.discount_type,
+        },
+      });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -109,7 +128,13 @@ const PromotionController = {
         req.body
       );
 
-      res.status(200).json({ msg: "PromotionUpdated", promotionUpdate });
+      res.status(200).json({
+        msg: "PromotionUpdated",
+        promotionUpdate: {
+          ...promotionUpdate.toJSON(),
+          discountType: promotionUpdate.discount_type,
+        },
+      });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -161,7 +186,12 @@ const PromotionController = {
           });
       }
 
-      return res.status(200).json({ promotions: promotions });
+      const mappedPromotions = promotions.map((promotion) => ({
+        ...promotion.toJSON(),
+        discountType: promotion.discount_type,
+      }));
+
+      return res.status(200).json({ promotions: mappedPromotions });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")

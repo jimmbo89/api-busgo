@@ -42,7 +42,7 @@ const VehicleWorkerRepository = {
         return await VehicleWorker.findByPk(id, {
             include: [
                 { model: Worker, as: 'worker', attributes: ['id', 'name'] },
-                { model: Vehicle, as: 'vehicle', attributes: ['id', 'plate', 'image'] }
+                { model: Vehicle, as: 'vehicle', attributes: ['id', 'plate', 'internal_number', 'image'] }
             ]
         });
     },

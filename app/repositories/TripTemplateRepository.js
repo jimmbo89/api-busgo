@@ -45,7 +45,7 @@ const TripTemplateRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "model", "seats", "image"],
+          attributes: ["id", "plate", "internal_number", "model", "seats", "image"],
         },
         {
           model: Route,
@@ -96,7 +96,7 @@ const TripTemplateRepository = {
         {
           model: Vehicle,
           as: "vehicle",
-          attributes: ["id", "plate", "model", "seats", "image"],
+          attributes: ["id", "plate", "internal_number", "model", "seats", "image"],
         },
         {
           model: Route,

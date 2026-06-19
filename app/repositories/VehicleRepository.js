@@ -9,7 +9,7 @@ const VehicleRepository = {
   // Obtener todos los vehículos
   async findAll() {
     return await Vehicle.findAll({
-      attributes: ['id', 'brand', 'model', 'plate', 'rut', 'seats', 'state', 'image', 'structure_id'],
+      attributes: ['id', 'brand', 'model', 'plate', 'internal_number', 'rut', 'seats', 'state', 'image', 'structure_id'],
       include: [
         {
           model: Structure,  // Incluir el modelo de Structure
@@ -22,7 +22,7 @@ const VehicleRepository = {
   // Buscar un vehículo por ID
   async findById(id) {
     return await Vehicle.findByPk(id, {
-      attributes: ['id', 'brand', 'model', 'plate', 'rut', 'seats', 'state', 'image', 'structure_id'],
+      attributes: ['id', 'brand', 'model', 'plate', 'internal_number', 'rut', 'seats', 'state', 'image', 'structure_id'],
       include: [
         {
           model: Structure,  // Incluir el modelo de Structure
@@ -32,8 +32,8 @@ const VehicleRepository = {
     });
   },
 
-  // Buscar un vehículo por RUT o placa, excluyendo un vehículo específico
- async existsByRutOrPlate(rut = null, plate = null, excludeId = null) {
+  // Buscar un vehículo por RUT, placa o número interno, excluyendo un vehículo específico
+ async existsByRutOrPlate(rut = null, plate = null, internalNumber = null, excludeId = null) {
   const orConditions = [];
 
   if (rut != null) {
@@ -42,10 +42,13 @@ const VehicleRepository = {
   if (plate != null) {
     orConditions.push({ plate });
   }
+  if (internalNumber != null) {
+    orConditions.push({ internal_number: internalNumber });
+  }
 
-  // Si no se pasó ni rut ni plate, no hay condición de búsqueda
+  // Si no se pasó ningún identificador, no hay condición de búsqueda
   if (orConditions.length === 0) {
-    return null; // o throw new Error("Se requiere rut o plate");
+    return null;
   }
 
   const whereClause = excludeId
@@ -57,12 +60,13 @@ const VehicleRepository = {
 
   // Crear un nuevo vehículo con manejo de imágenes
   async create(body, file) {
-    const { brand, model, plate, rut, seats, state, structure_id } = body;
+    const { brand, model, plate, internal_number, rut, seats, state, structure_id } = body;
     const vehicle = await Vehicle.create({
       structure_id,
       brand,
       model,
       plate,
+      internal_number,
       rut,
       seats,
       state,
@@ -81,7 +85,7 @@ const VehicleRepository = {
 
   // Actualizar un vehículo con manejo de imágenes
   async update(vehicle, body, file) {
-    const fieldsToUpdate = ['brand', 'model', 'plate', 'rut', 'seats', 'state', 'image', 'structure_id'];
+    const fieldsToUpdate = ['brand', 'model', 'plate', 'internal_number', 'rut', 'seats', 'state', 'image', 'structure_id'];
 
     const updatedData = Object.keys(body)
       .filter(key => fieldsToUpdate.includes(key) && body[key] !== undefined)

@@ -6,14 +6,14 @@ const TicketTypeRepository = {
   // Obtener todos los tipos de pasaje
   async findAll() {
     return await TicketType.findAll({
-      attributes: ['id', 'name', 'description', 'active'],
+      attributes: ['id', 'name', 'description', 'adjustment_type', 'value_type', 'adjustment_value', 'active'],
     });
   },
 
   // Buscar un tipo de pasaje por ID
   async findById(id) {
     return await TicketType.findByPk(id, {
-      attributes: ['id', 'name', 'description', 'active'],
+      attributes: ['id', 'name', 'description', 'adjustment_type', 'value_type', 'adjustment_value', 'active'],
     });
   },
 
@@ -25,11 +25,14 @@ const TicketTypeRepository = {
 
   // Crear un nuevo tipo de pasaje
   async create(body) {
-    const { name, description, active } = body;
+    const { name, description, adjustment_type, value_type, adjustment_value, active } = body;
 
     const ticketType = await TicketType.create({
       name,
       description,
+      adjustment_type: adjustment_type || 'descuento',
+      value_type: value_type || 'monto',
+      adjustment_value: adjustment_value ?? 0,
       active,
     });
 
@@ -38,7 +41,7 @@ const TicketTypeRepository = {
 
   // Actualizar un tipo de pasaje
   async update(ticketType, body) {
-    const fieldsToUpdate = ['name', 'description', 'active'];
+    const fieldsToUpdate = ['name', 'description', 'adjustment_type', 'value_type', 'adjustment_value', 'active'];
 
     const updatedData = Object.keys(body)
       .filter((key) => fieldsToUpdate.includes(key) && body[key] !== undefined)
@@ -64,7 +67,7 @@ const TicketTypeRepository = {
   async findByActiveStatus(active) {
     return await TicketType.findAll({
       where: { active },
-      attributes: ['id', 'name', 'description', 'active'],
+      attributes: ['id', 'name', 'description', 'adjustment_type', 'value_type', 'adjustment_value', 'active'],
     });
   },
 };

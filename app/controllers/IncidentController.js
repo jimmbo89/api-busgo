@@ -1,5 +1,5 @@
 const logger = require("../../config/logger"); // Logger para seguimiento
-const { IncidentRepository, BranchRepository } = require("../repositories");
+const { IncidentRepository, BranchRepository, CompanyRepository } = require("../repositories");
 
 const IncidentController = {
   /**
@@ -39,22 +39,39 @@ const IncidentController = {
     logger.info("Datos recibidos buscar las incidencias");
     logger.info(JSON.stringify(req.body));
     try {
-      const { branch_id, startDate, endDate } = req.body;
+      const { company_id, branch_id, startDate, endDate } = req.body;
 
-      const branch = await BranchRepository.findById(branch_id);
-      if (!branch) {
-        logger.error(
-          `IncidentController->store: Sucursal no encontrada con ID ${branch_id}`
+      let incidents = [];
+
+      if (company_id) {
+        const company = await CompanyRepository.findById(company_id);
+        if (!company) {
+          logger.error(
+            `IncidentController->getIncidents: Empresa no encontrada con ID ${company_id}`
+          );
+          return res.status(400).json({ msg: "CompanyNotFound" });
+        }
+
+        incidents = await IncidentRepository.getIncidentsByCompanyAndDate(
+          company_id,
+          startDate,
+          endDate
         );
-        return res.status(400).json({ msg: "BranchNotFound" });
-      }
+      } else {
+        const branch = await BranchRepository.findById(branch_id);
+        if (!branch) {
+          logger.error(
+            `IncidentController->getIncidents: Sucursal no encontrada con ID ${branch_id}`
+          );
+          return res.status(400).json({ msg: "BranchNotFound" });
+        }
 
-      // Obtener incidencias del repository
-      const incidents = await IncidentRepository.getIncidentsByBranchAndDate(
-        branch_id,
-        startDate,
-        endDate
-      );
+        incidents = await IncidentRepository.getIncidentsByBranchAndDate(
+          branch_id,
+          startDate,
+          endDate
+        );
+      }
 
       logger.info('JSON.stringify(incidents)');
       logger.info(JSON.stringify(incidents));
@@ -68,6 +85,8 @@ const IncidentController = {
           details: incident.details,
           workerName: incident.user.worker.name,
           image: incident.user.worker.image,
+          nameBranch: incident.branch?.name,
+          imageBranch: incident.branch?.image,
           branchId: incident.branch_id,
           branch_id: incident.branch_id,
           workerId: incident.worker_id,

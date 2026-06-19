@@ -305,6 +305,64 @@ const TripController = {
     }
   },
 
+  async getTripVehicle(req, res) {
+    logger.info(`${req.user.name} - Entra a buscar el vehículo de los viajes de una sucursal`);
+    logger.info("Datos recibidos al buscar el vehículo de los viajes de una sucursal");
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      const { branch_id, date } = req.body;
+      const branch = await BranchRepository.findById(branch_id);
+
+      if (!branch) {
+        logger.error(`TripController->getTripVehicle: Sucursal no encontrada con ID ${branch_id}`);
+        return res.status(400).json({ msg: "BranchNotFound" });
+      }
+
+      const today = new Date().toLocaleDateString("sv-SE", {
+        timeZone: "America/Santiago",
+      });
+      const searchDate = date || today;
+      const trips = await TripRepository.findDate(branch_id, null, searchDate, null);
+
+      if (!trips.length) {
+        return res.status(204).json({ msg: "TripsNotFound" });
+      }
+
+      const mappedTrips = trips.map((trip) => {
+        const soldSeats = trip.tickets
+          ? trip.tickets.reduce(
+              (sum, ticket) => sum + (Number(ticket.quantity) || 1),
+              0
+            )
+          : 0;
+        const availableSeats = Math.max(
+          Number(trip.vehicle.seats || 0) - soldSeats,
+          0
+        );
+
+        return {
+          id: trip.id,
+          trip_id: trip.id,
+          schedule: trip.schedule,
+          vehicleId: trip.vehicle_id,
+          vehicle_id: trip.vehicle_id,
+          vehicleName: trip.vehicle.plate,
+          internal_number: trip.vehicle.internal_number,
+          internalNumber: trip.vehicle.internal_number,
+          vehicleImage: trip.vehicle.image,
+          seats: trip.vehicle.seats,
+          availableSeats,
+        };
+      });
+
+      res.status(200).json({ trips: mappedTrips });
+    } catch (error) {
+      logger.error("TripController->getTripVehicle: " + error.message);
+      res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
   async getTripWorkerDate(req, res) {
     logger.info(
       `${req.user.name} - Entra a buscar los viajes de una fecha dada relacionados a un trabajador`

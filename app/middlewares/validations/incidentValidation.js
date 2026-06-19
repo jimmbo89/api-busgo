@@ -1,9 +1,15 @@
 const Joi = require('joi');
 
-const branch_idIncidentSchema = Joi.object({
-  branch_id: Joi.number().required().messages({
-    "number.base": "El campo id debe ser un número entero",
-    "any.required": "El campo id es obligatorio",
+const incidentDateSchema = Joi.object({
+  company_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "El campo company_id debe ser un número entero",
+    "number.integer": "El campo company_id debe ser un número entero",
+    "number.positive": "El campo company_id debe ser mayor que cero",
+  }),
+  branch_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "El campo branch_id debe ser un número entero",
+    "number.integer": "El campo branch_id debe ser un número entero",
+    "number.positive": "El campo branch_id debe ser mayor que cero",
   }),
   startDate: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/) // Formato YYYY-MM-DD
@@ -19,8 +25,11 @@ const branch_idIncidentSchema = Joi.object({
     .messages({
       "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
     }),
+}).xor("company_id", "branch_id").messages({
+  "object.missing": "Debes enviar company_id o branch_id",
+  "object.xor": "Debes enviar solo company_id o branch_id",
 });
 
 module.exports = {
-    branch_idIncidentSchema,
+    incidentDateSchema,
 };

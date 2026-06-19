@@ -207,6 +207,11 @@ const IncidentRepository = {
         where: whereClause,
         include: [
           {
+            model: Branch,
+            as: "branch",
+            attributes: ["id", "name", "image", "company_id"],
+          },
+          {
             model: User,
             as: "user",
             include: [
@@ -224,6 +229,60 @@ const IncidentRepository = {
     } catch (error) {
       logger.error(
         "Error in IncidentRepository.getIncidentsByBranchAndDate:",
+        error
+      );
+      throw new Error("Failed to retrieve incidents");
+    }
+  },
+
+  async getIncidentsByCompanyAndDate(company_id, startDate = null, endDate = null) {
+    try {
+      let dateFilter = {};
+
+      if (!startDate && !endDate) {
+        const today = new Date().toISOString().split("T")[0];
+        dateFilter = { date: today };
+      } else {
+        const filter = {};
+
+        if (startDate) {
+          filter[Op.gte] = startDate;
+        }
+
+        if (endDate) {
+          filter[Op.lte] = endDate;
+        }
+
+        dateFilter = { date: filter };
+      }
+
+      const incidents = await Incident.findAll({
+        where: dateFilter,
+        include: [
+          {
+            model: Branch,
+            as: "branch",
+            attributes: ["id", "name", "image", "company_id"],
+            where: { company_id },
+          },
+          {
+            model: User,
+            as: "user",
+            include: [
+              {
+                model: Worker,
+                as: "worker",
+              },
+            ],
+          },
+        ],
+        order: [["date", "DESC"]],
+      });
+
+      return incidents;
+    } catch (error) {
+      logger.error(
+        "Error in IncidentRepository.getIncidentsByCompanyAndDate:",
         error
       );
       throw new Error("Failed to retrieve incidents");

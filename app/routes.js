@@ -144,7 +144,7 @@ const {
 const { paymentSchema, paymentDataSchema, } = require("./middlewares/validations/tuuValidation");
 const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = require("./middlewares/validations/structureValidation");
 const { storePromotionSchema, updatePromotionSchema, idPromotionSchema, activePromotionSchema } = require("./middlewares/validations/promotionValidation");
-const { branch_idIncidentSchema } = require("./middlewares/validations/incidentValidation");
+const { incidentDateSchema } = require("./middlewares/validations/incidentValidation");
 const { storeTicketTypeSchema, updateTicketTypeSchema, idTicketTypeSchema, activeTicketTypeSchema } = require("./middlewares/validations/tickettypeValidation");
 const TripTemplateController = require("./controllers/TripTemplateController");
 const { storeTripTemplateSchema, updateTripTemplateSchema, idTripTemplateSchema, branchTripTemplateSchema } = require("./middlewares/validations/triptemplateValidation");
@@ -548,6 +548,7 @@ router.post(
 //Rutas Trip
 router.get("/trip", TripController.index);
 router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );
+router.post("/get-trip-vehicle", validateSchema(branch_idTripSchema), TripController.getTripVehicle );
 router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
 router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
@@ -691,6 +692,6 @@ router.post("/trip-template-destroy", validateSchema(idTripTemplateSchema),TripT
 router.post("/get-trip-template-avtive", validateSchema(branchIdDeviceSchema), TripTemplateController.getActiveByBranch);
 
 //Rutas Incidents
-router.post("/incident-date", validateSchema(branch_idIncidentSchema),IncidentController.getIncidents);
+router.post("/incident-date", validateSchema(incidentDateSchema),IncidentController.getIncidents);
 
 module.exports = router;

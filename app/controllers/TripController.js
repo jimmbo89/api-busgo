@@ -9,6 +9,7 @@ const {
   BranchRouteRepository,
   BranchWorkerRepository,
   TripWorkerRepository,
+  VehicleWorkerRepository,
   TicketRepository,
   CompanyRepository,
   IncidentRepository,
@@ -306,12 +307,12 @@ const TripController = {
   },
 
   async getTripVehicle(req, res) {
-    logger.info(`${req.user.name} - Entra a buscar el vehículo de los viajes de una sucursal`);
-    logger.info("Datos recibidos al buscar el vehículo de los viajes de una sucursal");
+    logger.info(`${req.user.name} - Entra a buscar los vehículos activos de una sucursal`);
+    logger.info("Datos recibidos al buscar los vehículos activos de una sucursal");
     logger.info(JSON.stringify(req.body));
 
     try {
-      const { branch_id, date } = req.body;
+      const { branch_id } = req.body;
       const branch = await BranchRepository.findById(branch_id);
 
       if (!branch) {
@@ -319,44 +320,27 @@ const TripController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
-      const today = new Date().toLocaleDateString("sv-SE", {
-        timeZone: "America/Santiago",
-      });
-      const searchDate = date || today;
-      const trips = await TripRepository.findDate(branch_id, null, searchDate, null);
+      const branchVehicles = await BranchVehicleRepository.findByBranch(branch_id);
+      const activeBranchVehicles = branchVehicles.filter(
+        (branchVehicle) => Number(branchVehicle.vehicle?.state) === 1
+      );
 
-      if (!trips.length) {
+      if (!activeBranchVehicles.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
       }
 
-      const mappedTrips = trips.map((trip) => {
-        const soldSeats = trip.tickets
-          ? trip.tickets.reduce(
-              (sum, ticket) => sum + (Number(ticket.quantity) || 1),
-              0
-            )
-          : 0;
-        const availableSeats = Math.max(
-          Number(trip.vehicle.seats || 0) - soldSeats,
-          0
-        );
-
+      const mappedTrips = activeBranchVehicles.map((branchVehicle) => {
+        const vehicle = branchVehicle.vehicle;
         return {
-          id: trip.id,
-          trip_id: trip.id,
-          schedule: trip.schedule,
-          vehicleId: trip.vehicle_id,
-          vehicle_id: trip.vehicle_id,
-          vehicleName: trip.vehicle.plate,
-          internal_number: trip.vehicle.internal_number,
-          internalNumber: trip.vehicle.internal_number,
-          vehicleImage: trip.vehicle.image,
-          seats: trip.vehicle.seats,
-          availableSeats,
+          id: vehicle.id,
+          vehicleName: vehicle.plate,
+          internal_number: vehicle.internal_number,
+          vehicleImage: vehicle.image,
+          seats: vehicle.seats,
         };
       });
 
-      res.status(200).json({ trips: mappedTrips });
+      res.status(200).json({ vehicles: mappedTrips });
     } catch (error) {
       logger.error("TripController->getTripVehicle: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
@@ -980,83 +964,95 @@ const TripController = {
   },
 
   async changeTrip(req, res) {
-    logger.info(`${req.user.name} - Mueve tickets de un viaje a otro`);
-    logger.info("Datos recibidos al mover tickets entre viajes");
+    logger.info(`${req.user.name} - Cambia el vehiculo de un viaje`);
+    logger.info("Datos recibidos al cambiar el vehiculo de un viaje");
     logger.info(JSON.stringify(req.body));
 
-    const { id, new_trip_id } = req.body;
+    const { id, vehicle_id } = req.body;
 
     try {
-      const sourceTrip = await TripRepository.findByIdWithTickets(id);
-      if (!sourceTrip) {
+      const trip = await TripRepository.findByIdWithTickets(id);
+      if (!trip) {
         return res.status(404).json({
           msg: "TripNotFound",
-          details: "No se encontro el viaje origen desde el que intentas mover los pasajes.",
+          details: "No se encontro el viaje que intentas actualizar.",
         });
       }
 
-      const targetTrip = await TripRepository.findByIdWithTickets(new_trip_id);
-      if (!targetTrip) {
+      const newVehicle = await VehicleRepository.findById(vehicle_id);
+      if (!newVehicle) {
         return res.status(404).json({
-          msg: "TargetTripNotFound",
-          details: "No se encontro el viaje destino al que intentas mover los pasajes.",
+          msg: "VehicleNotFound",
+          details: "No se encontro el vehiculo al que intentas cambiar el viaje.",
         });
       }
 
-      if (Number(sourceTrip.id) === Number(targetTrip.id)) {
+      if (Number(trip.vehicle_id) === Number(newVehicle.id)) {
         return res.status(400).json({
-          msg: "SameTripTransfer",
-          details: "El viaje origen y el viaje destino no pueden ser el mismo.",
+          msg: "SameVehicleTransfer",
+          details: "El viaje ya tiene asignado ese mismo vehiculo.",
         });
       }
 
-      if (sourceTrip.start) {
+      if (Number(newVehicle.state) !== 1) {
         return res.status(400).json({
-          msg: "SourceTripAlreadyStarted",
-          details:
-            "No se pueden mover los pasajes porque el viaje origen ya tiene la salida registrada.",
+          msg: "VehicleInactive",
+          details: "El vehiculo seleccionado no esta activo.",
         });
       }
 
-      if (targetTrip.start) {
-        return res.status(400).json({
-          msg: "TargetTripAlreadyStarted",
-          details:
-            "No se pueden mover los pasajes porque el viaje destino ya tiene la salida registrada.",
-        });
-      }
-
-      const sourceTickets = sourceTrip.tickets || [];
-      if (!sourceTickets.length) {
-        return res.status(400).json({
-          msg: "SourceTripWithoutTickets",
-          details: "El viaje origen no tiene pasajes vendidos para mover al nuevo viaje.",
-        });
-      }
-
-      const { soldSeatCount } = TripController.getSoldSeatSummary(
-        sourceTrip
+      const branchVehicles = await BranchVehicleRepository.findByBranch(trip.branch_id);
+      const branchVehicle = branchVehicles.find(
+        (branchVehicleItem) => Number(branchVehicleItem.vehicle_id) === Number(newVehicle.id)
       );
-      const targetVehicleSeats = Number(targetTrip.vehicle?.seats || 0);
-      const occupiedSeatNumbers = TripController.getOccupiedSeatNumbers(targetTrip);
-      const occupiedSeatSet = new Set(occupiedSeatNumbers);
-      const availableSeatNumbers = [];
 
-      for (let seatNumber = 1; seatNumber <= targetVehicleSeats; seatNumber += 1) {
-        if (!occupiedSeatSet.has(seatNumber)) {
-          availableSeatNumbers.push(seatNumber);
-        }
-      }
-
-      if (soldSeatCount > availableSeatNumbers.length) {
+      if (!branchVehicle) {
         return res.status(400).json({
-          msg: "TargetTripWithoutEnoughSeats",
-          details: `No se pueden mover los pasajes porque el viaje destino solo tiene ${availableSeatNumbers.length} asientos libres y necesitas reubicar ${soldSeatCount} asientos ya vendidos.`,
+          msg: "VehicleNotInBranch",
+          details: "El vehiculo no pertenece a la sucursal del viaje.",
         });
       }
+
+      const sourceTickets = trip.tickets || [];
+      const { soldSeatCount } = TripController.getSoldSeatSummary(trip);
+      const targetVehicleSeats = Number(newVehicle.seats || 0);
+
+      if (soldSeatCount > targetVehicleSeats) {
+        return res.status(400).json({
+          msg: "VehicleWithoutEnoughSeats",
+          details: `No se puede cambiar el vehiculo porque el nuevo bus solo tiene ${targetVehicleSeats} asientos y el viaje ya tiene ${soldSeatCount} asientos vendidos.`,
+        });
+      }
+
+      const vehicleWorkers = await VehicleWorkerRepository.findByVehicle(newVehicle.id);
+      const branchWorkers = await BranchWorkerRepository.findByBranch(trip.branch_id);
+      const branchWorkerIds = new Set(
+        branchWorkers.map((branchWorker) => Number(branchWorker.worker_id))
+      );
+
+      const eligibleWorkers = [
+        ...new Set(
+          vehicleWorkers
+            .filter((vehicleWorker) => branchWorkerIds.has(Number(vehicleWorker.worker_id)))
+            .map((vehicleWorker) => Number(vehicleWorker.worker_id))
+        ),
+      ];
+
+      if (!eligibleWorkers.length) {
+        return res.status(400).json({
+          msg: "VehicleWithoutBranchWorkers",
+          details: "El vehiculo no tiene choferes asociados en la sucursal del viaje.",
+        });
+      }
+
+      const reassignedSeatsByTicket = [];
+      let seatCursor = 0;
+      const availableSeatNumbers = Array.from(
+        { length: targetVehicleSeats },
+        (_, index) => index + 1
+      );
 
       const ticketUpdates = [];
-      let seatCursor = 0;
 
       sourceTickets.forEach((ticket) => {
         let parsedSeats = [];
@@ -1082,32 +1078,63 @@ const TripController = {
         );
 
         seatCursor += currentSeatCount;
+        reassignedSeatsByTicket.push({
+          ticket_id: ticket.id,
+          seats: reassignedSeats,
+        });
 
         ticketUpdates.push({
           ticket,
           body: {
-            trip_id: targetTrip.id,
-            branch_id: targetTrip.branch_id,
-            date: targetTrip.date,
             seats: reassignedSeats,
           },
         });
       });
 
+      const updatedTripWorkers = eligibleWorkers.map((worker_id) => ({
+        trip_id: trip.id,
+        branch_id: trip.branch_id,
+        date: trip.date,
+        worker_id,
+      }));
+
       await sequelize.transaction(async (transaction) => {
+        await TripWorker.destroy({
+          where: { trip_id: trip.id },
+          transaction,
+        });
+
         for (const ticketUpdate of ticketUpdates) {
           await ticketUpdate.ticket.update(ticketUpdate.body, { transaction });
         }
+
+        await TripWorker.bulkCreate(updatedTripWorkers, { transaction });
+
+        await trip.update(
+          {
+            vehicle_id: newVehicle.id,
+          },
+          { transaction }
+        );
       });
 
-      const refreshedTargetTrip = await TripRepository.findByIdWithTickets(targetTrip.id);
-      const movedTicketIds = ticketUpdates.map(({ ticket }) => ticket.id);
+      const refreshedTrip = await TripRepository.findByIdWithTickets(trip.id);
+      const refreshedWorkers = await TripWorkerRepository.workersTrip(refreshedTrip);
+
+      const oldVehicleLabel = trip.vehicle?.internal_number || trip.vehicle?.plate || trip.vehicle_id;
+      const newVehicleLabel = newVehicle.internal_number || newVehicle.plate || newVehicle.id;
+      const tripOrigin = refreshedTrip?.route?.origin?.address || "origen";
+      const tripDestination = refreshedTrip?.route?.destination?.address || "destino";
+      const tripSchedule = refreshedTrip?.schedule || trip.schedule;
 
       return res.status(200).json({
-        msg: "TripTicketsMoved",
-        details: `Se movieron ${ticketUpdates.length} pasajes del viaje ${sourceTrip.id} al viaje ${targetTrip.id}, reasignando ${soldSeatCount} asientos disponibles del viaje destino.`,
-        movedTickets: movedTicketIds,
-        trip: refreshedTargetTrip,
+        msg: "TripVehicleChanged",
+        details: `Se cambió correctamente el vehículo ${oldVehicleLabel} por el vehículo ${newVehicleLabel} para el viaje de las ${tripSchedule} de ${tripOrigin} a ${tripDestination}.`,
+        trip: {
+          ...refreshedTrip.toJSON(),
+          workers: refreshedWorkers,
+        },
+        reassignedSeats: reassignedSeatsByTicket,
       });
     } catch (error) {
       const errorMsg = error.details

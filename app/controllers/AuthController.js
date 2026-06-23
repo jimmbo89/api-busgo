@@ -321,6 +321,7 @@ const AuthController = {
 
   async login_apk(req, res) {
     logger.info("Entrando a loguearse APk");
+    logger.info(`datos recibidos al loguerase APK:\n ${JSON.stringify(req.body)}`);
     const platform = (req.body.platform || '').trim().toLowerCase();
     try {
       const user = await User.findOne({
@@ -398,7 +399,7 @@ const AuthController = {
           msg: "El usuario no está asociado a ninguna sucursal."
         });
       }
-
+      
       // Extraer todos los nombres de permisos del usuario (rol global + roles por sucursal)
       const userPermissionNames = new Set([
         // Permisos del rol global del trabajador
@@ -411,7 +412,14 @@ const AuthController = {
 
       // Validar según la plataforma
       if (platform === 'buscheck') {
-        if (!userPermissionNames.has('view_checktickets')) {
+        const allowedPermissions = [
+          'view_checktickets',
+          'view_reportbuscheck'
+        ];
+
+        const hasAtLeastOne = allowedPermissions.some(perm => userPermissionNames.has(perm));
+
+        if (!hasAtLeastOne) {
           return res.status(400).json({
             msg: "No tiene permiso para acceder a la aplicación BusCheck."
           });
@@ -421,7 +429,9 @@ const AuthController = {
           'view_ticketsdate',
           'view_tickettripsdate',
           'view_tripsworker',
-          'view_saletickets'
+          'view_saletickets',
+          'view_reportbusgo',
+          'view_changetrip',
         ];
 
         // Verificar si el usuario tiene AL MENOS UNO de los permisos permitidos
@@ -600,3 +610,5 @@ const AuthController = {
 };
 
 module.exports = AuthController;
+
+

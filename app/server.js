@@ -19,19 +19,22 @@ app.use(session({
 const PORT = process.env.PORT || 8000;
 
 // Lista de orígenes permitidos
-const allowedOrigins = ['https://busgo.wezen.cl', 'http://localhost:3000', 'http://localhost:3001'];
+const allowedOrigins = ['https://busgo.wezen.cl', 'http://localhost:3000', 'http://localhost:3001', 'https://transimperio.busgo.cl', 'http://transimperio.busgo.cl'];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Permitir solicitudes sin origen (por ejemplo, desde aplicaciones móviles o Postman)
+    logger.info(`[CORS] Origin recibido: ${origin || "sin-origin"}`);
     if (!origin) return callback(null, true);
 
     // Verificar si el origen está en la lista de permitidos
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'El origen de la solicitud no está permitido.';
+      logger.warn(`[CORS] Origen rechazado: ${origin}. Permitidos: ${allowedOrigins.join(", ")}`);
       return callback(new Error(msg), false);
     }
 
+    logger.info(`[CORS] Origen permitido: ${origin}`);
     return callback(null, true);
   },
   // Configura el origen adecuado para el frontend

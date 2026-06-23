@@ -150,9 +150,9 @@ const changeTripSchema = Joi.object({
     "number.base": "El campo id debe ser un numero entero",
     "any.required": "El campo id es obligatorio",
   }),
-  new_trip_id: Joi.number().required().messages({
-    "number.base": "El campo new_trip_id debe ser un numero entero",
-    "any.required": "El campo new_trip_id es obligatorio",
+  vehicle_id: Joi.number().required().messages({
+    "number.base": "El campo vehicle_id debe ser un numero entero",
+    "any.required": "El campo vehicle_id es obligatorio",
   }),
 });
 

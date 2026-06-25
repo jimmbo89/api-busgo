@@ -23,10 +23,12 @@ const LocationRepository = {
   // Buscar una ubicación por dirección, país y ciudad, excluyendo una ubicación específica
   async existsByAddress(address = null, country = null, city = null, excludeId = null) {
     const whereCondition = {
-      ...(address && { address }),
-      ...(country && { country }),
-      ...(city && { city }),
-      ...(excludeId && { id: { [Op.ne]: excludeId } }),
+      address,
+      country,
+      city,
+      ...(excludeId !== null && excludeId !== undefined && {
+        id: { [Op.ne]: excludeId },
+      }),
     };
     return await Location.findOne({ where: whereCondition });
   },

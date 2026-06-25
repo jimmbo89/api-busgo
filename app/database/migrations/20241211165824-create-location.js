@@ -24,12 +24,12 @@ module.exports = {
       country: {
         type: Sequelize.STRING,
         allowNull: true,
-        defaultValue: 'Chile'
+        defaultValue: ''
       },
       city: {
         type: Sequelize.STRING,
         allowNull: true,
-        defaultValue: 'Santiago de Chile'
+        defaultValue: ''
       },
       image: {
         type: Sequelize.STRING,

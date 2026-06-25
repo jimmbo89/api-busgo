@@ -191,8 +191,12 @@ const LocationController = {
             }
             
             // Verificar si ya existe un vehículo con el mismo rut
-            if (address || country || city) {
-            const existingLocation = await LocationRepository.existsByAddress(address, country, city);
+            const nextAddress = address ?? location.address;
+            const nextCountry = country ?? location.country;
+            const nextCity = city ?? location.city;
+
+            if (nextAddress || nextCountry || nextCity) {
+            const existingLocation = await LocationRepository.existsByAddress(nextAddress, nextCountry, nextCity, id);
             if (existingLocation) {
                 logger.error(`Direeción rxistente en esta: ${existingLocation.address}, ${existingLocation.country}, ${existingLocation.city}`);
                 return res.status(400).json({ 

@@ -1013,6 +1013,17 @@ const TripController = {
         });
       }
 
+      const conflictingTrip = await TripRepository.existsByUpdatedFields(trip, {
+        vehicle_id: newVehicle.id,
+      });
+
+      if (conflictingTrip) {
+        return res.status(409).json({
+          msg: "DuplicateTripConstraint",
+          details: `Ya existe un viaje programado en la misma sucursal, fecha, horario y ruta con el vehículo ${newVehicle.internal_number || newVehicle.plate || newVehicle.id}.`,
+        });
+      }
+
       const sourceTickets = trip.tickets || [];
       const { soldSeatCount } = TripController.getSoldSeatSummary(trip);
       const targetVehicleSeats = Number(newVehicle.seats || 0);
@@ -1099,17 +1110,21 @@ const TripController = {
       }));
 
       await sequelize.transaction(async (transaction) => {
+        logger.info(`TripController->changeTrip: eliminando choferes actuales del viaje ${trip.id}`);
         await TripWorker.destroy({
           where: { trip_id: trip.id },
           transaction,
         });
 
+        logger.info(`TripController->changeTrip: actualizando tickets del viaje ${trip.id}`);
         for (const ticketUpdate of ticketUpdates) {
           await ticketUpdate.ticket.update(ticketUpdate.body, { transaction });
         }
 
+        logger.info(`TripController->changeTrip: asignando choferes del vehiculo ${newVehicle.id}`);
         await TripWorker.bulkCreate(updatedTripWorkers, { transaction });
 
+        logger.info(`TripController->changeTrip: actualizando vehiculo del viaje ${trip.id} a ${newVehicle.id}`);
         await trip.update(
           {
             vehicle_id: newVehicle.id,
@@ -1137,12 +1152,44 @@ const TripController = {
         reassignedSeats: reassignedSeatsByTicket,
       });
     } catch (error) {
-      const errorMsg = error.details
-        ? error.details.map((detail) => detail.message).join(", ")
-        : error.message || "Error desconocido";
+      if (
+        error.name === "SequelizeUniqueConstraintError" ||
+        error.parent?.code === "ER_DUP_ENTRY"
+      ) {
+        const duplicateMsg = error.errors?.[0]?.message ||
+          "Ya existe un viaje con la misma sucursal, vehículo, ruta, fecha y horario.";
 
-      logger.error("TripController->changeTrip:" + errorMsg);
-      return res.status(500).json({ error: "ServerError", details: errorMsg });
+        logger.error(`TripController->changeTrip unique constraint: ${duplicateMsg}`);
+        logger.error(error.stack || "Sin stack trace");
+        return res.status(409).json({
+          error: "DuplicateTripConstraint",
+          details: duplicateMsg,
+        });
+      }
+
+      const validationMessages = Array.isArray(error.errors)
+        ? error.errors.map((item) => item.message).join(", ")
+        : null;
+      const parentMessage = error.parent?.message || error.original?.message || null;
+      const errorMsg =
+        validationMessages ||
+        error.details?.map((detail) => detail.message).join(", ") ||
+        parentMessage ||
+        error.message ||
+        "Error desconocido";
+
+      logger.error(`TripController->changeTrip: ${errorMsg}`);
+      logger.error(error.stack || "Sin stack trace");
+      if (error.errors) {
+        logger.error(`TripController->changeTrip validation details: ${JSON.stringify(error.errors)}`);
+      }
+      if (error.fields) {
+        logger.error(`TripController->changeTrip fields: ${JSON.stringify(error.fields)}`);
+      }
+      if (error.parent) {
+        logger.error(`TripController->changeTrip parent: ${error.parent.message || JSON.stringify(error.parent)}`);
+      }
+      return res.status(500).json({ error: "ServerError", details: 'Error interno del servidor' });
     }
   },
 

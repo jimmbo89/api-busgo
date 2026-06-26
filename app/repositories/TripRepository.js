@@ -849,6 +849,101 @@ async existsByUpdatedFields(trip, updatedFields) {
       ],
     });
   },
+
+  async getPendingTripsWithDetails({ date = null, currentTime = null, branchId = null, branchIds = null, limit = 5 } = {}) {
+    try {
+      const whereClause = {
+        [Op.or]: [
+          { start: { [Op.is]: null } },
+          {
+            [Op.and]: [{ start: { [Op.not]: null } }, { end: { [Op.is]: null } }],
+          },
+        ],
+      };
+
+      if (date) {
+        whereClause[Op.and] = [
+          sequelize.where(sequelize.fn("DATE", sequelize.col("Trip.date")), date)
+        ];
+      }
+
+      if (currentTime) {
+        whereClause[Op.and] = whereClause[Op.and] || [];
+        whereClause[Op.and].push({
+          schedule: { [Op.gte]: currentTime },
+        });
+      }
+
+      if (branchId) {
+        whereClause.branch_id = branchId;
+      } else if (Array.isArray(branchIds) && branchIds.length > 0) {
+        whereClause.branch_id = { [Op.in]: branchIds };
+      }
+
+      return await Trip.findAll({
+        attributes: [
+          "id",
+          "date",
+          "schedule",
+          "arrival",
+          "start",
+          "end",
+          "branch_id",
+          "vehicle_id",
+          "route_id",
+          "price",
+        ],
+        where: whereClause,
+        order: [["date", "ASC"], ["schedule", "ASC"], ["id", "ASC"]],
+        limit,
+        include: [
+          {
+            model: Branch,
+            as: "branch",
+            attributes: ["id", "name", "company_id"],
+            include: [
+              {
+                model: Company,
+                as: "company",
+                attributes: ["id", "name"],
+              },
+            ],
+          },
+          {
+            model: Vehicle,
+            as: "vehicle",
+            attributes: ["id", "plate", "internal_number", "seats", "image", "brand"],
+          },
+          {
+            model: Route,
+            as: "route",
+            attributes: ["id", "name", "estimated"],
+            include: [
+              {
+                model: Location,
+                as: "origin",
+                attributes: ["id", "address", "image"],
+              },
+              {
+                model: Location,
+                as: "destination",
+                attributes: ["id", "address", "image"],
+              },
+            ],
+          },
+          {
+            model: Ticket,
+            as: "tickets",
+            attributes: ["id", "quantity", "total"],
+            required: false,
+          },
+        ],
+      });
+    } catch (error) {
+      logger.error("Error al obtener los viajes pendientes:", error);
+      throw error;
+    }
+  },
 };
 
 module.exports = TripRepository;

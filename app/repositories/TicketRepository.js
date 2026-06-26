@@ -713,25 +713,28 @@ const TicketRepository = {
       ingresoGenerado: result.ingreso_generado || 0,
     };
   },
-  async getDailySales(date, type, branchId = null) {
+  async getDailySales(date, type, branchId = null, branchIds = null) {
     const whereClause = {
       [Op.and]: [
         sequelize.where(
-          sequelize.fn("DATE", sequelize.col("date")),
+          sequelize.fn("DATE", sequelize.col("Ticket.date")),
           date
         ),
       ],
     };
 
-    // Si el type es "Sucursal", agregar la condición de branch_id
-    if (type === "Sucursal" && branchId) {
+    if (branchId) {
       whereClause[Op.and].push({ branch_id: branchId });
+    }
+
+    if (Array.isArray(branchIds) && branchIds.length > 0) {
+      whereClause[Op.and].push({ branch_id: { [Op.in]: branchIds } });
     }
 
     const result = await Ticket.findOne({
       attributes: [
-        [sequelize.fn("COUNT", sequelize.col("id")), "tickets_vendidos"],
-        [sequelize.fn("SUM", sequelize.col("total")), "ingreso_generado"],
+        [sequelize.fn("COUNT", sequelize.col("Ticket.id")), "tickets_vendidos"],
+        [sequelize.fn("SUM", sequelize.col("Ticket.total")), "ingreso_generado"],
       ],
       where: whereClause,
       raw: true,
@@ -795,7 +798,7 @@ const TicketRepository = {
       throw error;
     }
   },
-  async getDailyOccupancyRate(date, type, branchId = null) {
+  async getDailyOccupancyRate(date, type, branchId = null, branchIds = null) {
     try {
       // Condiciones base
       const whereClause = {
@@ -807,9 +810,12 @@ const TicketRepository = {
         ],
       };
 
-      // Si type es "Sucursal", agregar la condición de branch_id
-      if (type === "Sucursal" && branchId) {
+      if (branchId) {
         whereClause[Op.and].push({ branch_id: branchId });
+      }
+
+      if (Array.isArray(branchIds) && branchIds.length > 0) {
+        whereClause[Op.and].push({ branch_id: { [Op.in]: branchIds } });
       }
 
       // Obtener todos los viajes que cumplen con las condiciones
@@ -847,31 +853,34 @@ const TicketRepository = {
       throw error;
     }
   },
-  async getYearlyEarnings(month, type, branchId) {
+  async getYearlyEarnings(month, type, branchId, branchIds = null) {
     try {
       const year = month.split("-")[0]; // Extraer el año del parámetro month
 
       // Condiciones base
       const whereClause = {
         [Op.and]: [
-          sequelize.where(sequelize.fn("YEAR", sequelize.col("date")), year), // Filtrar por el año extraído
+          sequelize.where(sequelize.fn("YEAR", sequelize.col("Ticket.date")), year), // Filtrar por el año extraído
           //{ pay: 1 }, // Solo tickets pagados
         ],
       };
 
-      // Si type es "Sucursal", agregar la condición de branch_id
-      if (type === "Sucursal" && branchId) {
+      if (branchId) {
         whereClause[Op.and].push({ branch_id: branchId });
+      }
+
+      if (Array.isArray(branchIds) && branchIds.length > 0) {
+        whereClause[Op.and].push({ branch_id: { [Op.in]: branchIds } });
       }
 
       // Obtener las ganancias agrupadas por mes
       const earningsByMonth = await Ticket.findAll({
         attributes: [
-          [sequelize.fn("MONTH", sequelize.col("date")), "month"], // Extraer el mes
-          [sequelize.fn("SUM", sequelize.col("total")), "totalEarnings"], // Sumar las ganancias
+          [sequelize.fn("MONTH", sequelize.col("Ticket.date")), "month"], // Extraer el mes
+          [sequelize.fn("SUM", sequelize.col("Ticket.total")), "totalEarnings"], // Sumar las ganancias
         ],
         where: whereClause,
-        group: [sequelize.fn("MONTH", sequelize.col("date"))], // Agrupar por mes
+        group: [sequelize.fn("MONTH", sequelize.col("Ticket.date"))], // Agrupar por mes
         raw: true,
       });
 

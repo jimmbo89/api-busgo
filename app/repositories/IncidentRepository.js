@@ -132,7 +132,7 @@ const IncidentRepository = {
     }
   },
 
-  async getIncidentsByBranchDay(date, type, branchId = null) {
+  async getIncidentsByBranchDay(date, type, branchId = null, branchIds = null) {
     try {
       const whereClause = {
         [Op.and]: [
@@ -143,22 +143,24 @@ const IncidentRepository = {
         ],
       };
 
-      // Si el tipo es "Sucursal" y hay un branchId, filtrar por branch_id
-      if (type === "Sucursal" && branchId) {
+      if (branchId) {
         whereClause[Op.and].push({ branch_id: branchId });
+      } else if (Array.isArray(branchIds) && branchIds.length > 0) {
+        whereClause[Op.and].push({ branch_id: { [Op.in]: branchIds } });
       }
 
-      // Obtener las incidencias
+      const include = [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["name", "image"],
+        },
+      ];
+
       const incidents = await Incident.findAll({
         where: whereClause,
-        include: [
-          {
-            model: Branch,
-            as: "branch",
-            attributes: ["name", "image"],
-          },
-        ],
-        order: [['date', 'DESC']], // Ordenar por fecha descendente (más recientes primero)
+        include,
+        order: [['date', 'DESC']],
       });
 
       return {
@@ -283,6 +285,57 @@ const IncidentRepository = {
     } catch (error) {
       logger.error(
         "Error in IncidentRepository.getIncidentsByCompanyAndDate:",
+        error
+      );
+      throw new Error("Failed to retrieve incidents");
+    }
+  },
+
+  async getRecentIncidentsByScope({ date = null, branchId = null, branchIds = null, limit = 5 } = {}) {
+    try {
+      const whereClause = {};
+
+      if (date) {
+        whereClause[Op.and] = [
+          sequelize.where(sequelize.fn("DATE", sequelize.col("date")), date),
+        ];
+      }
+
+      if (branchId) {
+        whereClause.branch_id = branchId;
+      } else if (Array.isArray(branchIds) && branchIds.length > 0) {
+        whereClause.branch_id = { [Op.in]: branchIds };
+      }
+
+      const branchInclude = {
+        model: Branch,
+        as: "branch",
+        attributes: ["id", "name", "image", "company_id"],
+      };
+
+      const incidents = await Incident.findAll({
+        where: whereClause,
+        include: [
+          branchInclude,
+          {
+            model: User,
+            as: "user",
+            include: [
+              {
+                model: Worker,
+                as: "worker",
+              },
+            ],
+          },
+        ],
+        order: [["date", "DESC"], ["id", "DESC"]],
+        limit,
+      });
+
+      return incidents;
+    } catch (error) {
+      logger.error(
+        "Error in IncidentRepository.getRecentIncidentsByScope:",
         error
       );
       throw new Error("Failed to retrieve incidents");

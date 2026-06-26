@@ -9,6 +9,169 @@ const {
   TuuRepository,
 } = require("../repositories");
 
+const mapMonthlyTrip = (trip) => {
+  const vehicle = trip.vehicle || {};
+  const tickets = trip.tickets || [];
+  const route = trip.route || {};
+  const origin = route.origin || {};
+  const destination = route.destination || {};
+
+  const routeInfo = `${origin.address || ""} - ${destination.address || ""}`;
+
+  let horario;
+  if (trip.end) {
+    horario = `${trip.start} - ${trip.end}`;
+  } else if (trip.start) {
+    const startDate = new Date(trip.start);
+    const estimatedTime = new Date(
+      startDate.getTime() + (route.estimated || 0) * 60000
+    );
+    const formattedEstimated = estimatedTime
+      .toISOString()
+      .replace("T", " ")
+      .substring(0, 19);
+    horario = `${trip.start} - ${formattedEstimated}`;
+  } else {
+    const combinedDateTime = `${trip.date} ${trip.schedule}`;
+    const scheduleDate = new Date(combinedDateTime);
+    const estimatedTime = new Date(
+      scheduleDate.getTime() + (route.estimated || 0) * 60000
+    );
+    const formattedEstimated = estimatedTime
+      .toISOString()
+      .replace("T", " ")
+      .substring(0, 19);
+    horario = `${combinedDateTime} - ${formattedEstimated}`;
+  }
+
+  const asientosVendidos = tickets.reduce(
+    (sum, ticket) => sum + (Number(ticket.quantity) || 0),
+    0
+  );
+  const dineroGenerado = tickets.reduce(
+    (sum, ticket) => sum + (Number.parseFloat(ticket.total) || 0),
+    0
+  );
+
+  return {
+    id: trip.id,
+    date: trip.date,
+    vehicleImage: vehicle.image,
+    vehiclePlate: vehicle.plate,
+    internal_number: vehicle.internal_number,
+    internalNumber: vehicle.internal_number,
+    vehicleBrand: vehicle.brand,
+    route: routeInfo,
+    estimated: route.estimated,
+    horario,
+    capacidad: vehicle.seats,
+    asientosVendidos,
+    dineroGenerado,
+  };
+};
+
+const mapMonthlyIncident = (incident) => ({
+  id: incident.id,
+  title: incident.title,
+  description: incident.description,
+  date: incident.date,
+  details: incident.details,
+  workerName: incident.user?.worker?.name,
+  image: incident.user?.worker?.image,
+  nameBranch: incident.branch?.name,
+  imageBranch: incident.branch?.image,
+  branchId: incident.branch_id,
+  branch_id: incident.branch_id,
+  workerId: incident.worker_id,
+  worker_d: incident.worker_id,
+});
+
+async function resolveMonthlySalesScope(type, branchId, companyId) {
+  if (type === "Sucursal") {
+    if (!branchId) {
+      return { error: "BranchNotFound" };
+    }
+
+    const branch = await BranchRepository.findById(branchId);
+    if (!branch) {
+      return { error: "BranchNotFound" };
+    }
+
+    return { branchId: branch.id };
+  }
+
+  if (companyId) {
+    const company = await CompanyRepository.findById(companyId);
+    if (!company) {
+      return { error: "CompanyNotFound" };
+    }
+
+    const branchIds = await BranchRepository.findIdsByCompanyId(company.id);
+    return { companyId: company.id, branchIds };
+  }
+
+  if (branchId) {
+    const branch = await BranchRepository.findById(branchId);
+    if (!branch) {
+      return { error: "BranchNotFound" };
+    }
+
+    const branchIds = await BranchRepository.findIdsByCompanyId(branch.company_id);
+    return { companyId: branch.company_id, branchIds };
+  }
+
+  return { error: "CompanyNotFound" };
+}
+
+function getChileDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  const values = {};
+  for (const part of parts) {
+    if (part.type !== "literal") values[part.type] = part.value;
+  }
+
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    time: `${values.hour}:${values.minute}:${values.second}`,
+  };
+}
+
+function getPreviousChileDate(date = new Date()) {
+  const previous = new Date(date);
+  previous.setDate(previous.getDate() - 1);
+  return getChileDateParts(previous).date;
+}
+
+function buildComparison(currentValue, previousValue) {
+  const current = Number(currentValue) || 0;
+  const previous = Number(previousValue) || 0;
+
+  if (previous === 0) {
+    return {
+      previousValue: previous,
+      changePercent: current > 0 ? 100 : 0,
+      trend: current > 0 ? "up" : "flat",
+    };
+  }
+
+  const changePercent = ((current - previous) / previous) * 100;
+  return {
+    previousValue: previous,
+    changePercent: Number(changePercent.toFixed(1)),
+    trend: changePercent > 0 ? "up" : changePercent < 0 ? "down" : "flat",
+  };
+}
+
 const TicketController = {
   // Obtener todos los tickets
   async index(req, res) {
@@ -902,29 +1065,29 @@ async verifyEncryptedQR(req, res) {
     logger.info("Datos recibidos al obtener las ventas mensuales");
     logger.info(JSON.stringify(req.body));
     try {
-      const { month, type, branch_id } = req.body;
-      if (branch_id) {
-        // Verificar si la sucursal existe
-        const branch = await BranchRepository.findById(branch_id);
-        if (!branch) {
-          logger.error(
-            `TicketController->getMonthlySales: Sucursal no encontrada con ID ${branch_id}`
-          );
-          return res.status(404).json({ msg: "BranchNotFound" });
-        }
+      const { month, type, branch_id, company_id } = req.body;
+      const scope = await resolveMonthlySalesScope(type, branch_id, company_id);
+      if (scope.error) {
+        logger.error(
+          `TicketController->getMonthlySales: ${
+            scope.error === "BranchNotFound" ? "Sucursal" : "Compañía"
+          } no encontrada con ID ${company_id || branch_id}`
+        );
+        return res.status(404).json({ msg: scope.error });
       }
 
       const today = new Date();
-    const formattedToday = today.toLocaleDateString('es-CL', {
-        timeZone: 'America/Santiago',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    }).split('-').reverse().join('-');
+      const { date: formattedToday, time: currentTimeChile } = getChileDateParts(today);
+      const yesterdayChile = getPreviousChileDate(today);
       /*const { ticketsVendidos, ingresoGenerado } =
         await TicketRepository.getMonthlySales(month, type, branch_id);*/
       const { ticketsVendidos, ingresoGenerado } =
-        await TicketRepository.getDailySales(formattedToday, type, branch_id);
+        await TicketRepository.getDailySales(
+          formattedToday,
+          type,
+          scope.branchId || null,
+          scope.companyId || null
+        );
       /*const occupancyRate = await TicketRepository.getOccupancyRate(
         month,
         type,
@@ -933,13 +1096,27 @@ async verifyEncryptedQR(req, res) {
       const occupancyRate = await TicketRepository.getDailyOccupancyRate(
         formattedToday,
         type,
-        branch_id
+        scope.branchId || null,
+        scope.companyId || null
+      );
+      const previousSales = await TicketRepository.getDailySales(
+        yesterdayChile,
+        type,
+        scope.branchId || null,
+        scope.branchIds || null
+      );
+      const previousOccupancyRate = await TicketRepository.getDailyOccupancyRate(
+        yesterdayChile,
+        type,
+        scope.branchId || null,
+        scope.branchIds || null
       );
       // Obtener las ganancias anuales por meses
       const yearlyEarnings = await TicketRepository.getYearlyEarnings(
         month,
         type,
-        branch_id
+        scope.branchId || null,
+        scope.companyId || null
       );
 
       /*const trips = await TicketRepository.getTripsWithDetails(
@@ -948,27 +1125,38 @@ async verifyEncryptedQR(req, res) {
         branch_id
       );*/
 
-      const trips = await TicketRepository.getDailyTripsWithDetails(
+      const pendingTrips = await TripRepository.getPendingTripsWithDetails({
+        date: formattedToday,
+        currentTime: currentTimeChile,
+        branchId: scope.branchId || null,
+        branchIds: scope.branchIds || null,
+        limit: 5,
+      });
+
+      const { totalIncidents } = await IncidentRepository.getIncidentsByBranchDay(
         formattedToday,
         type,
-        branch_id
+        scope.branchId || null,
+        scope.branchIds || null
+      );
+      const previousIncidents = await IncidentRepository.getIncidentsByBranchDay(
+        yesterdayChile,
+        type,
+        scope.branchId || null,
+        scope.branchIds || null
       );
 
-      /*const { totalIncidents, incidents } =
-        await IncidentRepository.getIncidentsByBranchMonth(
-          month,
-          type,
-          branch_id
-        );*/
+      const recentIncidents = await IncidentRepository.getRecentIncidentsByScope({
+        date: formattedToday,
+        branchId: scope.branchId || null,
+        branchIds: scope.branchIds || null,
+        limit: 5,
+      });
 
-      const { totalIncidents, incidents } =
-        await IncidentRepository.getIncidentsByBranchDay(
-          formattedToday,
-          type,
-          branch_id
-        );
+      const formattedTrips = pendingTrips.map(mapMonthlyTrip);
+      const formattedIncidents = recentIncidents.map(mapMonthlyIncident);
 
-      const formattedTrips = trips.map((trip) => {
+      /* const formattedTrips = trips.map((trip) => {
         // Concatenar información del vehículo
         const vehicle = trip.vehicle;
 
@@ -1025,13 +1213,16 @@ async verifyEncryptedQR(req, res) {
         };
       });
 
+      */
+
       const data = [
         {
           title: "Boletos Vendidos",
           value: Number(ticketsVendidos),
           color: "#1976D2",
           icon: "mdi-ticket",
-          to: "#",
+          to: "/ticket",
+          comparison: buildComparison(ticketsVendidos, previousSales.ticketsVendidos),
         },
         {
           title: "Ingreso Generado",
@@ -1039,6 +1230,7 @@ async verifyEncryptedQR(req, res) {
           color: "#4CAF50",
           icon: "mdi-cash-multiple",
           to: "ticketdate",
+          comparison: buildComparison(ingresoGenerado, previousSales.ingresoGenerado),
         },
         {
           title: "Incidentes",
@@ -1046,19 +1238,22 @@ async verifyEncryptedQR(req, res) {
           color: "#F44336",
           icon: "mdi-alert",
           to: "/incident",
+          comparison: buildComparison(totalIncidents, previousIncidents.totalIncidents),
         },
         {
           title: "Tasa de Ocupación",
           value: occupancyRate,
           color: "#FF9800",
           icon: "mdi-account-group",
-        } /*Tasa de ocupación: Promedio de pasajeros por viaje */,
+          comparison: buildComparison(occupancyRate, previousOccupancyRate),
+        }, 
       ];
 
       res.status(200).json({
         sales: data,
         salesYear: yearlyEarnings,
         trips: formattedTrips,
+        incidents: formattedIncidents,
       });
     } catch (error) {
       const errorMsg = error.details

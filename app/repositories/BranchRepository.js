@@ -30,6 +30,16 @@ const BranchRepository = {
     });
   },
 
+  async findIdsByCompanyId(company_id) {
+    const branches = await Branch.findAll({
+      attributes: ['id'],
+      where: { company_id },
+      raw: true,
+    });
+
+    return branches.map((branch) => branch.id);
+  },
+
   // Buscar una sucursal por RUT, excluyendo una sucursal específica
   async existsByRut(rut, excludeId = null) {
     const whereCondition = excludeId ? { rut, id: { [Op.ne]: excludeId } } : { rut };

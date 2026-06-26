@@ -372,6 +372,9 @@ const monthlySalesSchema = Joi.object({
   branch_id: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo branch_id debe ser un número entero",
   }),
+  company_id: Joi.number().integer().allow(null).optional().messages({
+    "number.base": "El campo company_id debe ser un número entero",
+  }),
   type: Joi.string()
     .valid("Sucursal", "Negocio")
     .allow(null)

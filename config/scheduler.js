@@ -4,25 +4,33 @@ const cron = require('node-cron');
 const TripTemplateController = require('../app/controllers/TripTemplateController');
 const logger = require('./logger');
 
+let isRunning = false;
+
 async function runScheduledJob() {
-  //logger.info(`${new Date().toISOString()} - Iniciando generación de viajes...`);
-  
-  const mockReq = { 
-  body: {} // Aunque no lo uses, evita errores de destructuración
-    };
-    const mockRes = {
+  if (isRunning) {
+    logger.info('scheduler->runScheduledJob: omitido porque ya hay una ejecucion en curso');
+    return;
+  }
+
+  isRunning = true;
+  //logger.info(`scheduler->runScheduledJob: inicio | ${new Date().toISOString()}`);
+
+  const mockReq = {
+    body: {}
+  };
+  const mockRes = {
     status: () => ({
-      json: () => {} // Sin log: función vacía
+      json: () => {}
     })
   };
 
   try {
-    //await sequelize.authenticate(); // Verificar conexión a DB
     await TripTemplateController.generateTripsForDate(mockReq, mockRes);
   } catch (error) {
-    logger.error('Error en la tarea programada:', error);
+    logger.error(`scheduler->runScheduledJob: error | ${error.message}`);
   } finally {
-    //logger.info(`${new Date().toISOString()} - Finalizada generación de viajes`);
+    isRunning = false;
+    logger.info(`scheduler->runScheduledJob: fin | ${new Date().toISOString()}`);
   }
 }
 

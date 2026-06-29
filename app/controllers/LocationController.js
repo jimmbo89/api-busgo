@@ -22,6 +22,7 @@ const LocationController = {
                 country: location.country,
                 city: location.city,
                 image: location.image,
+                active: location.active,
             }));
 
             res.status(200).json({ locations: mappedLocations });
@@ -77,6 +78,7 @@ const LocationController = {
                 country: location.country,
                 city: location.city,
                 image: location.image,
+                active: location.active,
             })),
             destinations: destinations.map(location => ({
                 id: location.id,
@@ -86,6 +88,7 @@ const LocationController = {
                 country: location.country,
                 city: location.city,
                 image: location.image,
+                active: location.active,
             })),
             branchroutes: branchRoutes.map((branchRoute) => {
                 const route = branchRoute.route;
@@ -162,6 +165,7 @@ const LocationController = {
                 country: location.country,
                 city: location.city,
                 image: location.image,
+                active: location.active,
             };
 
             res.status(200).json({ location: mappedLocation });

@@ -63,7 +63,7 @@ const TripWorkerRepository = {
     });
   },
 
-  async create(body) {
+  async create(body, options = {}) {
     const { branch_id, trip_id, worker_id, date } = body;
     logger.info(`Creando relación TripWorker con ID: ${branch_id}`);
 
@@ -73,7 +73,7 @@ const TripWorkerRepository = {
         trip_id,
         worker_id,
         date,
-      });
+      }, options);
 
       logger.info(
         `Relación TripWorker creada exitosamente (ID: ${tripWorker.id})`

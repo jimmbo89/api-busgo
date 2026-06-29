@@ -44,6 +44,21 @@
             "date": 1782389901828,
             "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2026-06-25.log",
             "hash": "2c8ead557fa6539c01de0cb4b159f465d378554bf24e641b2c46c691bd1bb797"
+        },
+        {
+            "date": 1782499268465,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2026-06-26.log",
+            "hash": "6f9b605d01f03973a37fd38948e73cc9d9824ef03bbcedfda766ee30e28b806e"
+        },
+        {
+            "date": 1782611973793,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2026-06-27.log",
+            "hash": "9cc454f69ebc6861c96409a0cf943f3d875383a7840d3876366c8b0177cf3c69"
+        },
+        {
+            "date": 1782650940039,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2026-06-28.log",
+            "hash": "45933a2bf60e5f62878787a7a938e097cc6899ad4545395971f7795796ca1bcd"
         }
     ],
     "hashType": "sha256"

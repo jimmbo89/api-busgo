@@ -10,6 +10,8 @@ const {
   Trip,
   Location,
   Route,
+  RouteStop,
+  FareSegment,
   Vehicle,
   Company,
   Worker,
@@ -19,6 +21,75 @@ const {
 const ImageService = require("../services/ImageService");
 const logger = require("../../config/logger"); // Logger para seguimiento
 
+const fareSegmentTicketInclude = [
+  {
+    model: FareSegment,
+    as: "fareSegment",
+    attributes: [
+      "id",
+      "company_id",
+      "route_id",
+      "origin_route_stop_id",
+      "destination_route_stop_id",
+      "service_class",
+      "base_price",
+      "currency",
+      "valid_from",
+      "valid_to",
+      "priority",
+      "active",
+    ],
+    include: [
+      {
+        model: RouteStop,
+        as: "originRouteStop",
+        attributes: [
+          "id",
+          "company_id",
+          "route_id",
+          "location_id",
+          "stop_order",
+          "distance_km",
+          "minutes_from_origin",
+          "allows_boarding",
+          "allows_alighting",
+          "active",
+        ],
+        include: [
+          {
+            model: Location,
+            as: "location",
+            attributes: ["id", "address", "country", "city", "image", "active"],
+          },
+        ],
+      },
+      {
+        model: RouteStop,
+        as: "destinationRouteStop",
+        attributes: [
+          "id",
+          "company_id",
+          "route_id",
+          "location_id",
+          "stop_order",
+          "distance_km",
+          "minutes_from_origin",
+          "allows_boarding",
+          "allows_alighting",
+          "active",
+        ],
+        include: [
+          {
+            model: Location,
+            as: "location",
+            attributes: ["id", "address", "country", "city", "image", "active"],
+          },
+        ],
+      },
+    ],
+  },
+];
+
 const TicketRepository = {
   async findAll() {
     return await Ticket.findAll({
@@ -27,6 +98,7 @@ const TicketRepository = {
         "branch_id",
         "user_id",
         "trip_id",
+        "fare_segment_id",
         "method",
         "status",
         "quantity",
@@ -107,6 +179,7 @@ const TicketRepository = {
         "branch_id",
         "user_id",
         "trip_id",
+        "fare_segment_id",
         "method",
         "status",
         "quantity",
@@ -162,15 +235,9 @@ const TicketRepository = {
                 },
               ],
             },
-            {
-              model: Worker, // Incluir los trabajadores relacionados
-              as: "workers",
-              attributes: ["id", "name"], // Atributos que deseas incluir de Worker
-              through: { attributes: [] }, // Excluir atributos de la tabla intermedia (TripWorker)
-              where: workerId ? { id: workerId } : {}, // Filtro por workerId (si se proporciona)
-            },
           ],
         },
+        ...fareSegmentTicketInclude,
       ],
     });
   },
@@ -182,6 +249,7 @@ const TicketRepository = {
         "branch_id",
         "user_id",
         "trip_id",
+        "fare_segment_id",
         "method",
         "status",
         "quantity",
@@ -257,6 +325,7 @@ const TicketRepository = {
       "branch_id",
       "user_id",
       "trip_id",
+      "fare_segment_id",
       "method",
       "status",
       "quantity",
@@ -311,19 +380,20 @@ const TicketRepository = {
                 as: "destination",
                 attributes: ["id", "address"],
               },
-            ],
-          },
-        ],
-      },
-    ],
+              ],
+            },
+          ],
+        },
+      ],
   });
 },
 
-  async create(body) {
+  async create(body, options = {}) {
     const {
       branch_id,
       user_id,
       trip_id,
+      fare_segment_id,
       method,
       status,
       quantity,
@@ -348,6 +418,7 @@ const TicketRepository = {
         branch_id,
         user_id,
         trip_id,
+        fare_segment_id,
         method,
         status,
         quantity,
@@ -365,7 +436,7 @@ const TicketRepository = {
         transactionCashback,
         promotions,
         tickettypes
-      });
+      }, options);
 
       logger.info(`Ticket creado exitosamente (ID: ${ticket.id})`);
       return ticket;
@@ -375,11 +446,12 @@ const TicketRepository = {
     }
   },
 
-  async update(ticket, body) {
+  async update(ticket, body, options = {}) {
     const fieldsToUpdate = [
       "branch_id",
       "user_id",
       "trip_id",
+      "fare_segment_id",
       "method",
       "status",
       "quantity",
@@ -408,7 +480,7 @@ const TicketRepository = {
 
     if (Object.keys(updatedData).length > 0) {
       try {
-        await ticket.update(updatedData);
+        await ticket.update(updatedData, options);
         logger.info(`Ticket actualizado exitosamente (ID: ${ticket.id})`);
       } catch (error) {
         logger.error(`Error actualizando el ticket: ${error.message}`);
@@ -508,7 +580,7 @@ const TicketRepository = {
     }
   },
 
-  async generateTicketCodes(ticketData, ticket = null) {
+  async generateTicketCodes(ticketData, ticket = null, options = {}) {
     try {
       // Datos que quieres incluir en el código QR y el código de barras
       const ticketInfo = JSON.stringify(ticketData); // Usa los datos del ticket
@@ -566,7 +638,7 @@ const TicketRepository = {
         await ticket.update({
           qr: qr.toString(), // Asegúrate de que se está pasando un string
           barcode: barcode.toString(), // Asegúrate de que se está pasando un string
-        });
+        }, options);
       }
 
       // Retorna las rutas de los archivos generados
@@ -1124,14 +1196,15 @@ const TicketRepository = {
   return tickets;
 },
 
-async findByQRWithTrip(qr) {
-  try {
-    const ticket = await Ticket.findOne({ 
+  async findByQRWithTrip(qr) {
+    try {
+      const ticket = await Ticket.findOne({ 
       where: { qr: qr },
       include: [{
         model: Trip,
         as: 'trip'
-      }]
+      },
+      ...fareSegmentTicketInclude]
     });
 
     if (!ticket) {
@@ -1243,6 +1316,7 @@ async findWithPrintStatus(filters) {
             }
           ]
         },
+        ...fareSegmentTicketInclude,
         {
           model: Branch,
           as: 'branch',

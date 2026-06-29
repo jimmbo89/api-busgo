@@ -10,7 +10,46 @@ const {
 } = require("../models");
 const moment = require('moment');
 const logger = require("../../config/logger");
-const { VehicleRepository, RouteRepository, BranchRepository, TripWorkerRepository, TripRepository, TripTemplateRepository } = require("../repositories");
+const { VehicleRepository, RouteRepository, BranchRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, RouteStopRepository } = require("../repositories");
+
+const parseJsonArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+  return [];
+};
+
+const mapTripStops = (template) =>
+  parseJsonArray(template.trip_stops).map((tripStop, index) => ({
+    id: tripStop.id ?? null,
+    route_stop_id: tripStop.route_stop_id,
+    stop_order: tripStop.stop_order ?? index + 1,
+    arrival_time: tripStop.arrival_time ?? null,
+    departure_time: tripStop.departure_time ?? null,
+    can_board: tripStop.can_board ?? true,
+    can_alight: tripStop.can_alight ?? true,
+    active: tripStop.active ?? true,
+    source_type: tripStop.source_type ?? "auto",
+  }));
+
+const buildGeneratedTripStopPayload = (trip, companyId, item, routeStop) => ({
+  company_id: companyId,
+  trip_id: trip.id,
+  route_stop_id: routeStop.id,
+  stop_order: item.stop_order ?? routeStop.stop_order,
+  arrival_time: item.arrival_time ?? null,
+  departure_time: item.departure_time ?? null,
+  can_board: item.can_board ?? routeStop.allows_boarding ?? true,
+  can_alight: item.can_alight ?? routeStop.allows_alighting ?? true,
+  active: item.active ?? true,
+  source_type: item.source_type ?? "auto",
+});
 
 const TripTemplateController = {
   // Obtener todas las plantillas de viaje
@@ -39,6 +78,8 @@ const TripTemplateController = {
         workers: Array.isArray(template.workers)
           ? template.workers // Si ya es un array, úsalo directamente
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
+        tripStops: mapTripStops(template),
+        trip_stops: mapTripStops(template),
         vehicleName: template.vehicle.plate, // Incluir los datos del vehículo asociado
         internal_number: template.vehicle.internal_number,
         internalNumber: template.vehicle.internal_number,
@@ -98,6 +139,8 @@ const TripTemplateController = {
         workers: Array.isArray(template.workers)
           ? template.workers // Si ya es un array, úsalo directamente
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
+        tripStops: mapTripStops(template),
+        trip_stops: mapTripStops(template),
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
         internal_number: template.vehicle.internal_number,
@@ -163,8 +206,15 @@ const TripTemplateController = {
 
       // Crear la plantilla
       const template = await TripTemplateRepository.create(req.body);
+      const refreshedTemplate = await TripTemplateRepository.findById(template.id);
 
-      res.status(201).json({ template: template });
+      res.status(201).json({
+        template: {
+          ...refreshedTemplate.toJSON(),
+          tripStops: mapTripStops(refreshedTemplate),
+          trip_stops: mapTripStops(refreshedTemplate),
+        },
+      });
     } catch (error) {
       logger.error("TripTemplateController->store: " + error.message);
       res.status(500).json({
@@ -202,6 +252,8 @@ const TripTemplateController = {
         workers: Array.isArray(template.workers)
           ? template.workers // Si ya es un array, úsalo directamente
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
+        tripStops: mapTripStops(template),
+        trip_stops: mapTripStops(template),
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
         internal_number: template.vehicle.internal_number,
@@ -271,6 +323,8 @@ const TripTemplateController = {
         workers: Array.isArray(template.workers)
           ? template.workers // Si ya es un array, úsalo directamente
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
+        tripStops: mapTripStops(template),
+        trip_stops: mapTripStops(template),
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
         internal_number: template.vehicle.internal_number,
@@ -318,7 +372,6 @@ const TripTemplateController = {
   },
 
   async generateTripsForDate(req, res) {
-    let transaction = await sequelize.transaction();
     try {
       const templates = await TripTemplateRepository.findAll({
         active: true,
@@ -326,16 +379,19 @@ const TripTemplateController = {
 
       const today = new Date();
       const formattedToday = await TripTemplateController.formatDateToYYYYMMDD(today);
+      //logger.info(`TripTemplateController->generateTripsForDate: inicio | fecha=${formattedToday} | plantillas=${templates.length}`);
 
       //logger.info(`Iniciando generación de viajes para ${formattedToday}`);
       //logger.info(`Plantillas a procesar: ${templates.length}`);
 
       for (const template of templates) {
+        let transaction = null;
         try { // Nuevo try-catch interno para cada template
           const shouldGenerate = await TripTemplateController.shouldGenerateForDate(
             template,
             formattedToday
           );
+          //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} | recurrence=${template.recurrence_pattern} | schedule=${template.schedule} | shouldGenerate=${shouldGenerate}`);
           
           //logger.info(`Template ${template.id} (${template.recurrence_pattern}) aplica para ${formattedToday}: ${shouldGenerate}`);
 
@@ -357,15 +413,18 @@ const TripTemplateController = {
               0,
               0
             );
+            //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} | now=${now.toISOString()} | tripDateTime=${tripDateTime.toISOString()}`);
 
             //logger.info(`Template ${template.id}: hora actual: ${now} | hora de salida: ${tripDateTime}`);
 
             // Comparar directamente (ambas en la misma zona)
+            //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} | compare tripDateTime vs now`);
             if (tripDateTime < now) {
               //logger.info(`Template ${template.id}: hora de salida ${template.schedule} ya pasó hoy. Omitiendo.`);
               continue;
             }
 
+            //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} pasando control horario`);
             let arrival = await TripTemplateController.calculateArrivalTime(
               formattedToday,
               template.schedule,
@@ -378,6 +437,7 @@ const TripTemplateController = {
             }
 
             // Verificar duplicados directamente con los campos relevantes
+            //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} calculando duplicado`);
             const existingTrip = await Trip.findOne({
               where: {
                 date: formattedToday,
@@ -394,7 +454,10 @@ const TripTemplateController = {
               continue;
             }
 
+            transaction = await sequelize.transaction();
+
             // Crear el viaje
+            //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} creando trip`);
             const tripData = {
               date: formattedToday,
               schedule: template.schedule,
@@ -406,6 +469,37 @@ const TripTemplateController = {
             };
 
             const trip = await TripRepository.create(tripData, { transaction });
+            //logger.info(`TripTemplateController->generateTripsForDate: trip creado desde template=${template.id} | trip_id=${trip.id}`);
+
+            const templateTripStops = mapTripStops(template);
+            //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} tripStops=${templateTripStops.length}`);
+            if (templateTripStops.length > 0) {
+              for (const item of templateTripStops) {
+                const routeStopId = Number(item.route_stop_id);
+                const routeStop = await RouteStopRepository.findById(routeStopId);
+
+                if (!routeStop) {
+                  throw new Error(`RouteStopNotFound:${routeStopId}`);
+                }
+
+                if (Number(routeStop.company_id) !== Number(template.branch.company_id)) {
+                  throw new Error("RouteStopCompanyMismatch");
+                }
+
+                if (Number(routeStop.route_id) !== Number(template.route_id)) {
+                  throw new Error("RouteStopRouteMismatch");
+                }
+
+                const tripStopPayload = buildGeneratedTripStopPayload(
+                  trip,
+                  template.branch.company_id,
+                  item,
+                  routeStop
+                );
+
+                await TripStopRepository.create(tripStopPayload, { transaction });
+              }
+            }
 
             if (template.workers) {
               try {
@@ -433,19 +527,24 @@ const TripTemplateController = {
               }
             }
           }
+          if (transaction && !transaction.finished) {
+            await transaction.commit();
+            transaction = null;
+          }
         } catch (templateError) {
-          //logger.error(`Error procesando template ${template.id}: ${templateError.message}`);
+          if (transaction && !transaction.finished) {
+            await transaction.rollback();
+            transaction = null;
+          }
+          //logger.error(`TripTemplateController->generateTripsForDate: error en template=${template?.id ?? "unknown"} | ${templateError.message}`);
           // Continuar con el siguiente template aunque este falle
           continue;
         }
       }
 
-      await transaction.commit();
+      //logger.info("TripTemplateController->generateTripsForDate: fin OK");
       res.status(201).json({ msg: "TemplatesGenerated" });
     } catch (error) {
-      if (!transaction.finished) {
-        await transaction.rollback();
-      }
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";

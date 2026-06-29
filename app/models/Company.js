@@ -23,6 +23,21 @@ module.exports = (sequelize, DataTypes) => {
         as: 'user',
         onDelete: 'CASCADE'
       });
+
+      Company.hasMany(models.RouteStop, {
+        foreignKey: 'company_id',
+        as: 'routeStops',
+      });
+
+      Company.hasMany(models.TripStop, {
+        foreignKey: 'company_id',
+        as: 'tripStops',
+      });
+
+      Company.hasMany(models.FareSegment, {
+        foreignKey: 'company_id',
+        as: 'fareSegments',
+      });
     }
   }
   Company.init({

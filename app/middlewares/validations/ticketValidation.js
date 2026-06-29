@@ -25,6 +25,9 @@ const storeTicketSchema = Joi.object({
     "number.base": "El campo trip_id debe ser un número entero",
     "any.required": "El campo trip_id es obligatorio",
   }),
+  fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo fare_segment_id debe ser un número entero",
+  }),
   date: Joi.date().required().messages({
     "date.base":
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
@@ -147,6 +150,9 @@ const storeTicketWebSchema = Joi.object({
     "number.base": "El campo trip_id debe ser un número entero",
     "any.required": "El campo trip_id es obligatorio",
   }),
+  fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo fare_segment_id debe ser un número entero",
+  }),
   date: Joi.date().required().messages({
     "date.base":
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
@@ -218,6 +224,9 @@ const updateTicketSchema = Joi.object({
   }),
   trip_id: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo trip_id debe ser un número entero",
+  }),
+  fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo fare_segment_id debe ser un número entero",
   }),
   date: Joi.date().allow(null).optional().messages({
     "date.base":

@@ -10,6 +10,65 @@ const {
 } = require("../models");
 const logger = require("../../config/logger");
 
+const normalizeJsonArray = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  return value ?? null;
+};
+
+const normalizeTemplatePayload = (templateData = {}, options = {}) => {
+  const payload = { ...templateData };
+  const hasWorkers = Object.prototype.hasOwnProperty.call(templateData, "workers");
+  const hasTripStops =
+    Object.prototype.hasOwnProperty.call(templateData, "trip_stops") ||
+    Object.prototype.hasOwnProperty.call(templateData, "tripStops");
+
+  if (hasWorkers) {
+    payload.workers = normalizeJsonArray(templateData.workers) ?? [];
+  }
+
+  if (hasTripStops) {
+    payload.trip_stops = normalizeJsonArray(
+      templateData.trip_stops ?? templateData.tripStops
+    );
+  }
+
+  if (options.forceDefaults) {
+    if (!hasWorkers) {
+      payload.workers = [];
+    }
+
+    if (!hasTripStops) {
+      payload.trip_stops = null;
+    }
+  }
+
+  return payload;
+};
+
+const resolveTripTemplateInstance = async (triptemplateOrId) => {
+  if (
+    triptemplateOrId &&
+    typeof triptemplateOrId === "object" &&
+    typeof triptemplateOrId.update === "function"
+  ) {
+    return triptemplateOrId;
+  }
+
+  return await TripTemplate.findByPk(triptemplateOrId);
+};
+
 const TripTemplateRepository = {
   async findAll(filters = {}) {
     const whereClause = {};
@@ -34,13 +93,14 @@ const TripTemplateRepository = {
         "days_of_week",
         "active",
         "workers",
+        "trip_stops",
       ],
       where: whereClause,
       include: [
         {
           model: Branch,
           as: "branch",
-          attributes: ["id", "name", "address"],
+          attributes: ["id", "name", "address", "company_id"],
         },
         {
           model: Vehicle,
@@ -84,6 +144,7 @@ const TripTemplateRepository = {
         "days_of_week",
         "active",
         "workers",
+        "trip_stops",
         "createdAt",
         "updatedAt"
       ],
@@ -91,7 +152,7 @@ const TripTemplateRepository = {
         {
           model: Branch,
           as: "branch",
-          attributes: ["id", "name", "address"],
+          attributes: ["id", "name", "address", "company_id"],
         },
         {
           model: Vehicle,
@@ -123,7 +184,11 @@ const TripTemplateRepository = {
     const transaction = await sequelize.transaction();
     
     try {
-      const template = await TripTemplate.create(templateData, { transaction });
+      const payload = normalizeTemplatePayload(templateData, {
+        forceDefaults: true,
+      });
+
+      const template = await TripTemplate.create(payload, { transaction });
 
       await transaction.commit();
       logger.info(`TripTemplate creado exitosamente (ID: ${template.id})`);
@@ -151,13 +216,16 @@ const TripTemplateRepository = {
         "recurrence_pattern",
         "days_of_week",
         "active",
-        "workers"
+        "workers",
+        "trip_stops",
       ];
 
-      const updatedData = Object.keys(updateData)
-        .filter(key => fieldsToUpdate.includes(key) && updateData[key] !== undefined)
+      const normalizedUpdateData = normalizeTemplatePayload(updateData);
+
+      const updatedData = Object.keys(normalizedUpdateData)
+        .filter(key => fieldsToUpdate.includes(key) && normalizedUpdateData[key] !== undefined)
         .reduce((obj, key) => {
-          obj[key] = updateData[key];
+          obj[key] = normalizedUpdateData[key];
           return obj;
         }, {});
 
@@ -214,7 +282,21 @@ const TripTemplateRepository = {
   },
 
   async updateWorkers(id, workers) {
-    return await this.update(id, { workers });
+    const triptemplate = await resolveTripTemplateInstance(id);
+    if (!triptemplate) {
+      throw new Error("Plantilla de viaje no encontrada");
+    }
+
+    return await this.update(triptemplate, { workers });
+  },
+
+  async updateTripStops(id, tripStops) {
+    const triptemplate = await resolveTripTemplateInstance(id);
+    if (!triptemplate) {
+      throw new Error("Plantilla de viaje no encontrada");
+    }
+
+    return await this.update(triptemplate, { trip_stops: tripStops });
   },
 };
 

@@ -66,6 +66,21 @@ const storeTripSchema = Joi.object({
       })
     )
     .optional(),
+  tripStops: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        route_stop_id: Joi.number().integer().required(),
+        stop_order: Joi.number().integer().optional(),
+        arrival_time: Joi.string().allow(null).empty("").optional(),
+        departure_time: Joi.string().allow(null).empty("").optional(),
+        can_board: Joi.boolean().optional(),
+        can_alight: Joi.boolean().optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .optional(),
 });
 
 const updateTripSchema = Joi.object({
@@ -133,6 +148,21 @@ const updateTripSchema = Joi.object({
     .items(
       Joi.object({
         worker_id: Joi.number().required(),
+      })
+    )
+    .optional(),
+  tripStops: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        route_stop_id: Joi.number().integer().required(),
+        stop_order: Joi.number().integer().optional(),
+        arrival_time: Joi.string().allow(null).empty("").optional(),
+        departure_time: Joi.string().allow(null).empty("").optional(),
+        can_board: Joi.boolean().optional(),
+        can_alight: Joi.boolean().optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
       })
     )
     .optional(),

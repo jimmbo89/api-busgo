@@ -9,13 +9,226 @@ const {
   BranchRouteRepository,
   BranchWorkerRepository,
   TripWorkerRepository,
+  TripStopRepository,
+  RouteStopRepository,
   VehicleWorkerRepository,
   TicketRepository,
   CompanyRepository,
   IncidentRepository,
   PromotionRepository,
   TicketTypeRepository,
+  FareSegmentRepository,
 } = require("../repositories");
+
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const toPlainObject = (item) =>
+  item && typeof item.toJSON === "function" ? item.toJSON() : item;
+const getChileDate = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Santiago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const values = {};
+  for (const part of parts) {
+    if (part.type !== "literal") values[part.type] = part.value;
+  }
+
+  return `${values.year}-${values.month}-${values.day}`;
+};
+const isFareSegmentActiveForDate = (fareSegment, currentDate) => {
+  if (!fareSegment || !fareSegment.active) {
+    return false;
+  }
+
+  const validFrom = fareSegment.valid_from || null;
+  const validTo = fareSegment.valid_to || null;
+
+  if (validFrom && currentDate < validFrom) {
+    return false;
+  }
+
+  if (validTo && currentDate > validTo) {
+    return false;
+  }
+
+  return true;
+};
+const mapTripStops = (tripStops = []) =>
+  (Array.isArray(tripStops) ? tripStops : []).map((tripStop) => ({
+    id: tripStop.id,
+    company_id: tripStop.company_id,
+    trip_id: tripStop.trip_id,
+    route_stop_id: tripStop.route_stop_id,
+    stop_order: tripStop.stop_order,
+    arrival_time: tripStop.arrival_time,
+    departure_time: tripStop.departure_time,
+    can_board: tripStop.can_board,
+    can_alight: tripStop.can_alight,
+    active: tripStop.active,
+    source_type: tripStop.source_type,
+    routeStop: tripStop.routeStop
+      ? {
+          id: tripStop.routeStop.id,
+          company_id: tripStop.routeStop.company_id,
+          route_id: tripStop.routeStop.route_id,
+          location_id: tripStop.routeStop.location_id,
+          stop_order: tripStop.routeStop.stop_order,
+          distance_km: tripStop.routeStop.distance_km,
+          minutes_from_origin: tripStop.routeStop.minutes_from_origin,
+          allows_boarding: tripStop.routeStop.allows_boarding,
+          allows_alighting: tripStop.routeStop.allows_alighting,
+          active: tripStop.routeStop.active,
+          location: tripStop.routeStop.location
+            ? {
+                id: tripStop.routeStop.location.id,
+                address: tripStop.routeStop.location.address,
+                country: tripStop.routeStop.location.country,
+                city: tripStop.routeStop.location.city,
+                image: tripStop.routeStop.location.image,
+                active: tripStop.routeStop.location.active,
+              }
+            : null,
+        }
+      : null,
+  }));
+const mapRouteStops = (routeStops = []) =>
+  (Array.isArray(routeStops) ? routeStops : []).map((routeStop) => ({
+    id: routeStop.id,
+    company_id: routeStop.company_id,
+    route_id: routeStop.route_id,
+    location_id: routeStop.location_id,
+    stop_order: routeStop.stop_order,
+    distance_km: routeStop.distance_km,
+    minutes_from_origin: routeStop.minutes_from_origin,
+    allows_boarding: routeStop.allows_boarding,
+    allows_alighting: routeStop.allows_alighting,
+    active: routeStop.active,
+    location: routeStop.location
+      ? {
+          id: routeStop.location.id,
+          address: routeStop.location.address,
+          country: routeStop.location.country,
+          city: routeStop.location.city,
+          image: routeStop.location.image,
+          active: routeStop.location.active,
+        }
+      : null,
+  }));
+const mapFareSegments = (fareSegments = []) =>
+  (Array.isArray(fareSegments) ? fareSegments : []).map((fareSegment) => ({
+    id: fareSegment.id,
+    company_id: fareSegment.company_id,
+    route_id: fareSegment.route_id,
+    origin_route_stop_id: fareSegment.origin_route_stop_id,
+    destination_route_stop_id: fareSegment.destination_route_stop_id,
+    service_class: fareSegment.service_class,
+    base_price: Number(fareSegment.base_price ?? 0),
+    currency: fareSegment.currency,
+    valid_from: fareSegment.valid_from,
+    valid_to: fareSegment.valid_to,
+    priority: fareSegment.priority,
+    active: fareSegment.active,
+    originRouteStop: fareSegment.originRouteStop
+      ? {
+          id: fareSegment.originRouteStop.id,
+          company_id: fareSegment.originRouteStop.company_id,
+          route_id: fareSegment.originRouteStop.route_id,
+          location_id: fareSegment.originRouteStop.location_id,
+          stop_order: fareSegment.originRouteStop.stop_order,
+          distance_km: fareSegment.originRouteStop.distance_km,
+          minutes_from_origin: fareSegment.originRouteStop.minutes_from_origin,
+          allows_boarding: fareSegment.originRouteStop.allows_boarding,
+          allows_alighting: fareSegment.originRouteStop.allows_alighting,
+          active: fareSegment.originRouteStop.active,
+          location: fareSegment.originRouteStop.location
+            ? {
+                id: fareSegment.originRouteStop.location.id,
+                address: fareSegment.originRouteStop.location.address,
+                country: fareSegment.originRouteStop.location.country,
+                city: fareSegment.originRouteStop.location.city,
+                image: fareSegment.originRouteStop.location.image,
+                active: fareSegment.originRouteStop.location.active,
+              }
+            : null,
+        }
+      : null,
+    destinationRouteStop: fareSegment.destinationRouteStop
+      ? {
+          id: fareSegment.destinationRouteStop.id,
+          company_id: fareSegment.destinationRouteStop.company_id,
+          route_id: fareSegment.destinationRouteStop.route_id,
+          location_id: fareSegment.destinationRouteStop.location_id,
+          stop_order: fareSegment.destinationRouteStop.stop_order,
+          distance_km: fareSegment.destinationRouteStop.distance_km,
+          minutes_from_origin: fareSegment.destinationRouteStop.minutes_from_origin,
+          allows_boarding: fareSegment.destinationRouteStop.allows_boarding,
+          allows_alighting: fareSegment.destinationRouteStop.allows_alighting,
+          active: fareSegment.destinationRouteStop.active,
+          location: fareSegment.destinationRouteStop.location
+            ? {
+                id: fareSegment.destinationRouteStop.location.id,
+                address: fareSegment.destinationRouteStop.location.address,
+                country: fareSegment.destinationRouteStop.location.country,
+                city: fareSegment.destinationRouteStop.location.city,
+                image: fareSegment.destinationRouteStop.location.image,
+                active: fareSegment.destinationRouteStop.location.active,
+              }
+            : null,
+        }
+      : null,
+  }));
+
+const buildTripStopPayload = (trip, companyId, item, routeStop) => ({
+  company_id: companyId,
+  trip_id: trip.id,
+  route_stop_id: routeStop.id,
+  stop_order: item.stop_order ?? routeStop.stop_order,
+  arrival_time: item.arrival_time ?? null,
+  departure_time: item.departure_time ?? null,
+  can_board: item.can_board ?? routeStop.allows_boarding ?? true,
+  can_alight: item.can_alight ?? routeStop.allows_alighting ?? true,
+  active: item.active ?? true,
+  source_type: item.source_type ?? "auto",
+});
+
+const getTripStopSyncErrorMessage = (error) => {
+  const message = error?.message || "";
+
+  if (message === "TripStopsMustBeArray") {
+    return "El campo tripStops debe ser un arreglo";
+  }
+
+  if (message === "DuplicateTripStopRouteStop") {
+    return "No se puede repetir la misma parada dentro de tripStops";
+  }
+
+  if (message === "RouteStopCompanyMismatch") {
+    return "Una de las paradas no pertenece a la misma compañia del viaje";
+  }
+
+  if (message === "RouteStopRouteMismatch") {
+    return "Una de las paradas no pertenece a la ruta del viaje";
+  }
+
+  if (message === "TripStopIdRequiredForUpdate") {
+    return "Para editar una parada existente debes enviar su id";
+  }
+
+  if (message.startsWith("TripStopNotFound:")) {
+    const tripStopId = message.split(":")[1];
+    return `No se encontro la parada del viaje con ID ${tripStopId}`;
+  }
+
+  if (message.startsWith("RouteStopNotFound:")) {
+    const routeStopId = message.split(":")[1];
+    return `No se encontro la parada con ID ${routeStopId}`;
+  }
+
+  return null;
+};
 
 const TripController = {
   // Obtener todos los viajes
@@ -31,6 +244,46 @@ const TripController = {
 
       const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
+          const tripStops = Array.isArray(trip.tripStops)
+            ? trip.tripStops.map((tripStop) => ({
+                id: tripStop.id,
+                company_id: tripStop.company_id,
+                trip_id: tripStop.trip_id,
+                route_stop_id: tripStop.route_stop_id,
+                stop_order: tripStop.stop_order,
+                arrival_time: tripStop.arrival_time,
+                departure_time: tripStop.departure_time,
+                can_board: tripStop.can_board,
+                can_alight: tripStop.can_alight,
+                active: tripStop.active,
+                source_type: tripStop.source_type,
+                routeStop: tripStop.routeStop
+                  ? {
+                      id: tripStop.routeStop.id,
+                      company_id: tripStop.routeStop.company_id,
+                      route_id: tripStop.routeStop.route_id,
+                      location_id: tripStop.routeStop.location_id,
+                      stop_order: tripStop.routeStop.stop_order,
+                      distance_km: tripStop.routeStop.distance_km,
+                      minutes_from_origin: tripStop.routeStop.minutes_from_origin,
+                      allows_boarding: tripStop.routeStop.allows_boarding,
+                      allows_alighting: tripStop.routeStop.allows_alighting,
+                      active: tripStop.routeStop.active,
+                      location: tripStop.routeStop.location
+                        ? {
+                            id: tripStop.routeStop.location.id,
+                            address: tripStop.routeStop.location.address,
+                            country: tripStop.routeStop.location.country,
+                            city: tripStop.routeStop.location.city,
+                            image: tripStop.routeStop.location.image,
+                            active: tripStop.routeStop.location.active,
+                          }
+                        : null,
+                    }
+                  : null,
+              }))
+            : [];
+
           return {
             id: trip.id,
             branchId: trip.branch_id,
@@ -57,6 +310,7 @@ const TripController = {
             destination: trip.route.destination.address,
             destinationImage: trip.route.destination.image,
             workers: await TripWorkerRepository.workersTrip(trip),
+            tripStops: tripStops,
           };
         })
       );
@@ -93,6 +347,8 @@ const TripController = {
 
       const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
+          const tripStops = mapTripStops(trip.tripStops);
+
           return {
             id: trip.id,
             branchId: trip.branch_id,
@@ -120,6 +376,7 @@ const TripController = {
             destinationImage: trip.route.destination.image,
             workers: await TripWorkerRepository.workersTrip(trip),
             passengers: await TicketRepository.getpassengers(trip.id),
+            tripStops: tripStops,
           };
         })
       );
@@ -199,6 +456,101 @@ const TripController = {
     return [...trips].sort(compareTrips);
   },
 
+  async syncTripStops(trip, branch, routeId, tripStops, transaction = null) {
+    if (!Array.isArray(tripStops)) {
+      throw new Error("TripStopsMustBeArray");
+    }
+
+    const incomingRouteStopIds = tripStops.map((item) =>
+      Number(item.route_stop_id)
+    );
+    const duplicateRouteStopIds = incomingRouteStopIds.filter(
+      (routeStopId, index) => incomingRouteStopIds.indexOf(routeStopId) !== index
+    );
+
+    if (duplicateRouteStopIds.length > 0) {
+      throw new Error("DuplicateTripStopRouteStop");
+    }
+
+    const existingTripStops = await TripStopRepository.findByTrip(trip.id);
+    const existingById = new Map(
+      existingTripStops.map((tripStop) => [Number(tripStop.id), tripStop])
+    );
+    const incomingKeptIds = new Set(
+      tripStops
+        .map((item) => Number(item.id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    );
+    const survivingExistingTripStops = existingTripStops.filter((tripStop) =>
+      incomingKeptIds.has(Number(tripStop.id))
+    );
+    const existingByRouteStopId = new Map(
+      survivingExistingTripStops.map((tripStop) => [
+        Number(tripStop.route_stop_id),
+        tripStop,
+      ])
+    );
+    const transactionOptions = transaction ? { transaction } : {};
+    const tripStopsToRemove = existingTripStops.filter(
+      (tripStop) => !incomingKeptIds.has(Number(tripStop.id))
+    );
+
+    for (const tripStop of tripStopsToRemove) {
+      await TripStopRepository.delete(tripStop, transactionOptions);
+    }
+
+    for (const item of tripStops) {
+      const incomingId = item.id != null ? Number(item.id) : null;
+      const existingTripStop = incomingId
+        ? existingById.get(incomingId)
+        : null;
+
+      if (incomingId && !existingTripStop) {
+        throw new Error(`TripStopNotFound:${item.id}`);
+      }
+
+      if (!incomingId && existingByRouteStopId.has(Number(item.route_stop_id))) {
+        throw new Error("TripStopIdRequiredForUpdate");
+      }
+
+      const routeStopId = Number(
+        item.route_stop_id ?? existingTripStop?.route_stop_id
+      );
+      const routeStop = await RouteStopRepository.findById(routeStopId);
+
+      if (!routeStop) {
+        throw new Error(`RouteStopNotFound:${routeStopId}`);
+      }
+
+      if (Number(routeStop.company_id) !== Number(branch.company_id)) {
+        throw new Error("RouteStopCompanyMismatch");
+      }
+
+      if (Number(routeStop.route_id) !== Number(routeId)) {
+        throw new Error("RouteStopRouteMismatch");
+      }
+
+      const payload = buildTripStopPayload(
+        trip,
+        branch.company_id,
+        item,
+        routeStop
+      );
+
+      if (existingTripStop) {
+        await TripStopRepository.update(
+          existingTripStop,
+          payload,
+          transactionOptions
+        );
+      } else {
+        await TripStopRepository.create(payload, transactionOptions);
+      }
+    }
+
+    return await TripStopRepository.findByTrip(trip.id);
+  },
+
   async getTripDate(req, res) {
     logger.info( `${req.user.name} - Entra a buscar los viajes de una fecha dada`);
      logger.info("datos recibidos");
@@ -225,6 +577,7 @@ const TripController = {
     }
 
     try {
+      const currentChileDate = getChileDate();
       const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
 
       if (!trips.length) {
@@ -233,6 +586,18 @@ const TripController = {
 
       const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
+          const tripStops = mapTripStops(trip.tripStops);
+          const routeStops = mapRouteStops(
+            (await RouteStopRepository.findByRoute(trip.route_id)).filter(
+              (routeStop) => Number(routeStop.active) === 1 || routeStop.active === true
+            )
+          );
+          const fareSegments = mapFareSegments(
+            (await FareSegmentRepository.findByRoute(trip.route_id)).filter(
+              (fareSegment) => isFareSegmentActiveForDate(fareSegment, currentChileDate)
+            )
+          );
+
           const reservedSeats = trip.tickets
           ? trip.tickets.flatMap((ticket) => {
               return Array.isArray(ticket.seats)
@@ -280,7 +645,10 @@ const TripController = {
             reservedSeats,
             seatMap: seatMap,
             boarding,       // Number of passengers who have boarded (sum of quantities)
-            pending       // Number of passengers pending to board
+            pending,       // Number of passengers pending to board
+            tripStops: tripStops,
+            routeStops: routeStops,
+            fareSegments: fareSegments,
           };
         })
       );
@@ -459,8 +827,9 @@ const TripController = {
       branch_id,
       vehicle_id,
       route_id,
-      workers,
+      workers = [],
       price,
+      tripStops = [],
     } = req.body;
 
     try {
@@ -506,26 +875,15 @@ const TripController = {
         );
         return res.status(400).json({ msg: "BranchNotFound" });
       }
-      let filteredWorkers = [];
-      if (req.body.workers) {
-        // Si no quedan personas después del filtrado, devolver un error
-        if (req.body.workers === 0) {
-          return res
-            .status(400)
-            .json({ msg: "No se han proporcionado trabajadores válidos." });
-        }
+      if (Array.isArray(workers) && workers.length > 0) {
+        const workerIds = workers.map((worker) => parseInt(worker.worker_id));
 
-        const workerIds = req.body.workers.map((worker) =>
-          parseInt(worker.worker_id)
-        );
-
-        // Verificar personas, roles y hogares
-        const [workers] = await Promise.all([
+        const [foundWorkers] = await Promise.all([
           Worker.findAll({ where: { id: workerIds } }),
         ]);
-        // Comprobar si alguna entidad no existe
+
         const missingWorkers = workerIds.filter(
-          (id) => !workers.find((p) => p.id === id)
+          (workerId) => !foundWorkers.find((worker) => worker.id === workerId)
         );
 
         if (missingWorkers.length) {
@@ -537,11 +895,25 @@ const TripController = {
         }
       }
 
-      trip = await TripRepository.create(req.body);
+      trip = await sequelize.transaction(async (transaction) => {
+        const createdTrip = await TripRepository.create(req.body, { transaction });
 
-      if (req.body.workers.length > 0) {
+        if (hasOwn(req.body, "tripStops")) {
+          await TripController.syncTripStops(
+            createdTrip,
+            branch,
+            route_id,
+            tripStops,
+            transaction
+          );
+        }
+
+        return createdTrip;
+      });
+
+      if (Array.isArray(workers) && workers.length > 0) {
         // Crear las asociaciones en paralelo
-        for (const worker of req.body.workers) {
+        for (const worker of workers) {
           const { worker_id } = worker;
 
           const workersTripAssociation = await TripWorker.create({
@@ -553,8 +925,23 @@ const TripController = {
         }
       }
 
-      res.status(201).json({ trip: trip });
+      const refreshedTripStops = hasOwn(req.body, "tripStops")
+        ? await TripStopRepository.findByTrip(trip.id)
+        : [];
+
+      res.status(201).json({
+        trip: toPlainObject(trip),
+        tripStops: refreshedTripStops.map(toPlainObject),
+      });
     } catch (error) {
+      const tripStopSyncMessage = getTripStopSyncErrorMessage(error);
+      if (tripStopSyncMessage) {
+        return res.status(400).json({
+          error: "TripStopValidationError",
+          details: tripStopSyncMessage,
+        });
+      }
+
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
@@ -601,7 +988,12 @@ const TripController = {
         destinationImage: trip.route.destination.image,
       };
 
-      res.status(200).json({ trip: mappedTrip });
+      const tripStops = await TripStopRepository.findByTrip(trip.id);
+
+      res.status(200).json({
+        trip: mappedTrip,
+        tripStops: tripStops.map(toPlainObject),
+      });
     } catch (error) {
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
@@ -727,6 +1119,8 @@ const TripController = {
       vehicle_id,
       route_id,
       price,
+      workers = [],
+      tripStops = [],
     } = req.body;
 
     try {
@@ -774,35 +1168,28 @@ const TripController = {
         }
       }
 
+      let currentBranch = null;
       if (branch_id) {
-        const branch = await BranchRepository.findById(branch_id);
-        if (!branch) {
+        currentBranch = await BranchRepository.findById(branch_id);
+        if (!currentBranch) {
           logger.error(
             `TripController->update: Sucursal no encontrada con ID ${branch_id}`
           );
           return res.status(400).json({ msg: "BranchNotFound" });
         }
+      } else if (hasOwn(req.body, "tripStops")) {
+        currentBranch = await BranchRepository.findById(trip.branch_id);
       }
 
-      if (req.body.workers) {
-        // Si no quedan personas después del filtrado, devolver un error
-        if (req.body.workers === 0) {
-          return res
-            .status(400)
-            .json({ msg: "No se han proporcionado trabajadores válidos." });
-        }
+      if (Array.isArray(workers) && workers.length > 0) {
+        const workerIds = workers.map((worker) => parseInt(worker.worker_id));
 
-        const workerIds = req.body.workers.map((worker) =>
-          parseInt(worker.worker_id)
-        );
-
-        // Verificar personas, roles y hogares
-        const [workers] = await Promise.all([
+        const [foundWorkers] = await Promise.all([
           Worker.findAll({ where: { id: workerIds } }),
         ]);
-        // Comprobar si alguna entidad no existe
+
         const missingWorkers = workerIds.filter(
-          (id) => !workers.find((p) => p.id === id)
+          (workerId) => !foundWorkers.find((worker) => worker.id === workerId)
         );
 
         if (missingWorkers.length) {
@@ -880,14 +1267,49 @@ const TripController = {
           await IncidentRepository.create(incidentBody);
         }
       }
-      const updatedTrip = await TripRepository.update(trip, req.body);
+      const updatedTrip = await sequelize.transaction(async (transaction) => {
+        const tripUpdated = await TripRepository.update(trip, req.body, {
+          transaction,
+        });
 
-      if (req.body.workers) {
+        if (hasOwn(req.body, "tripStops")) {
+          const tripRouteId = route_id ?? trip.route_id;
+          const tripBranch =
+            currentBranch || (await BranchRepository.findById(trip.branch_id));
+
+          await TripController.syncTripStops(
+            tripUpdated,
+            tripBranch,
+            tripRouteId,
+            tripStops,
+            transaction
+          );
+        }
+
+        return tripUpdated;
+      });
+
+      if (Array.isArray(workers) && workers.length > 0) {
         await TripRepository.updateTripWorkers(trip, req.body);
       }
 
-      res.status(200).json({ trip: updatedTrip });
+      const refreshedTripStops = hasOwn(req.body, "tripStops")
+        ? await TripStopRepository.findByTrip(updatedTrip.id)
+        : [];
+
+      res.status(200).json({
+        trip: toPlainObject(updatedTrip),
+        tripStops: refreshedTripStops.map(toPlainObject),
+      });
     } catch (error) {
+      const tripStopSyncMessage = getTripStopSyncErrorMessage(error);
+      if (tripStopSyncMessage) {
+        return res.status(400).json({
+          error: "TripStopValidationError",
+          details: tripStopSyncMessage,
+        });
+      }
+
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
@@ -1243,8 +1665,29 @@ const TripController = {
           destinationAddress: route.destination.address,
           destinationImage: route.destination.image,
           estimated: route.estimated,
+          routeStops: [],
         };
       });
+
+      for (const mappedRoute of mappedRoutes) {
+        const routeStops = await RouteStopRepository.findByRoute(mappedRoute.id);
+        mappedRoute.routeStops = routeStops.map((routeStop) => ({
+          id: routeStop.id,
+          company_id: routeStop.company_id,
+          route_id: routeStop.route_id,
+          location_id: routeStop.location_id,
+          stop_order: routeStop.stop_order,
+          distance_km: routeStop.distance_km,
+          minutes_from_origin: routeStop.minutes_from_origin,
+          allows_boarding: routeStop.allows_boarding,
+          allows_alighting: routeStop.allows_alighting,
+          active: routeStop.active,
+          locationName: routeStop.location?.address,
+          locationCity: routeStop.location?.city,
+          locationCountry: routeStop.location?.country,
+          image: routeStop.location?.image,
+        }));
+      }
       const mappedBranchVehicles = branchVehicles.map((branchVehicle) => ({
         id: branchVehicle.vehicle_id,
         vehicleName: branchVehicle.vehicle.plate,

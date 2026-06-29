@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
       Ticket.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
       Ticket.belongsTo(models.Trip, { foreignKey: 'trip_id', as: 'trip' });
       Ticket.belongsTo(models.Branch, { foreignKey: 'branch_id', as: 'branch' });
+      Ticket.belongsTo(models.FareSegment, { foreignKey: 'fare_segment_id', as: 'fareSegment' });
       Ticket.hasOne(models.Payment, { foreignKey: 'ticket_id', as: 'payment', onUpdate: 'CASCADE', onDelete: 'CASCADE' });
     }
   }
@@ -59,6 +60,10 @@ module.exports = (sequelize, DataTypes) => {
           msg: 'El campo trip_id debe ser un número entero'
         }
       }
+    },
+    fare_segment_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
     },
     date: {
       type: DataTypes.DATEONLY,

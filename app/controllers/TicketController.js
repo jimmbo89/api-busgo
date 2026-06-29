@@ -7,6 +7,7 @@ const {
   CompanyRepository,
   IncidentRepository,
   TuuRepository,
+  FareSegmentRepository,
 } = require("../repositories");
 
 const mapMonthlyTrip = (trip) => {
@@ -172,6 +173,28 @@ function buildComparison(currentValue, previousValue) {
   };
 }
 
+async function validateFareSegmentForTrip(fareSegmentId, trip, branch) {
+  if (fareSegmentId === undefined || fareSegmentId === null || fareSegmentId === "") {
+    return null;
+  }
+
+  const fareSegment = await FareSegmentRepository.findById(fareSegmentId);
+  if (!fareSegment) {
+    return { error: "FareSegmentNotFound" };
+  }
+
+  if (Number(fareSegment.route_id) !== Number(trip.route_id)) {
+    return { error: "FareSegmentRouteMismatch" };
+  }
+
+  const branchCompanyId = branch?.company_id || branch?.company?.id || null;
+  if (branchCompanyId && Number(fareSegment.company_id) !== Number(branchCompanyId)) {
+    return { error: "FareSegmentCompanyMismatch" };
+  }
+
+  return fareSegment;
+}
+
 const TicketController = {
   // Obtener todos los tickets
   async index(req, res) {
@@ -192,6 +215,8 @@ const TicketController = {
         user_id: ticket.user_id,
         tripId: ticket.trip_id,
         trip_id: ticket.trip_id,
+        fare_segment_id: ticket.fare_segment_id,
+        fareSegmentId: ticket.fare_segment_id,
         method: ticket.method,
         status: ticket.status,
         quantity: Number(ticket.quantity),
@@ -222,6 +247,24 @@ const TicketController = {
         vehiclePlate: ticket.trip.vehicle?.plate,
         internal_number: ticket.trip.vehicle?.internal_number,
         internalNumber: ticket.trip.vehicle?.internal_number,
+        fareSegment: ticket.fareSegment
+          ? {
+              id: ticket.fareSegment.id,
+              company_id: ticket.fareSegment.company_id,
+              route_id: ticket.fareSegment.route_id,
+              origin_route_stop_id: ticket.fareSegment.origin_route_stop_id,
+              destination_route_stop_id: ticket.fareSegment.destination_route_stop_id,
+              service_class: ticket.fareSegment.service_class,
+              base_price: Number(ticket.fareSegment.base_price ?? 0),
+              currency: ticket.fareSegment.currency,
+              valid_from: ticket.fareSegment.valid_from,
+              valid_to: ticket.fareSegment.valid_to,
+              priority: ticket.fareSegment.priority,
+              active: ticket.fareSegment.active,
+              originRouteStop: ticket.fareSegment.originRouteStop?.location?.address ?? null,
+              destinationRouteStop: ticket.fareSegment.destinationRouteStop?.location?.address ?? null,
+            }
+          : null,
       }));
 
       res.status(200).json({ tickets: mappedTickets });
@@ -270,6 +313,8 @@ const TicketController = {
         user_id: ticket.user_id,
         tripId: ticket.trip_id,
         trip_id: ticket.trip_id,
+        fare_segment_id: ticket.fare_segment_id,
+        fareSegmentId: ticket.fare_segment_id,
         method: ticket.method,
         status: ticket.status,
         quantity: Number(ticket.quantity),
@@ -300,6 +345,24 @@ const TicketController = {
         vehiclePlate: ticket.trip.vehicle?.plate,
         internal_number: ticket.trip.vehicle?.internal_number,
         internalNumber: ticket.trip.vehicle?.internal_number,
+        fareSegment: ticket.fareSegment
+          ? {
+              id: ticket.fareSegment.id,
+              company_id: ticket.fareSegment.company_id,
+              route_id: ticket.fareSegment.route_id,
+              origin_route_stop_id: ticket.fareSegment.origin_route_stop_id,
+              destination_route_stop_id: ticket.fareSegment.destination_route_stop_id,
+              service_class: ticket.fareSegment.service_class,
+              base_price: Number(ticket.fareSegment.base_price ?? 0),
+              currency: ticket.fareSegment.currency,
+              valid_from: ticket.fareSegment.valid_from,
+              valid_to: ticket.fareSegment.valid_to,
+              priority: ticket.fareSegment.priority,
+              active: ticket.fareSegment.active,
+              originRouteStop: ticket.fareSegment.originRouteStop?.location?.address ?? null,
+              destinationRouteStop: ticket.fareSegment.destinationRouteStop?.location?.address ?? null,
+            }
+          : null,
       }));
 
       res.status(200).json({ tickets: mappedTickets });
@@ -391,6 +454,39 @@ const TicketController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
+      const fareSegmentValidation = await validateFareSegmentForTrip(
+        req.body.fare_segment_id,
+        trip,
+        branch
+      );
+      if (fareSegmentValidation?.error === "FareSegmentNotFound") {
+        logger.error(
+          `TicketController->store: Tramo no encontrado con ID ${req.body.fare_segment_id}`
+        );
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({ msg: "FareSegmentNotFound" });
+      }
+      if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
+        logger.error(
+          `TicketController->store: El tramo ${req.body.fare_segment_id} no pertenece a la ruta ${trip.route_id}`
+        );
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
+      }
+      if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
+        logger.error(
+          `TicketController->store: El tramo ${req.body.fare_segment_id} no pertenece a la empresa de la sucursal ${branch_id}`
+        );
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
+      }
+
       if(id){
         req.body.qr = id;
         req.body.barcode = id;
@@ -405,6 +501,8 @@ const TicketController = {
         branchId: ticket.branch_id,
         trip_id: ticket.trip_id,
         tripId: ticket.trip_id,
+        fare_segment_id: ticket.fare_segment_id,
+        fareSegmentId: ticket.fare_segment_id,
         method: ticket.method,
         quantity: ticket.quantity,
         price: ticket.price,
@@ -414,7 +512,7 @@ const TicketController = {
       };
       //if (!id ) {
         // Si id no existe, es null o está vacío, generar QR y código de barras
-        const { qrCodePath, barcodePath } = await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+        const { qrCodePath, barcodePath } = await TicketRepository.generateTicketCodes(mappedTicket, ticket, { transaction: t });
         const ticketWithCodes = {
           ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
           qrCodePath,
@@ -430,6 +528,8 @@ const TicketController = {
         branch_id: ticket.branch_id,
         tripId: ticket.trip_id,
         trip_id: ticket.trip_id,
+        fare_segment_id: ticket.fare_segment_id,
+        fareSegmentId: ticket.fare_segment_id,
         method: ticket.method,
         quantity: ticket.quantity,
         price: Number(ticket.price),
@@ -523,6 +623,39 @@ const TicketController = {
         );
         return res.status(400).json({ msg: "BranchNotFound" });
       }
+
+      const fareSegmentValidation = await validateFareSegmentForTrip(
+        req.body.fare_segment_id,
+        trip,
+        branch
+      );
+      if (fareSegmentValidation?.error === "FareSegmentNotFound") {
+        logger.error(
+          `TicketController->store_web: Tramo no encontrado con ID ${req.body.fare_segment_id}`
+        );
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({ msg: "FareSegmentNotFound" });
+      }
+      if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
+        logger.error(
+          `TicketController->store_web: El tramo ${req.body.fare_segment_id} no pertenece a la ruta ${trip.route_id}`
+        );
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
+      }
+      if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
+        logger.error(
+          `TicketController->store_web: El tramo ${req.body.fare_segment_id} no pertenece a la empresa de la sucursal ${branch_id}`
+        );
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
+      }
       if (method === "Efectivo") {
         ticket = await TicketRepository.create(req.body, {
           transaction: t,
@@ -542,7 +675,7 @@ const TicketController = {
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
-            await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+          await TicketRepository.generateTicketCodes(mappedTicket, ticket, { transaction: t });
         const ticketWithCodes = {
           ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
           qrCodePath,
@@ -557,6 +690,8 @@ const TicketController = {
           branch_id: ticket.branch_id,
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
+          fare_segment_id: ticket.fare_segment_id,
+          fareSegmentId: ticket.fare_segment_id,
           method: ticket.method,
           quantity: ticket.quantity,
           price: Number(ticket.price),
@@ -619,7 +754,7 @@ const TicketController = {
           };
           //generar qr y codigo de barra
           const { qrCodePath, barcodePath } =
-            await TicketRepository.generateTicketCodes(mappedTicket, ticket);
+            await TicketRepository.generateTicketCodes(mappedTicket, ticket, { transaction: t });
             const ticketWithCodes = {
               ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
               qrCodePath,
@@ -634,6 +769,8 @@ const TicketController = {
           branch_id: ticket.branch_id,
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
+          fare_segment_id: ticket.fare_segment_id,
+          fareSegmentId: ticket.fare_segment_id,
           method: ticket.method,
           quantity: ticket.quantity,
           price: Number(ticket.price),
@@ -698,6 +835,8 @@ const TicketController = {
           branch_id: ticket.branch_id,
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
+          fare_segment_id: ticket.fare_segment_id,
+          fareSegmentId: ticket.fare_segment_id,
           method: ticket.method,
           quantity: Number(ticket.quantity),
           price: Number(ticket.price),
@@ -974,24 +1113,55 @@ async verifyEncryptedQR(req, res) {
       return res.status(400).json({ msg: "SeatsReserved" });
     }
 
+    let tripForValidation = ticket.trip;
+    let branchForValidation = ticket.branch;
+
     // Verificar si el viaje, usuario y sucursal existen
     if (trip_id) {
-      const trip = await TripRepository.findById(trip_id);
-      if (!trip) {
+      const tripFound = await TripRepository.findById(trip_id);
+      if (!tripFound) {
         logger.error(
           `TicketController->update: Viaje no encontrado con ID ${trip_id}`
         );
         return res.status(400).json({ msg: "TripNotFound" });
       }
+      tripForValidation = tripFound;
     }
 
     if (branch_id) {
-      const branch = await BranchRepository.findById(branch_id);
-      if (!branch) {
+      const branchFound = await BranchRepository.findById(branch_id);
+      if (!branchFound) {
         logger.error(
           `TicketController->update: Sucursal no encontrada con ID ${branch_id}`
         );
         return res.status(400).json({ msg: "BranchNotFound" });
+      }
+      branchForValidation = branchFound;
+    }
+
+    if (req.body.fare_segment_id !== undefined) {
+      const fareSegmentValidation = await validateFareSegmentForTrip(
+        req.body.fare_segment_id,
+        tripForValidation,
+        branchForValidation
+      );
+      if (fareSegmentValidation?.error === "FareSegmentNotFound") {
+        logger.error(
+          `TicketController->update: Tramo no encontrado con ID ${req.body.fare_segment_id}`
+        );
+        return res.status(400).json({ msg: "FareSegmentNotFound" });
+      }
+      if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
+        logger.error(
+          `TicketController->update: El tramo ${req.body.fare_segment_id} no pertenece a la ruta ${tripForValidation.route_id}`
+        );
+        return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
+      }
+      if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
+        logger.error(
+          `TicketController->update: El tramo ${req.body.fare_segment_id} no pertenece a la empresa de la sucursal ${branchForValidation.id || branchForValidation.branch_id || branch_id}`
+        );
+        return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
       }
     }
 
@@ -1004,6 +1174,8 @@ async verifyEncryptedQR(req, res) {
         branchId: ticketMaped.branch_id,
         userId: ticketMaped.user_id,
         tripId: ticketMaped.trip_id,
+        fare_segment_id: ticketMaped.fare_segment_id,
+        fareSegmentId: ticketMaped.fare_segment_id,
         method: ticketMaped.method,
         status: ticketMaped.status,
         quantity: ticketMaped.quantity,

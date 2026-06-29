@@ -9,14 +9,14 @@ const LocationRepository = {
   // Obtener todas las ubicaciones
   async findAll() {
     return await Location.findAll({
-      attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image'],
+      attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'],
     });
   },
 
   // Buscar una ubicación por ID
   async findById(id) {
     return await Location.findByPk(id, {
-      attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image'],
+      attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'],
     });
   },
 
@@ -43,6 +43,7 @@ const LocationRepository = {
     address,
     country,
     city,
+    active: body.active ?? true,
     image: 'locations/default.jpg',
   });
 
@@ -62,7 +63,7 @@ const LocationRepository = {
 
 // Actualizar una ubicación
 async update(location, body, file) {
-  const fieldsToUpdate = ['latitude', 'longitude', 'address', 'country', 'city', 'image'];
+  const fieldsToUpdate = ['latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'];
 
   const updatedData = Object.keys(body)
     .filter(key => fieldsToUpdate.includes(key) && body[key] !== undefined)

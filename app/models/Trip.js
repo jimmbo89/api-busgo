@@ -19,6 +19,7 @@ module.exports = (sequelize, DataTypes) => {
 
       Trip.hasMany(models.Ticket, { foreignKey: 'trip_id', as: 'tickets' });
       Trip.hasMany(models.TripWorker, { foreignKey: 'trip_id', as: 'tripworkers' });
+      Trip.hasMany(models.TripStop, { foreignKey: 'trip_id', as: 'tripStops' });
     }
   }
   Trip.init({
@@ -104,7 +105,8 @@ module.exports = (sequelize, DataTypes) => {
             route_id: trip.route_id,
             date: trip.date,
             schedule: trip.schedule
-          }
+          },
+          transaction: options.transaction || null
         });
         if (existingTrip) {
           throw new Error('A trip with the same vehicle, route, date, and schedule time already exists.');

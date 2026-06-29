@@ -7,6 +7,7 @@ const storeLocationSchema = Joi.object({
     country: Joi.string().max(255).allow(null).empty('').optional(),
     address: Joi.string().max(255).required(),
     city: Joi.string().max(255).allow(null).empty('').optional(),
+    active: Joi.boolean().optional().default(true),
     image: Joi.string()
         .pattern(/\.(jpg|jpeg|png|gif)$/i)  // Validar formato de imagen
         .allow(null).empty('').optional()                         // Hace que sea opcional
@@ -23,6 +24,7 @@ const updateLocationSchema = Joi.object({
     country: Joi.string().max(255).allow(null).empty('').optional(),
     address: Joi.string().max(255).allow(null).empty('').optional(),
     city: Joi.string().max(255).allow(null).empty('').optional(),
+    active: Joi.boolean().optional(),
     image: Joi.string()
         .pattern(/\.(jpg|jpeg|png|gif)$/i)  // Validar formato de imagen
         .allow(null).empty('').optional()                         // Hace que sea opcional

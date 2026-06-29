@@ -16,6 +16,9 @@ const PermissionRoleController = require("./controllers/PermissionRoleController
 const VehicleController = require("./controllers/VehicleController");
 const LocationController = require("./controllers/LocationController");
 const RouteController = require("./controllers/RouteController");
+const RouteStopController = require("./controllers/RouteStopController");
+const TripStopController = require("./controllers/TripStopController");
+const FareSegmentController = require("./controllers/FareSegmentController");
 const DeviceController = require("./controllers/DeviceController");
 const BranchRouteController = require("./controllers/BranchRouteController");
 const BranchVehicleController = require("./controllers/BranchVehicleController");
@@ -92,6 +95,27 @@ const {
   updateRouteSchema,
   idRouteSchema,
 } = require("./middlewares/validations/routeValidation");
+const {
+  storeRouteStopSchema,
+  updateRouteStopSchema,
+  idRouteStopSchema,
+  routeIdRouteStopSchema,
+  companyIdRouteStopSchema,
+} = require("./middlewares/validations/routestopValidation");
+const {
+  storeTripStopSchema,
+  updateTripStopSchema,
+  idTripStopSchema,
+  tripIdTripStopSchema,
+  companyIdTripStopSchema,
+} = require("./middlewares/validations/tripstopValidation");
+const {
+  storeFareSegmentSchema,
+  updateFareSegmentSchema,
+  idFareSegmentSchema,
+  routeIdFareSegmentSchema,
+  companyIdFareSegmentSchema,
+} = require("./middlewares/validations/faresegmentValidation");
 const {
   storeDeviceSchema,
   updateDeviceSchema,
@@ -431,6 +455,33 @@ router.post(
   validateSchema(idRouteSchema),
   RouteController.destroy
 );
+
+//Rutas RouteStop
+router.get("/route-stop", RouteStopController.index);
+router.post("/route-stop-by-route", validateSchema(routeIdRouteStopSchema), RouteStopController.byRoute);
+router.post("/route-stop-by-company", validateSchema(companyIdRouteStopSchema), RouteStopController.byCompany);
+router.post("/route-stop", validateSchema(storeRouteStopSchema), RouteStopController.store);
+router.post("/route-stop-show", validateSchema(idRouteStopSchema), RouteStopController.show);
+router.put("/route-stop", validateSchema(updateRouteStopSchema), RouteStopController.update);
+router.post("/route-stop-destroy", validateSchema(idRouteStopSchema), RouteStopController.destroy);
+
+//Rutas TripStop
+router.get("/trip-stop", TripStopController.index);
+router.post("/trip-stop-by-trip", validateSchema(tripIdTripStopSchema), TripStopController.byTrip);
+router.post("/trip-stop-by-company", validateSchema(companyIdTripStopSchema), TripStopController.byCompany);
+router.post("/trip-stop", validateSchema(storeTripStopSchema), TripStopController.store);
+router.post("/trip-stop-show", validateSchema(idTripStopSchema), TripStopController.show);
+router.put("/trip-stop", validateSchema(updateTripStopSchema), TripStopController.update);
+router.post("/trip-stop-destroy", validateSchema(idTripStopSchema), TripStopController.destroy);
+
+//Rutas FareSegment
+router.get("/fare-segment", FareSegmentController.index);
+router.post("/fare-segment-by-route", validateSchema(routeIdFareSegmentSchema), FareSegmentController.byRoute);
+router.post("/fare-segment-by-company", validateSchema(companyIdFareSegmentSchema), FareSegmentController.byCompany);
+router.post("/fare-segment", validateSchema(storeFareSegmentSchema), FareSegmentController.store);
+router.post("/fare-segment-show", validateSchema(idFareSegmentSchema), FareSegmentController.show);
+router.put("/fare-segment", validateSchema(updateFareSegmentSchema), FareSegmentController.update);
+router.post("/fare-segment-destroy", validateSchema(idFareSegmentSchema), FareSegmentController.destroy);
 
 //Rutas Device
 router.get("/device", DeviceController.index);

@@ -6,6 +6,9 @@ const {
   Route,
   Location,
   TripWorker,
+  TripStop,
+  RouteStop,
+  FareSegment,
   Worker,
   Ticket,
   Structure,
@@ -158,6 +161,48 @@ const TripRepository = {
           model: Ticket, // Incluir los tickets relacionados
           as: "tickets",
           attributes: ["id", "seats", "qr_status", "quantity"], // Suponiendo que los asientos están en el campo 'seat_numbers' (como un array)
+        },
+        {
+          model: TripStop,
+          as: "tripStops",
+          attributes: [
+            "id",
+            "company_id",
+            "trip_id",
+            "route_stop_id",
+            "stop_order",
+            "arrival_time",
+            "departure_time",
+            "can_board",
+            "can_alight",
+            "active",
+            "source_type",
+          ],
+          include: [
+            {
+              model: RouteStop,
+              as: "routeStop",
+              attributes: [
+                "id",
+                "company_id",
+                "route_id",
+                "location_id",
+                "stop_order",
+                "distance_km",
+                "minutes_from_origin",
+                "allows_boarding",
+                "allows_alighting",
+                "active",
+              ],
+              include: [
+                {
+                  model: Location,
+                  as: "location",
+                  attributes: ["id", "address", "country", "city", "image", "active"],
+                },
+              ],
+            },
+          ],
         },
         {
           model: Worker, // Incluir los trabajadores relacionados
@@ -418,7 +463,7 @@ const TripRepository = {
     });
   },
 
-  async create(body) {
+  async create(body, options = {}) {
     //logger.info("Creando viaje...");
     //logger.info(body);
     const {
@@ -444,7 +489,7 @@ const TripRepository = {
         vehicle_id,
         route_id,
         price,
-      });
+      }, options);
 
       logger.info(`Viaje creado exitosamente (ID: ${trip.id})`);
       return trip;
@@ -454,7 +499,7 @@ const TripRepository = {
     }
   },
 
-  async update(trip, body) {
+  async update(trip, body, options = {}) {
     const fieldsToUpdate = [
       "date",
       "schedule",
@@ -476,7 +521,7 @@ const TripRepository = {
 
     if (Object.keys(updatedData).length > 0) {
       try {
-        await trip.update(updatedData);
+        await trip.update(updatedData, options);
         logger.info(`Viaje actualizado exitosamente (ID: ${trip.id})`);
       } catch (error) {
         logger.error(`Error actualizando el viaje: ${error.message}`);

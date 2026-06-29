@@ -36,6 +36,25 @@ const storeTripTemplateSchema = Joi.object({
   workers: Joi.array().items(Joi.object()).allow(null).optional().messages({
     "array.base": "El campo workers debe ser un arreglo de objetos",
   }),
+  tripStops: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        route_stop_id: Joi.number().integer().required(),
+        stop_order: Joi.number().integer().optional(),
+        arrival_time: Joi.string().allow(null).empty("").optional(),
+        departure_time: Joi.string().allow(null).empty("").optional(),
+        can_board: Joi.boolean().optional(),
+        can_alight: Joi.boolean().optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "El campo tripStops debe ser un arreglo de objetos",
+    }),
 });
 
 // Esquema para actualizar un TripTemplate
@@ -70,6 +89,25 @@ const updateTripTemplateSchema = Joi.object({
   workers: Joi.array().items(Joi.object()).allow(null).optional().messages({
     "array.base": "El campo workers debe ser un arreglo de objetos",
   }),
+  tripStops: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        route_stop_id: Joi.number().integer().required(),
+        stop_order: Joi.number().integer().optional(),
+        arrival_time: Joi.string().allow(null).empty("").optional(),
+        departure_time: Joi.string().allow(null).empty("").optional(),
+        can_board: Joi.boolean().optional(),
+        can_alight: Joi.boolean().optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "El campo tripStops debe ser un arreglo de objetos",
+    }),
   id: Joi.number().integer().required().messages({
     "number.base": "El campo id debe ser un número entero",
     "any.required": "El campo id es obligatorio",

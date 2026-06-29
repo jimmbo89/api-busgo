@@ -21,6 +21,11 @@ module.exports = (sequelize, DataTypes) => {
         as: 'destinationRoutes',
         foreignKey: 'destination_id',
       });
+
+      Location.hasMany(models.RouteStop, {
+        as: 'routeStops',
+        foreignKey: 'location_id',
+      });
     }
   }
   Location.init({
@@ -53,6 +58,11 @@ module.exports = (sequelize, DataTypes) => {
     image: {
       type: DataTypes.STRING,
       allowNull: true,
+    },
+    active: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     }
   }, {
     sequelize,

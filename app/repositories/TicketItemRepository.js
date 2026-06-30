@@ -1,54 +1,52 @@
 const { TicketItem, TicketType, TripFare, FareSegmentTicketType, FareSegment, RouteStop, Location } = require("../models");
 
-const tripFareInclude = [
+const fareSegmentDetailInclude = [
   {
-    model: TripFare,
-    as: "tripFare",
-    attributes: ["id", "company_id", "trip_id", "fare_segment_ticket_type_id", "base_price", "price", "active", "source_type"],
+    model: FareSegmentTicketType,
+    as: "fareSegmentTicketType",
+    attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
     include: [
       {
-        model: FareSegmentTicketType,
-        as: "fareSegmentTicketType",
-        attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+        model: TicketType,
+        as: "ticketType",
+        attributes: ["id", "name", "description", "active"],
+      },
+      {
+        model: FareSegment,
+        as: "fareSegment",
+        attributes: [
+          "id",
+          "company_id",
+          "route_id",
+          "origin_route_stop_id",
+          "destination_route_stop_id",
+          "base_price",
+          "currency",
+          "valid_from",
+          "valid_to",
+          "priority",
+          "active",
+        ],
         include: [
           {
-            model: FareSegment,
-            as: "fareSegment",
-            attributes: [
-              "id",
-              "company_id",
-              "route_id",
-              "origin_route_stop_id",
-              "destination_route_stop_id",
-              "base_price",
-              "currency",
-              "valid_from",
-              "valid_to",
-              "priority",
-              "active",
-            ],
+            model: RouteStop,
+            as: "originRouteStop",
             include: [
               {
-                model: RouteStop,
-                as: "originRouteStop",
-                include: [
-                  {
-                    model: Location,
-                    as: "location",
-                    attributes: ["id", "address", "country", "city", "image", "active"],
-                  },
-                ],
+                model: Location,
+                as: "location",
+                attributes: ["id", "address", "country", "city", "image", "active"],
               },
+            ],
+          },
+          {
+            model: RouteStop,
+            as: "destinationRouteStop",
+            include: [
               {
-                model: RouteStop,
-                as: "destinationRouteStop",
-                include: [
-                  {
-                    model: Location,
-                    as: "location",
-                    attributes: ["id", "address", "country", "city", "image", "active"],
-                  },
-                ],
+                model: Location,
+                as: "location",
+                attributes: ["id", "address", "country", "city", "image", "active"],
               },
             ],
           },
@@ -56,29 +54,89 @@ const tripFareInclude = [
       },
     ],
   },
+];
+
+const tripFareInclude = [
   {
-    model: TicketType,
-    as: "ticketType",
-    attributes: ["id", "name", "description", "active"],
+    model: TripFare,
+    as: "tripFare",
+    attributes: ["id", "company_id", "trip_id", "fare_segment_ticket_type_id", "base_price", "price", "active", "source_type"],
+    include: fareSegmentDetailInclude,
   },
 ];
 
-const normalizeTicketItemPayload = (ticketId, item = {}) => {
+const resolveTripFareSnapshot = async (tripFareId, options = {}) => {
+  if (!tripFareId) {
+    return null;
+  }
+
+  return await TripFare.findByPk(tripFareId, {
+    include: fareSegmentDetailInclude,
+    ...options,
+  });
+};
+
+const normalizeTicketItemPayload = (ticketId, item = {}, resolvedTripFare = null) => {
+  const tripFare = resolvedTripFare || null;
+  const fareSegmentTicketType = tripFare?.fareSegmentTicketType || null;
+  const ticketType = fareSegmentTicketType?.ticketType || null;
   const quantity = Number(item.quantity ?? item.cant ?? 1);
-  const basePriceValue =
-    item.base_price ?? item.basePrice ?? item.adjustment_details?.base_price ?? item.adjustmentDetails?.base_price ?? 0;
-  const unitPriceValue =
-    item.unit_price ?? item.unitPrice ?? item.adjustment_details?.unit_price ?? item.adjustmentDetails?.unit_price ?? basePriceValue;
+  const resolvedBasePrice =
+    tripFare?.base_price ??
+    fareSegmentTicketType?.base_price ??
+    tripFare?.price ??
+    0;
+  const resolvedUnitPrice =
+    tripFare?.price ??
+    tripFare?.base_price ??
+    fareSegmentTicketType?.base_price ??
+    0;
+  const shouldTrustIncomingPrices =
+    item.source_type === "manual" || item.source_type === "override";
+  const basePriceValue = shouldTrustIncomingPrices
+    ? item.base_price ??
+      item.basePrice ??
+      item.adjustment_details?.base_price ??
+      item.adjustmentDetails?.base_price ??
+      resolvedBasePrice
+    : resolvedBasePrice;
+  const unitPriceValue = shouldTrustIncomingPrices
+    ? item.unit_price ??
+      item.unitPrice ??
+      item.adjustment_details?.unit_price ??
+      item.adjustmentDetails?.unit_price ??
+      resolvedUnitPrice
+    : resolvedUnitPrice;
   const subtotalValue =
-    item.subtotal ?? item.subTotal ?? item.adjustment_details?.line_total ?? item.adjustmentDetails?.line_total ?? Number(unitPriceValue) * quantity;
+    item.subtotal ??
+    item.subTotal ??
+    item.adjustment_details?.line_total ??
+    item.adjustmentDetails?.line_total ??
+    Number(unitPriceValue) * quantity;
 
   return {
     id: item.id ?? null,
     ticket_id: ticketId,
-    ticket_type_id: item.ticket_type_id ?? item.ticketTypeId ?? null,
-    trip_fare_id: item.trip_fare_id ?? item.tripFareId ?? null,
-    ticket_type_name: item.ticket_type_name ?? item.ticketTypeName ?? item.name ?? null,
-    ticket_type_description: item.ticket_type_description ?? item.ticketTypeDescription ?? item.description ?? null,
+    ticket_type_id:
+      item.ticket_type_id ??
+      item.ticketTypeId ??
+      fareSegmentTicketType?.ticket_type_id ??
+      null,
+    trip_fare_id: item.trip_fare_id ?? item.tripFareId ?? tripFare?.id ?? null,
+    ticket_type_name:
+      item.ticket_type_name ??
+      item.ticketTypeName ??
+      item.name ??
+      ticketType?.name ??
+      fareSegmentTicketType?.ticketTypeName ??
+      null,
+    ticket_type_description:
+      item.ticket_type_description ??
+      item.ticketTypeDescription ??
+      item.description ??
+      ticketType?.description ??
+      fareSegmentTicketType?.ticketTypeDescription ??
+      null,
     quantity,
     base_price: basePriceValue !== undefined && basePriceValue !== null ? Number(basePriceValue) : 0,
     unit_price: unitPriceValue !== undefined && unitPriceValue !== null ? Number(unitPriceValue) : 0,
@@ -100,13 +158,19 @@ const TicketItemRepository = {
   },
 
   async create(ticketId, item, options = {}) {
-    const payload = normalizeTicketItemPayload(ticketId, item);
+    const resolvedTripFare = item.trip_fare_id
+      ? await resolveTripFareSnapshot(item.trip_fare_id, options)
+      : null;
+    const payload = normalizeTicketItemPayload(ticketId, item, resolvedTripFare);
     delete payload.id;
     return await TicketItem.create(payload, options);
   },
 
   async update(ticketItem, item, options = {}) {
-    const payload = normalizeTicketItemPayload(ticketItem.ticket_id, item);
+    const resolvedTripFare = item.trip_fare_id
+      ? await resolveTripFareSnapshot(item.trip_fare_id, options)
+      : null;
+    const payload = normalizeTicketItemPayload(ticketItem.ticket_id, item, resolvedTripFare);
     delete payload.id;
     delete payload.ticket_id;
     return await ticketItem.update(payload, options);

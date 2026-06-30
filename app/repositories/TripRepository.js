@@ -280,7 +280,6 @@ const TripRepository = {
             },
           ],
         },
-        ...tripFareInclude,
         {
           model: Worker, // Incluir los trabajadores relacionados
           as: "workers",
@@ -288,6 +287,7 @@ const TripRepository = {
           through: { attributes: [] }, // Excluir atributos de la tabla intermedia (TripWorker)
           where: workerId ? { id: workerId } : {}, // Filtro por workerId (si se proporciona)
         },
+        ...tripFareInclude,
       ],
     });
   },

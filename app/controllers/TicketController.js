@@ -571,7 +571,7 @@ const TicketController = {
       }
 
       // Verificar si el viaje, usuario y sucursal existen
-      const trip = await TripRepository.findById(trip_id);
+      const trip = await TripRepository.findByIdWithTickets(trip_id);
       if (!trip) {
         logger.error(
           `TicketController->store: Viaje no encontrado con ID ${trip_id}`
@@ -758,7 +758,7 @@ const TicketController = {
       }
 
       // Verificar si el viaje, usuario y sucursal existen
-      const trip = await TripRepository.findById(trip_id);
+      const trip = await TripRepository.findByIdWithTickets(trip_id);
       if (!trip) {
         logger.error(
           `TicketController->store_web: Viaje no encontrado con ID ${trip_id}`
@@ -1298,7 +1298,7 @@ async verifyEncryptedQR(req, res) {
 
     // Verificar si el viaje, usuario y sucursal existen
     if (trip_id) {
-      const tripFound = await TripRepository.findById(trip_id);
+      const tripFound = await TripRepository.findByIdWithTickets(trip_id);
       if (!tripFound) {
         logger.error(
           `TicketController->update: Viaje no encontrado con ID ${trip_id}`

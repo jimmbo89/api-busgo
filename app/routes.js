@@ -145,6 +145,7 @@ const {
   idTripSchema,
   changeTripSchema,
   branch_idTripSchema,
+  branchOriginDestinationTripSchema,
   tripWorkerDateSchema,
 } = require("./middlewares/validations/tripValidation");
 const {
@@ -599,6 +600,7 @@ router.post(
 //Rutas Trip
 router.get("/trip", TripController.index);
 router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );
+router.post("/get-trip-date-segment", validateSchema(branchOriginDestinationTripSchema), TripController.getTripDateBySegment);
 router.post("/get-trip-vehicle", validateSchema(branch_idTripSchema), TripController.getTripVehicle );
 router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
 router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);

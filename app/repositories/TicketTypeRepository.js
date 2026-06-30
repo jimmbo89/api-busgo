@@ -29,10 +29,10 @@ const TicketTypeRepository = {
 
     const ticketType = await TicketType.create({
       name,
-      description,
-      adjustment_type: adjustment_type || 'descuento',
-      value_type: value_type || 'monto',
-      adjustment_value: adjustment_value ?? 0,
+      description: description ?? null,
+      adjustment_type: adjustment_type ?? null,
+      value_type: value_type ?? null,
+      adjustment_value: adjustment_value ?? null,
       active,
     });
 

@@ -11,6 +11,14 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      TicketType.hasMany(models.FareSegmentTicketType, {
+        foreignKey: 'ticket_type_id',
+        as: 'fareSegmentTicketTypes',
+      });
+      TicketType.hasMany(models.TicketItem, {
+        foreignKey: 'ticket_type_id',
+        as: 'ticketItems',
+      });
     }
   }
   TicketType.init(
@@ -30,23 +38,19 @@ module.exports = (sequelize, DataTypes) => {
       },
       adjustment_type: {
         type: DataTypes.STRING,
-        allowNull: false,
-        defaultValue: "descuento",
+        allowNull: true,
       },
       value_type: {
         type: DataTypes.STRING,
-        allowNull: false,
-        defaultValue: "monto",
+        allowNull: true,
       },
       adjustment_value: {
         type: DataTypes.DOUBLE,
-        allowNull: false,
-        defaultValue: 0,
+        allowNull: true,
       },
       active: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
-        defaultValue: false,
       },
     },
     {

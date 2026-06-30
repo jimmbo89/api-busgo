@@ -52,12 +52,13 @@ const storeTripSchema = Joi.object({
   price: Joi.number()
     .precision(2)
     .positive()
-    .required()
+    .allow(null)
+    .empty("")
+    .optional()
     .messages({
       "number.base": "El precio debe ser un numero",
       "number.precision": "El precio no puede tener mas de dos decimales",
       "number.positive": "El precio debe ser un numero positivo",
-      "any.required": "El precio es obligatorio",
     }),
   workers: Joi.array()
     .items(
@@ -76,6 +77,18 @@ const storeTripSchema = Joi.object({
         departure_time: Joi.string().allow(null).empty("").optional(),
         can_board: Joi.boolean().optional(),
         can_alight: Joi.boolean().optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .optional(),
+  tripFares: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        fare_segment_ticket_type_id: Joi.number().integer().required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        price: Joi.number().precision(2).allow(null).optional(),
         active: Joi.boolean().optional(),
         source_type: Joi.string().valid("auto", "manual", "override").optional(),
       })
@@ -142,7 +155,6 @@ const updateTripSchema = Joi.object({
       "number.base": "El precio debe ser un numero",
       "number.precision": "El precio no puede tener mas de dos decimales",
       "number.positive": "El precio debe ser un numero positivo",
-      "any.required": "El precio es obligatorio",
     }),
   workers: Joi.array()
     .items(
@@ -161,6 +173,18 @@ const updateTripSchema = Joi.object({
         departure_time: Joi.string().allow(null).empty("").optional(),
         can_board: Joi.boolean().optional(),
         can_alight: Joi.boolean().optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .optional(),
+  tripFares: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        fare_segment_ticket_type_id: Joi.number().integer().required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        price: Joi.number().precision(2).allow(null).optional(),
         active: Joi.boolean().optional(),
         source_type: Joi.string().valid("auto", "manual", "override").optional(),
       })

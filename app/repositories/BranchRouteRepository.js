@@ -1,5 +1,5 @@
 const logger = require('../../config/logger');
-const { BranchRoute, Branch, Route, Location } = require('../models');
+const { BranchRoute, Branch, Route, Location, RouteStop } = require('../models');
 
 const BranchRouteRepository = {
     // Obtener todas las relaciones Branch-Vehicle con sus relaciones
@@ -19,6 +19,29 @@ const BranchRouteRepository = {
                             model: Location,
                             as: 'destination',
                             attributes: ['id', 'address', 'image'],
+                        },
+                        {
+                            model: RouteStop,
+                            as: 'routeStops',
+                            attributes: [
+                                'id',
+                                'company_id',
+                                'route_id',
+                                'location_id',
+                                'stop_order',
+                                'distance_km',
+                                'minutes_from_origin',
+                                'allows_boarding',
+                                'allows_alighting',
+                                'active',
+                            ],
+                            include: [
+                                {
+                                    model: Location,
+                                    as: 'location',
+                                    attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+                                },
+                            ],
                         },
                     ],
                 }
@@ -45,6 +68,29 @@ const BranchRouteRepository = {
                             as: 'destination',
                             attributes: ['id', 'address', 'image'],
                         },
+                        {
+                            model: RouteStop,
+                            as: 'routeStops',
+                            attributes: [
+                                'id',
+                                'company_id',
+                                'route_id',
+                                'location_id',
+                                'stop_order',
+                                'distance_km',
+                                'minutes_from_origin',
+                                'allows_boarding',
+                                'allows_alighting',
+                                'active',
+                            ],
+                            include: [
+                                {
+                                    model: Location,
+                                    as: 'location',
+                                    attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+                                },
+                            ],
+                        },
                     ],
                 }
             ]
@@ -63,7 +109,36 @@ const BranchRouteRepository = {
         return await BranchRoute.findByPk(id, {
             include: [
                 { model: Branch, as: 'branch', attributes: ['id', 'name'] },
-                { model: Route, as: 'route', attributes: ['id', 'name'] }
+                {
+                    model: Route,
+                    as: 'route',
+                    attributes: ['id', 'name'],
+                    include: [
+                        {
+                            model: RouteStop,
+                            as: 'routeStops',
+                            attributes: [
+                                'id',
+                                'company_id',
+                                'route_id',
+                                'location_id',
+                                'stop_order',
+                                'distance_km',
+                                'minutes_from_origin',
+                                'allows_boarding',
+                                'allows_alighting',
+                                'active',
+                            ],
+                            include: [
+                                {
+                                    model: Location,
+                                    as: 'location',
+                                    attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+                                },
+                            ],
+                        },
+                    ],
+                }
             ]
         });
     },

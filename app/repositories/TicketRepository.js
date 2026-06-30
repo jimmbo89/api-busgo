@@ -5,6 +5,11 @@ const fs = require("fs");
 const crypto = require("crypto");
 const {
   Ticket,
+  TicketItem,
+  TicketType,
+  TripFare,
+  FareSegmentTicketType,
+  TripStop,
   Branch,
   User,
   Trip,
@@ -83,6 +88,95 @@ const fareSegmentTicketInclude = [
             model: Location,
             as: "location",
             attributes: ["id", "address", "country", "city", "image", "active"],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const ticketItemInclude = [
+  {
+    model: TicketItem,
+    as: "ticketItems",
+    attributes: [
+      "id",
+      "ticket_id",
+      "ticket_type_id",
+      "trip_fare_id",
+      "ticket_type_name",
+      "ticket_type_description",
+      "quantity",
+      "base_price",
+      "unit_price",
+      "subtotal",
+      "currency",
+      "active",
+      "source_type",
+    ],
+    include: [
+      {
+        model: TicketType,
+        as: "ticketType",
+        attributes: ["id", "name", "description", "active"],
+      },
+      {
+        model: TripFare,
+        as: "tripFare",
+        attributes: ["id", "company_id", "trip_id", "fare_segment_ticket_type_id", "base_price", "price", "active", "source_type"],
+        include: [
+          {
+            model: FareSegmentTicketType,
+            as: "fareSegmentTicketType",
+            attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+            include: [
+              {
+                model: TicketType,
+                as: "ticketType",
+                attributes: ["id", "name", "description", "active"],
+              },
+              {
+                model: FareSegment,
+                as: "fareSegment",
+                attributes: [
+                  "id",
+                  "company_id",
+                  "route_id",
+                  "origin_route_stop_id",
+                  "destination_route_stop_id",
+                  "base_price",
+                  "currency",
+                  "valid_from",
+                  "valid_to",
+                  "priority",
+                  "active",
+                ],
+                include: [
+                  {
+                    model: RouteStop,
+                    as: "originRouteStop",
+                    include: [
+                      {
+                        model: Location,
+                        as: "location",
+                        attributes: ["id", "address", "country", "city", "image", "active"],
+                      },
+                    ],
+                  },
+                  {
+                    model: RouteStop,
+                    as: "destinationRouteStop",
+                    include: [
+                      {
+                        model: Location,
+                        as: "location",
+                        attributes: ["id", "address", "country", "city", "image", "active"],
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
           },
         ],
       },
@@ -237,6 +331,7 @@ const TicketRepository = {
             },
           ],
         },
+        ...ticketItemInclude,
         ...fareSegmentTicketInclude,
       ],
     });
@@ -308,6 +403,7 @@ const TicketRepository = {
             },
           ],
         },
+        ...ticketItemInclude,
       ],
     });
   },
@@ -384,9 +480,10 @@ const TicketRepository = {
             },
           ],
         },
+        ...ticketItemInclude,
       ],
-  });
-},
+    });
+  },
 
   async create(body, options = {}) {
     const {
@@ -410,7 +507,6 @@ const TicketRepository = {
       transactionTip,
       transactionCashback,
       promotions,
-      tickettypes
     } = body;
 
     try {
@@ -435,7 +531,6 @@ const TicketRepository = {
         transactionTip,
         transactionCashback,
         promotions,
-        tickettypes
       }, options);
 
       logger.info(`Ticket creado exitosamente (ID: ${ticket.id})`);
@@ -468,7 +563,6 @@ const TicketRepository = {
       "transactionTip",
       "transactionCashback",
       "promotions",
-      "tickettypes"
     ];
 
     const updatedData = Object.keys(body)
@@ -577,6 +671,141 @@ const TicketRepository = {
         `Error verificando los asientos reservados Repository: ${error.message}`
       );
       throw new Error("Error al verificar asientos reservados");
+    }
+  },
+
+  async checkReservedSeatsBySegment(tripId, selectedSeats, fareSegmentId, ticketId = null) {
+    try {
+      const normalizedSelectedSeats = Array.isArray(selectedSeats)
+        ? selectedSeats.map((seat) => Number(seat))
+        : [];
+
+      if (
+        normalizedSelectedSeats.length === 0 ||
+        fareSegmentId === undefined ||
+        fareSegmentId === null ||
+        fareSegmentId === ""
+      ) {
+        return [];
+      }
+
+      const trip = await Trip.findByPk(tripId, {
+        attributes: ["id", "route_id"],
+        include: [
+          {
+            model: TripStop,
+            as: "tripStops",
+            attributes: ["id", "route_stop_id", "stop_order", "active"],
+            required: false,
+          },
+          {
+            model: TripFare,
+            as: "tripFares",
+            attributes: ["id", "fare_segment_ticket_type_id", "base_price", "price", "active"],
+            required: false,
+            include: [
+              {
+                model: FareSegmentTicketType,
+                as: "fareSegmentTicketType",
+                attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+                include: [
+                  {
+                    model: FareSegment,
+                    as: "fareSegment",
+                    attributes: ["id", "origin_route_stop_id", "destination_route_stop_id", "active"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+
+      if (!trip) {
+        return [];
+      }
+
+      const tripStopOrderMap = new Map();
+      const tripStops = Array.isArray(trip.tripStops) ? trip.tripStops : [];
+      for (const tripStop of tripStops) {
+        const routeStopId = Number(tripStop.route_stop_id);
+        const stopOrder = Number(tripStop.stop_order);
+        if (routeStopId && stopOrder) {
+          tripStopOrderMap.set(routeStopId, stopOrder);
+        }
+      }
+
+      const targetTripFare = (Array.isArray(trip.tripFares) ? trip.tripFares : []).find((tripFare) => {
+        const fareSegment = tripFare?.fareSegmentTicketType?.fareSegment;
+        return fareSegment && Number(fareSegment.id) === Number(fareSegmentId);
+      });
+
+      const targetFareSegment = targetTripFare?.fareSegmentTicketType?.fareSegment;
+      if (!targetFareSegment) {
+        return [];
+      }
+
+      const targetOriginOrder = tripStopOrderMap.get(Number(targetFareSegment.origin_route_stop_id));
+      const targetDestinationOrder = tripStopOrderMap.get(Number(targetFareSegment.destination_route_stop_id));
+      if (!targetOriginOrder || !targetDestinationOrder) {
+        return [];
+      }
+
+      const existingTickets = await Ticket.findAll({
+        where: {
+          trip_id: tripId,
+          ...(ticketId ? { id: { [Op.ne]: ticketId } } : {}),
+        },
+        attributes: ["id", "seats", "fare_segment_id"],
+        include: [
+          {
+            model: FareSegment,
+            as: "fareSegment",
+            attributes: ["id", "origin_route_stop_id", "destination_route_stop_id", "active"],
+          },
+        ],
+      });
+
+      const conflictingSeats = new Set();
+      const selectedSeatSet = new Set(normalizedSelectedSeats);
+
+      for (const existingTicket of existingTickets) {
+        const existingSeats = Array.isArray(existingTicket.seats)
+          ? existingTicket.seats.map((seat) => Number(seat))
+          : [];
+        const seatIntersection = existingSeats.filter((seat) => selectedSeatSet.has(seat));
+        if (seatIntersection.length === 0) {
+          continue;
+        }
+
+        const existingFareSegment = existingTicket.fareSegment;
+        if (!existingFareSegment) {
+          seatIntersection.forEach((seat) => conflictingSeats.add(seat));
+          continue;
+        }
+
+        const existingOriginOrder = tripStopOrderMap.get(Number(existingFareSegment.origin_route_stop_id));
+        const existingDestinationOrder = tripStopOrderMap.get(Number(existingFareSegment.destination_route_stop_id));
+        if (!existingOriginOrder || !existingDestinationOrder) {
+          seatIntersection.forEach((seat) => conflictingSeats.add(seat));
+          continue;
+        }
+
+        const overlaps =
+          existingOriginOrder < targetDestinationOrder &&
+          existingDestinationOrder > targetOriginOrder;
+
+        if (overlaps) {
+          seatIntersection.forEach((seat) => conflictingSeats.add(seat));
+        }
+      }
+
+      return Array.from(conflictingSeats);
+    } catch (error) {
+      logger.error(
+        `Error verificando los asientos por tramo Repository: ${error.message}`
+      );
+      throw new Error("Error al verificar asientos por tramo");
     }
   },
 
@@ -1198,12 +1427,13 @@ const TicketRepository = {
 
   async findByQRWithTrip(qr) {
     try {
-      const ticket = await Ticket.findOne({ 
+    const ticket = await Ticket.findOne({ 
       where: { qr: qr },
       include: [{
         model: Trip,
         as: 'trip'
       },
+      ...ticketItemInclude,
       ...fareSegmentTicketInclude]
     });
 
@@ -1228,7 +1458,8 @@ async findBySequenceNumberWithTrip(sequenceNumber) {
   try {
     const ticket = await Ticket.findOne({ 
       where: { sequenceNumber: sequenceNumber },
-      include: [{
+      include: [
+        {
           model: Trip,
           as: "trip",
           attributes: ["id", "date", "schedule", "start", "end"],
@@ -1256,7 +1487,10 @@ async findBySequenceNumberWithTrip(sequenceNumber) {
               ],
             },
           ],
-        },]
+        },
+        ...ticketItemInclude,
+        ...fareSegmentTicketInclude,
+      ]
     });
 
     if (!ticket) {
@@ -1316,6 +1550,7 @@ async findWithPrintStatus(filters) {
             }
           ]
         },
+        ...ticketItemInclude,
         ...fareSegmentTicketInclude,
         {
           model: Branch,

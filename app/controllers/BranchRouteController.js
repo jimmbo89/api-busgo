@@ -2,6 +2,26 @@ const { BranchRoute, Branch, Route } = require('../models');
 const logger = require('../../config/logger');
 const { BranchRouteRepository, BranchRepository, RouteRepository } = require('../repositories');
 
+const mapRouteStop = (routeStop) => routeStop
+    ? {
+        id: routeStop.id,
+        locationId: routeStop.location_id,
+        location_id: routeStop.location_id,
+        locationName: routeStop.location?.address,
+        locationCity: routeStop.location?.city,
+        locationCountry: routeStop.location?.country,
+        locationImage: routeStop.location?.image,
+        stopOrder: routeStop.stop_order,
+        stop_order: routeStop.stop_order,
+        allows_boarding: routeStop.allows_boarding,
+        allows_alighting: routeStop.allows_alighting,
+        active: routeStop.active,
+      }
+    : null;
+
+const mapRouteStops = (routeStops = []) =>
+    (Array.isArray(routeStops) ? routeStops : []).map(mapRouteStop);
+
 const BranchRouteController = {
     // Obtener todas las relaciones Branch-Route
     async index(req, res) {
@@ -52,11 +72,11 @@ const BranchRouteController = {
             if (branch_id) {
                 mappedBranchRoutes = branchRoutes.map((branchRoute) => {
                     const route = branchRoute.route;
-                    return {
-                        id: branchRoute.id,
-                        branchRouteId: branchRoute.id,
-                        branchId: branchRoute.branch_id,
-                        branch_id: branchRoute.branch_id,
+                return {
+                    id: branchRoute.id,
+                    branchRouteId: branchRoute.id,
+                    branchId: branchRoute.branch_id,
+                    branch_id: branchRoute.branch_id,
                         price: branchRoute.price,
                         routeId: branchRoute.route_id,
                         route_id: branchRoute.route_id,
@@ -66,13 +86,14 @@ const BranchRouteController = {
                         distance: route.distance,
                         estimated: route.estimated,
                         status: route.status,
-                        originImage: route.origin.image,
-                        destination_id: route.destination_id,
-                        destinationName: route.destination.address,
-                        destinationImage: route.destination.image,
-                    };
-                });
-            } else {
+                    originImage: route.origin.image,
+                    destination_id: route.destination_id,
+                    destinationName: route.destination.address,
+                    destinationImage: route.destination.image,
+                    routeStops: mapRouteStops(route.routeStops),
+                };
+            });
+        } else {
                 const routes = await RouteRepository.findAll();
                 const branchRouteByRouteId = new Map(
                     branchRoutes.map((branchRoute) => [branchRoute.route_id, branchRoute])
@@ -99,6 +120,7 @@ const BranchRouteController = {
                         destination_id: route.destination_id,
                         destinationName: route.destination.address,
                         destinationImage: route.destination.image,
+                        routeStops: mapRouteStops(route.routeStops),
                     };
                 });
             }

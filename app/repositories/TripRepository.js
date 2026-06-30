@@ -7,8 +7,11 @@ const {
   Location,
   TripWorker,
   TripStop,
+  TripFare,
   RouteStop,
   FareSegment,
+  FareSegmentTicketType,
+  TicketType,
   Worker,
   Ticket,
   Structure,
@@ -16,6 +19,78 @@ const {
   sequelize,
 } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
+
+const tripFareInclude = [
+  {
+    model: TripFare,
+    as: "tripFares",
+    attributes: [
+      "id",
+      "company_id",
+      "trip_id",
+      "fare_segment_ticket_type_id",
+      "base_price",
+      "price",
+      "active",
+      "source_type",
+    ],
+    include: [
+      {
+        model: FareSegmentTicketType,
+        as: "fareSegmentTicketType",
+        attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+        include: [
+          {
+            model: TicketType,
+            as: "ticketType",
+            attributes: ["id", "name", "description", "active"],
+          },
+          {
+            model: FareSegment,
+            as: "fareSegment",
+            attributes: [
+              "id",
+              "company_id",
+              "route_id",
+              "origin_route_stop_id",
+              "destination_route_stop_id",
+              "base_price",
+              "currency",
+              "valid_from",
+              "valid_to",
+              "priority",
+              "active",
+            ],
+            include: [
+              {
+                model: RouteStop,
+                as: "originRouteStop",
+                include: [
+                  {
+                    model: Location,
+                    as: "location",
+                    attributes: ["id", "address", "country", "city", "image", "active"],
+                  },
+                ],
+              },
+              {
+                model: RouteStop,
+                as: "destinationRouteStop",
+                include: [
+                  {
+                    model: Location,
+                    as: "location",
+                    attributes: ["id", "address", "country", "city", "image", "active"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
 
 const TripRepository = {
   async findAll() {
@@ -66,6 +141,7 @@ const TripRepository = {
             },
           ],
         },
+        ...tripFareInclude,
       ],
     });
   },
@@ -204,6 +280,7 @@ const TripRepository = {
             },
           ],
         },
+        ...tripFareInclude,
         {
           model: Worker, // Incluir los trabajadores relacionados
           as: "workers",
@@ -455,10 +532,53 @@ const TripRepository = {
           ],
         },
         {
+          model: TripStop,
+          as: "tripStops",
+          attributes: [
+            "id",
+            "company_id",
+            "trip_id",
+            "route_stop_id",
+            "stop_order",
+            "arrival_time",
+            "departure_time",
+            "can_board",
+            "can_alight",
+            "active",
+            "source_type",
+          ],
+          include: [
+            {
+              model: RouteStop,
+              as: "routeStop",
+              attributes: [
+                "id",
+                "company_id",
+                "route_id",
+                "location_id",
+                "stop_order",
+                "distance_km",
+                "minutes_from_origin",
+                "allows_boarding",
+                "allows_alighting",
+                "active",
+              ],
+              include: [
+                {
+                  model: Location,
+                  as: "location",
+                  attributes: ["id", "address", "country", "city", "image", "active"],
+                },
+              ],
+            },
+          ],
+        },
+        {
           model: Ticket,
           as: "tickets",
           attributes: ["id", "seats", "quantity"],
         },
+        ...tripFareInclude,
       ],
     });
   },
@@ -488,7 +608,7 @@ const TripRepository = {
         branch_id,
         vehicle_id,
         route_id,
-        price,
+        price: price ?? null,
       }, options);
 
       logger.info(`Viaje creado exitosamente (ID: ${trip.id})`);

@@ -34,6 +34,11 @@ module.exports = (sequelize, DataTypes) => {
         as: 'tripStops',
       });
 
+      Company.hasMany(models.TripFare, {
+        foreignKey: 'company_id',
+        as: 'tripFares',
+      });
+
       Company.hasMany(models.FareSegment, {
         foreignKey: 'company_id',
         as: 'fareSegments',

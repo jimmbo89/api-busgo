@@ -2,13 +2,172 @@ const { Ticket, sequelize } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 const {
   TicketRepository,
+  TicketItemRepository,
   TripRepository,
   BranchRepository,
   CompanyRepository,
   IncidentRepository,
   TuuRepository,
   FareSegmentRepository,
-} = require("../repositories");
+  } = require("../repositories");
+
+const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const toPlainObject = (item) =>
+  item && typeof item.toJSON === "function" ? item.toJSON() : item;
+const parseArrayValue = (value) => {
+  if (Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const mapTicketItems = (ticketItems = []) =>
+  parseArrayValue(ticketItems).map((ticketItem) => ({
+    ...toPlainObject(ticketItem),
+    tripFare: ticketItem.tripFare ? toPlainObject(ticketItem.tripFare) : null,
+    ticketType: ticketItem.ticketType ? toPlainObject(ticketItem.ticketType) : null,
+  }));
+
+const resolveTripFareMatch = (trip, fareSegmentId, ticketTypeId) => {
+  const tripFares = Array.isArray(trip?.tripFares) ? trip.tripFares : [];
+  if (!ticketTypeId || tripFares.length === 0) {
+    return null;
+  }
+
+  const normalizedTicketTypeId = Number(ticketTypeId);
+  const normalizedFareSegmentId =
+    fareSegmentId !== undefined && fareSegmentId !== null && fareSegmentId !== ""
+      ? Number(fareSegmentId)
+      : null;
+
+  const exactMatch = tripFares.find((tripFare) => {
+    const fareSegmentTicketType = tripFare.fareSegmentTicketType || {};
+    return (
+      Number(fareSegmentTicketType.ticket_type_id) === normalizedTicketTypeId &&
+      (normalizedFareSegmentId === null ||
+        Number(fareSegmentTicketType.fare_segment_id) === normalizedFareSegmentId)
+    );
+  });
+
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const looseMatch = tripFares.find((tripFare) => {
+    const fareSegmentTicketType = tripFare.fareSegmentTicketType || {};
+    return Number(fareSegmentTicketType.ticket_type_id) === normalizedTicketTypeId;
+  });
+
+  return looseMatch || null;
+};
+
+const resolveTripFareById = (trip, tripFareId) => {
+  const tripFares = Array.isArray(trip?.tripFares) ? trip.tripFares : [];
+  if (!tripFareId || tripFares.length === 0) {
+    return null;
+  }
+
+  const normalizedTripFareId = Number(tripFareId);
+  return (
+    tripFares.find((tripFare) => Number(tripFare.id) === normalizedTripFareId) ||
+    null
+  );
+};
+
+const normalizeTicketItemsFromRequest = (body = {}, trip = null) => {
+  const hasTicketItems = hasOwn(body, "ticketItems");
+  const hasLegacyTicketTypes =
+    hasOwn(body, "tickettypes") || hasOwn(body, "ticketType");
+
+  if (!hasTicketItems && !hasLegacyTicketTypes) {
+    return null;
+  }
+
+  const rawItems = hasTicketItems
+    ? body.ticketItems
+    : body.tickettypes ?? body.ticketType ?? [];
+  const sourceItems = parseArrayValue(rawItems);
+  const fareSegmentId = body.fare_segment_id ?? null;
+  const isLegacy = !hasTicketItems;
+
+  return sourceItems.map((item) => {
+    const tripFareFromId = resolveTripFareById(
+      trip,
+      item.trip_fare_id ?? item.tripFareId ?? null
+    );
+    const ticketTypeId = isLegacy
+      ? item.ticket_type_id ?? item.id ?? tripFareFromId?.fareSegmentTicketType?.ticket_type_id ?? null
+      : item.ticket_type_id ?? tripFareFromId?.fareSegmentTicketType?.ticket_type_id ?? null;
+    const tripFare =
+      tripFareFromId ??
+      (item.trip_fare_id || item.tripFareId
+        ? null
+        : resolveTripFareMatch(trip, fareSegmentId, ticketTypeId));
+    const tripFareId = item.trip_fare_id ?? item.tripFareId ?? tripFare?.id ?? null;
+    const resolvedTicketType = tripFare?.fareSegmentTicketType?.ticketType || {};
+
+    const basePriceValue =
+      item.base_price ??
+      item.basePrice ??
+      item.adjustment_details?.base_price ??
+      item.adjustmentDetails?.base_price ??
+      tripFare?.base_price ??
+      tripFare?.fareSegmentTicketType?.base_price ??
+      null;
+    const unitPriceValue =
+      item.unit_price ??
+      item.unitPrice ??
+      item.adjustment_details?.unit_price ??
+      item.adjustmentDetails?.unit_price ??
+      tripFare?.price ??
+      basePriceValue ??
+      null;
+    const quantity = Number(item.quantity ?? item.cant ?? 1);
+    const subtotalValue =
+      item.subtotal ??
+      item.subTotal ??
+      item.adjustment_details?.line_total ??
+      item.adjustmentDetails?.line_total ??
+      (unitPriceValue !== null ? Number(unitPriceValue) * quantity : null);
+
+    return {
+      id: item.id ?? null,
+      ticket_type_id: ticketTypeId,
+      trip_fare_id: tripFareId,
+      quantity,
+      base_price: basePriceValue !== null ? Number(basePriceValue) : 0,
+      unit_price: unitPriceValue !== null ? Number(unitPriceValue) : 0,
+      subtotal: subtotalValue !== null ? Number(subtotalValue) : 0,
+      currency: item.currency ?? "CLP",
+      active: item.active ?? true,
+      source_type: item.source_type ?? "auto",
+      ticket_type_name:
+        item.ticket_type_name ??
+        item.ticketTypeName ??
+        item.name ??
+        resolvedTicketType.name ??
+        tripFare?.fareSegmentTicketType?.ticketTypeName ??
+        null,
+      ticket_type_description:
+        item.ticket_type_description ??
+        item.ticketTypeDescription ??
+        item.description ??
+        resolvedTicketType.description ??
+        tripFare?.fareSegmentTicketType?.ticketTypeDescription ??
+        null,
+    };
+  });
+};
 
 const mapMonthlyTrip = (trip) => {
   const vehicle = trip.vehicle || {};
@@ -222,15 +381,10 @@ const TicketController = {
         quantity: Number(ticket.quantity),
         price: Number(ticket.price),
         total: Number(ticket.total),
-        seats: Array.isArray(ticket.seats)
-          ? ticket.seats // Si ya es un array, úsalo directamente
-          : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
-        promotions: Array.isArray(ticket.promotions)
-          ? ticket.promotions // Si ya es un array, úsalo directamente
-          : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
-        tickettypes: Array.isArray(ticket.tickettypes)
-          ? ticket.tickettypes // Si ya es un array, úsalo directamente
-          : JSON.parse(ticket.tickettypes), // Si es una cadena JSON, parsearla
+        seats: parseArrayValue(ticket.seats),
+        // promotions: parseArrayValue(ticket.promotions),
+        // tickettypes: parseArrayValue(ticket.tickettypes),
+        ticketItems: mapTicketItems(ticket.ticketItems),
         adults: ticket.adults,
         minors: ticket.minors,
         qr: ticket.qr,
@@ -320,15 +474,10 @@ const TicketController = {
         quantity: Number(ticket.quantity),
         price: Number(ticket.price),
         total: Number(ticket.total),
-        seats: Array.isArray(ticket.seats)
-          ? ticket.seats // Si ya es un array, úsalo directamente
-          : JSON.parse(ticket.seats), // Si es una cadena JSON, parsearla
-        promotions: Array.isArray(ticket.promotions)
-          ? ticket.promotions // Si ya es un array, úsalo directamente
-          : JSON.parse(ticket.promotions), // Si es una cadena JSON, parsearla
-        tickettypes: Array.isArray(ticket.tickettypes)
-          ? ticket.tickettypes // Si ya es un array, úsalo directamente
-          : JSON.parse(ticket.tickettypes),
+        seats: parseArrayValue(ticket.seats),
+        promotions: parseArrayValue(ticket.promotions),
+        tickettypes: parseArrayValue(ticket.tickettypes),
+        ticketItems: mapTicketItems(ticket.ticketItems),
         adults: ticket.adults ? ticket.adults : 0,
         minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
@@ -380,26 +529,6 @@ const TicketController = {
 
     req.body.user_id = req.user.id;
 
-    // Transformar ticketType antiguo a tickettypes nuevo
-  if (req.body.ticketType && !req.body.tickettypes) {
-    req.body.tickettypes = req.body.ticketType.map(type => ({
-      id: type.ticket_type_id || null,
-      name: type.ticket_type_name || '',
-      adjustment_type: type.adjustment_type || "descuento",
-      value_type: type.value_type || "monto",
-      adjustment_value: type.adjustment_value ?? 0,
-      cant: type.quantity || 1,
-      promotion_id: type.promotion_id || null,
-      namePromotion: type.promotion_name || null,
-      discount_type: type.discount_type || "monto",
-      percentage: 0, // Valor por defecto
-      discount: 0, // Valor por defecto
-      showPromotionSelect: false,
-      selectedPromotion: null
-    }));
-    delete req.body.ticketType; // Eliminar el campo antiguo
-  };
-
     const {
       branch_id,
       user_id,
@@ -421,10 +550,14 @@ const TicketController = {
     const t = await sequelize.transaction(); // Inicia la transacción
     try {
       // Verifica los asientos reservados
-      const conflictingSeats = await TicketRepository.checkReservedSeats(
-        trip_id,
-        seats
-      );
+      const hasFareSegment = req.body.fare_segment_id !== undefined && req.body.fare_segment_id !== null && req.body.fare_segment_id !== "";
+      const conflictingSeats = hasFareSegment
+        ? await TicketRepository.checkReservedSeatsBySegment(
+            trip_id,
+            seats,
+            req.body.fare_segment_id
+          )
+        : await TicketRepository.checkReservedSeats(trip_id, seats);
 
       if (conflictingSeats.length > 0) {
         logger.error(
@@ -487,6 +620,11 @@ const TicketController = {
         return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
       }
 
+      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
+      if (normalizedTicketItems !== null) {
+        req.body.ticketItems = normalizedTicketItems;
+      }
+
       if(id){
         req.body.qr = id;
         req.body.barcode = id;
@@ -494,6 +632,12 @@ const TicketController = {
       }
 
       let ticket = await TicketRepository.create(req.body, { transaction: t });
+
+      if (normalizedTicketItems !== null) {
+        await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
+          transaction: t,
+        });
+      }
 
       let mappedTicket = {
         id: ticket.id,
@@ -509,6 +653,7 @@ const TicketController = {
         total: ticket.total,
         date: ticket.date,
         sequenceNumber: ticket.sequenceNumber,
+        ticketItems: normalizedTicketItems ?? [],
       };
       //if (!id ) {
         // Si id no existe, es null o está vacío, generar QR y código de barras
@@ -542,6 +687,7 @@ const TicketController = {
         print: ticket.print,
         qr: ticket.qr,
         barcode: ticket.barcode,
+        ticketItems: mapTicketItems(ticket.ticketItems),
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
         rut: ticket.branch.company.rut,
         address: ticket.branch.address,
@@ -591,10 +737,14 @@ const TicketController = {
     const t = await sequelize.transaction(); // Inicia la transacción
     try {
       // Verifica los asientos reservados
-      const conflictingSeats = await TicketRepository.checkReservedSeats(
-        trip_id,
-        seats
-      );
+      const hasFareSegment = req.body.fare_segment_id !== undefined && req.body.fare_segment_id !== null && req.body.fare_segment_id !== "";
+      const conflictingSeats = hasFareSegment
+        ? await TicketRepository.checkReservedSeatsBySegment(
+            trip_id,
+            seats,
+            req.body.fare_segment_id
+          )
+        : await TicketRepository.checkReservedSeats(trip_id, seats);
 
       if (conflictingSeats.length > 0) {
         logger.error(
@@ -656,10 +806,20 @@ const TicketController = {
         }
         return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
       }
+      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
+      if (normalizedTicketItems !== null) {
+        req.body.ticketItems = normalizedTicketItems;
+      }
+
       if (method === "Efectivo") {
         ticket = await TicketRepository.create(req.body, {
           transaction: t,
         });
+        if (normalizedTicketItems !== null) {
+          await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
+            transaction: t,
+          });
+        }
         let mappedTicket = {
           id: ticket.id,
             method: ticket.method,
@@ -671,7 +831,8 @@ const TicketController = {
             date: ticket.date,
             sequenceNumber: ticket.sequenceNumber,
             trip_id: ticket.trip_id,  // Agregar trip_id
-            seats: ticket.seats       // Agregar seats para validación
+            seats: ticket.seats,      // Agregar seats para validación
+            ticketItems: normalizedTicketItems ?? []
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
@@ -704,6 +865,7 @@ const TicketController = {
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
+          ticketItems: mapTicketItems(ticket.ticketItems),
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
           rut: ticket.branch.company.rut,
           address: ticket.branch.address,
@@ -738,6 +900,11 @@ const TicketController = {
           let ticket = await TicketRepository.create(req.body, {
             transaction: t,
           });
+          if (normalizedTicketItems !== null) {
+            await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
+              transaction: t,
+            });
+          }
 
           let mappedTicket = {
             id: ticket.id,
@@ -783,6 +950,7 @@ const TicketController = {
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
+          ticketItems: mapTicketItems(ticket.ticketItems),
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
           rut: ticket.branch.rut,
           address: ticket.branch.address,
@@ -850,6 +1018,7 @@ const TicketController = {
           print: ticket.print,
           qr: ticket.qr,
           barcode: ticket.barcode,
+          ticketItems: mapTicketItems(ticket.ticketItems),
           branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
           rut: ticket.branch.company.rut,
           address: ticket.branch.address,
@@ -1098,11 +1267,22 @@ async verifyEncryptedQR(req, res) {
       return res.status(400).json({ msg: "TicketNotFound" });
     }
 
-    const conflictingSeats = await TicketRepository.checkReservedSeats(
-      trip_id,
-      seats,
-      id
-    );
+    const fareSegmentIdForValidation =
+      req.body.fare_segment_id !== undefined
+        ? req.body.fare_segment_id
+        : ticket.fare_segment_id;
+    const hasFareSegmentForValidation =
+      fareSegmentIdForValidation !== undefined &&
+      fareSegmentIdForValidation !== null &&
+      fareSegmentIdForValidation !== "";
+    const conflictingSeats = hasFareSegmentForValidation
+      ? await TicketRepository.checkReservedSeatsBySegment(
+          trip_id,
+          seats,
+          fareSegmentIdForValidation,
+          id
+        )
+      : await TicketRepository.checkReservedSeats(trip_id, seats, id);
 
     if (conflictingSeats.length > 0) {
       logger.error(
@@ -1165,8 +1345,16 @@ async verifyEncryptedQR(req, res) {
       }
     }
 
+      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, tripForValidation);
+    if (normalizedTicketItems !== null) {
+      req.body.ticketItems = normalizedTicketItems;
+    }
+
     try {
       const updatedTicket = await TicketRepository.update(ticket, req.body);
+      if (normalizedTicketItems !== null) {
+        await TicketItemRepository.sync(ticket.id, normalizedTicketItems);
+      }
 
       let ticketMaped = await TicketRepository.findById(ticket.id);
       const mappedTicket = {
@@ -1193,6 +1381,7 @@ async verifyEncryptedQR(req, res) {
         vehiclePlate: ticketMaped.trip.vehicle?.plate,
         internal_number: ticketMaped.trip.vehicle?.internal_number,
         internalNumber: ticketMaped.trip.vehicle?.internal_number,
+        ticketItems: mapTicketItems(ticketMaped.ticketItems),
       };
       //generar qr y codigo de barra
       const { qrCodePath, barcodePath } =

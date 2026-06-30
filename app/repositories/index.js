@@ -24,6 +24,9 @@ const TripTemplateRepository = require('./TripTemplateRepository');
 const RouteStopRepository = require('./RouteStopRepository');
 const TripStopRepository = require('./TripStopRepository');
 const FareSegmentRepository = require('./FareSegmentRepository');
+const FareSegmentTicketTypeRepository = require('./FareSegmentTicketTypeRepository');
+const TripFareRepository = require('./TripFareRepository');
+const TicketItemRepository = require('./TicketItemRepository');
 
 module.exports = {
     DeviceRepository,
@@ -51,5 +54,8 @@ module.exports = {
     TripTemplateRepository,
     RouteStopRepository,
     TripStopRepository,
-    FareSegmentRepository
+    FareSegmentRepository,
+    FareSegmentTicketTypeRepository,
+    TripFareRepository,
+    TicketItemRepository
 };

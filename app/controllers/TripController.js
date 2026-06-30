@@ -10,6 +10,7 @@ const {
   BranchWorkerRepository,
   TripWorkerRepository,
   TripStopRepository,
+  TripFareRepository,
   RouteStopRepository,
   VehicleWorkerRepository,
   TicketRepository,
@@ -18,6 +19,7 @@ const {
   PromotionRepository,
   TicketTypeRepository,
   FareSegmentRepository,
+  FareSegmentTicketTypeRepository,
 } = require("../repositories");
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -117,6 +119,39 @@ const mapRouteStops = (routeStops = []) =>
         }
       : null,
   }));
+const mapTripFares = (tripFares = []) =>
+  (Array.isArray(tripFares) ? tripFares : []).map((tripFare) => ({
+    id: tripFare.id,
+    company_id: tripFare.company_id,
+    trip_id: tripFare.trip_id,
+    fare_segment_ticket_type_id: tripFare.fare_segment_ticket_type_id,
+    base_price: Number(tripFare.base_price ?? 0),
+    price: Number(tripFare.price ?? 0),
+    active: tripFare.active,
+    source_type: tripFare.source_type,
+    fareSegmentTicketType: tripFare.fareSegmentTicketType
+      ? {
+          id: tripFare.fareSegmentTicketType.id,
+          fare_segment_id: tripFare.fareSegmentTicketType.fare_segment_id,
+          ticket_type_id: tripFare.fareSegmentTicketType.ticket_type_id,
+          base_price: Number(tripFare.fareSegmentTicketType.base_price ?? 0),
+          active: tripFare.fareSegmentTicketType.active,
+          ticketTypeName: tripFare.fareSegmentTicketType.ticketType?.name,
+          ticketTypeDescription: tripFare.fareSegmentTicketType.ticketType?.description,
+          ticketTypeActive: tripFare.fareSegmentTicketType.ticketType?.active,
+          fareSegment: tripFare.fareSegmentTicketType.fareSegment
+            ? {
+                id: tripFare.fareSegmentTicketType.fareSegment.id,
+                route_id: tripFare.fareSegmentTicketType.fareSegment.route_id,
+                origin_route_stop_id: tripFare.fareSegmentTicketType.fareSegment.origin_route_stop_id,
+                destination_route_stop_id: tripFare.fareSegmentTicketType.fareSegment.destination_route_stop_id,
+                originRouteStop: tripFare.fareSegmentTicketType.fareSegment.originRouteStop?.location?.address ?? null,
+                destinationRouteStop: tripFare.fareSegmentTicketType.fareSegment.destinationRouteStop?.location?.address ?? null,
+              }
+            : null,
+        }
+      : null,
+  }));
 const mapFareSegments = (fareSegments = []) =>
   (Array.isArray(fareSegments) ? fareSegments : []).map((fareSegment) => ({
     id: fareSegment.id,
@@ -180,6 +215,47 @@ const mapFareSegments = (fareSegments = []) =>
         }
       : null,
   }));
+const mapRouteFareSegments = (fareSegments = []) =>
+  (Array.isArray(fareSegments) ? fareSegments : []).map((fareSegment) => ({
+    ...mapFareSegments([fareSegment])[0],
+    fareSegmentTicketTypes: Array.isArray(fareSegment.fareSegmentTicketTypes)
+      ? fareSegment.fareSegmentTicketTypes.map((item) => ({
+          id: item.id,
+          fare_segment_id: item.fare_segment_id,
+          ticket_type_id: item.ticket_type_id,
+          base_price: Number(item.base_price ?? 0),
+          active: item.active,
+          ticketTypeName: item.ticketType?.name,
+          ticketTypeDescription: item.ticketType?.description,
+          ticketTypeActive: item.ticketType?.active,
+        }))
+      : [],
+  }));
+const mapFareSegmentTicketTypes = (fareSegments = []) =>
+  (Array.isArray(fareSegments) ? fareSegments : []).flatMap((fareSegment) =>
+    Array.isArray(fareSegment.fareSegmentTicketTypes)
+      ? fareSegment.fareSegmentTicketTypes.map((item) => ({
+          id: item.id,
+          fare_segment_id: item.fare_segment_id,
+          ticket_type_id: item.ticket_type_id,
+          base_price: Number(item.base_price ?? 0),
+          active: item.active,
+          ticketTypeName: item.ticketType?.name,
+          ticketTypeDescription: item.ticketType?.description,
+          ticketTypeActive: item.ticketType?.active,
+          fareSegment: {
+            id: fareSegment.id,
+            company_id: fareSegment.company_id,
+            route_id: fareSegment.route_id,
+            origin_route_stop_id: fareSegment.origin_route_stop_id,
+            destination_route_stop_id: fareSegment.destination_route_stop_id,
+            originRouteStop: fareSegment.originRouteStop?.location?.address ?? null,
+            destinationRouteStop:
+              fareSegment.destinationRouteStop?.location?.address ?? null,
+          },
+        }))
+      : []
+  );
 
 const buildTripStopPayload = (trip, companyId, item, routeStop) => ({
   company_id: companyId,
@@ -193,6 +269,21 @@ const buildTripStopPayload = (trip, companyId, item, routeStop) => ({
   active: item.active ?? true,
   source_type: item.source_type ?? "auto",
 });
+
+const buildTripFarePayload = (trip, companyId, item, fareSegmentTicketType) => {
+  const basePrice = Number(fareSegmentTicketType.base_price ?? 0);
+  const hasPrice = item.price !== undefined && item.price !== null && item.price !== "";
+
+  return {
+    company_id: companyId,
+    trip_id: trip.id,
+    fare_segment_ticket_type_id: fareSegmentTicketType.id,
+    base_price: basePrice,
+    price: hasPrice ? Number(item.price) : basePrice,
+    active: item.active ?? true,
+    source_type: item.source_type ?? "auto",
+  };
+};
 
 const getTripStopSyncErrorMessage = (error) => {
   const message = error?.message || "";
@@ -225,6 +316,45 @@ const getTripStopSyncErrorMessage = (error) => {
   if (message.startsWith("RouteStopNotFound:")) {
     const routeStopId = message.split(":")[1];
     return `No se encontro la parada con ID ${routeStopId}`;
+  }
+
+  return null;
+};
+
+const getTripFareSyncErrorMessage = (error) => {
+  const message = error?.message || "";
+
+  if (message === "TripFaresMustBeArray") {
+    return "El campo tripFares debe ser un arreglo";
+  }
+
+  if (message === "DuplicateTripFareFareSegmentTicketType") {
+    return "No se puede repetir el mismo tramo tarifario dentro de tripFares";
+  }
+
+  if (message === "FareSegmentTicketTypeRequired") {
+    return "Debes enviar fare_segment_ticket_type_id en cada tripFare";
+  }
+
+  if (message === "FareSegmentTicketTypeNotFound") {
+    return "No se encontro el tipo de tarifa del tramo";
+  }
+
+  if (message === "FareSegmentTicketTypeCompanyMismatch") {
+    return "Uno de los precios no pertenece a la misma compania del viaje";
+  }
+
+  if (message === "FareSegmentTicketTypeRouteMismatch") {
+    return "Uno de los precios no pertenece a la ruta del viaje";
+  }
+
+  if (message === "TripFareIdRequiredForUpdate") {
+    return "Para editar un precio existente debes enviar su id";
+  }
+
+  if (message.startsWith("TripFareNotFound:")) {
+    const tripFareId = message.split(":")[1];
+    return `No se encontro el precio del viaje con ID ${tripFareId}`;
   }
 
   return null;
@@ -377,6 +507,7 @@ const TripController = {
             workers: await TripWorkerRepository.workersTrip(trip),
             passengers: await TicketRepository.getpassengers(trip.id),
             tripStops: tripStops,
+            tripFares: mapTripFares(trip.tripFares),
           };
         })
       );
@@ -551,6 +682,98 @@ const TripController = {
     return await TripStopRepository.findByTrip(trip.id);
   },
 
+  async syncTripFares(trip, branch, routeId, tripFares, transaction = null) {
+    if (!Array.isArray(tripFares)) {
+      throw new Error("TripFaresMustBeArray");
+    }
+
+    const incomingFsttIds = tripFares.map((item) =>
+      Number(item.fare_segment_ticket_type_id)
+    );
+    const duplicateFsttIds = incomingFsttIds.filter(
+      (fsttId, index) => incomingFsttIds.indexOf(fsttId) !== index
+    );
+
+    if (duplicateFsttIds.length > 0) {
+      throw new Error("DuplicateTripFareFareSegmentTicketType");
+    }
+
+    const existingTripFares = await TripFareRepository.findByTrip(trip.id);
+    const existingById = new Map(
+      existingTripFares.map((tripFare) => [Number(tripFare.id), tripFare])
+    );
+    const incomingKeptIds = new Set(
+      tripFares
+        .map((item) => Number(item.id))
+        .filter((id) => Number.isFinite(id) && id > 0)
+    );
+    const transactionOptions = transaction ? { transaction } : {};
+    const tripFaresToRemove = existingTripFares.filter(
+      (tripFare) => !incomingKeptIds.has(Number(tripFare.id))
+    );
+
+    for (const tripFare of tripFaresToRemove) {
+      await TripFareRepository.delete(tripFare, transactionOptions);
+    }
+
+    for (const item of tripFares) {
+      const incomingId = item.id != null ? Number(item.id) : null;
+      const existingTripFare = incomingId ? existingById.get(incomingId) : null;
+
+      if (incomingId && !existingTripFare) {
+        throw new Error(`TripFareNotFound:${incomingId}`);
+      }
+
+      if (incomingId && item.id == null) {
+        throw new Error("TripFareIdRequiredForUpdate");
+      }
+
+      const fareSegmentTicketTypeId = Number(item.fare_segment_ticket_type_id);
+      if (!Number.isFinite(fareSegmentTicketTypeId) || fareSegmentTicketTypeId <= 0) {
+        throw new Error("FareSegmentTicketTypeRequired");
+      }
+
+      const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+        fareSegmentTicketTypeId
+      );
+
+      if (!fareSegmentTicketType) {
+        throw new Error("FareSegmentTicketTypeNotFound");
+      }
+
+      const fareSegment = fareSegmentTicketType.fareSegment;
+      if (
+        !fareSegment ||
+        Number(fareSegment.company_id) !== Number(branch.company_id)
+      ) {
+        throw new Error("FareSegmentTicketTypeCompanyMismatch");
+      }
+
+      if (Number(fareSegment.route_id) !== Number(routeId)) {
+        throw new Error("FareSegmentTicketTypeRouteMismatch");
+      }
+
+      const payload = buildTripFarePayload(
+        trip,
+        branch.company_id,
+        item,
+        fareSegmentTicketType
+      );
+
+      if (existingTripFare) {
+        await TripFareRepository.update(
+          existingTripFare,
+          payload,
+          transactionOptions
+        );
+      } else {
+        await TripFareRepository.create(payload, transactionOptions);
+      }
+    }
+
+    return await TripFareRepository.findByTrip(trip.id);
+  },
+
   async getTripDate(req, res) {
     logger.info( `${req.user.name} - Entra a buscar los viajes de una fecha dada`);
      logger.info("datos recibidos");
@@ -597,6 +820,7 @@ const TripController = {
               (fareSegment) => isFareSegmentActiveForDate(fareSegment, currentChileDate)
             )
           );
+          const tripFares = mapTripFares(trip.tripFares);
 
           const reservedSeats = trip.tickets
           ? trip.tickets.flatMap((ticket) => {
@@ -649,6 +873,7 @@ const TripController = {
             tripStops: tripStops,
             routeStops: routeStops,
             fareSegments: fareSegments,
+            tripFares: tripFares,
           };
         })
       );
@@ -830,6 +1055,7 @@ const TripController = {
       workers = [],
       price,
       tripStops = [],
+      tripFares = [],
     } = req.body;
 
     try {
@@ -908,6 +1134,16 @@ const TripController = {
           );
         }
 
+        if (hasOwn(req.body, "tripFares")) {
+          await TripController.syncTripFares(
+            createdTrip,
+            branch,
+            route_id,
+            tripFares,
+            transaction
+          );
+        }
+
         return createdTrip;
       });
 
@@ -928,10 +1164,14 @@ const TripController = {
       const refreshedTripStops = hasOwn(req.body, "tripStops")
         ? await TripStopRepository.findByTrip(trip.id)
         : [];
+      const refreshedTripFares = hasOwn(req.body, "tripFares")
+        ? await TripFareRepository.findByTrip(trip.id)
+        : [];
 
       res.status(201).json({
         trip: toPlainObject(trip),
         tripStops: refreshedTripStops.map(toPlainObject),
+        tripFares: refreshedTripFares.map(toPlainObject),
       });
     } catch (error) {
       const tripStopSyncMessage = getTripStopSyncErrorMessage(error);
@@ -939,6 +1179,14 @@ const TripController = {
         return res.status(400).json({
           error: "TripStopValidationError",
           details: tripStopSyncMessage,
+        });
+      }
+
+      const tripFareSyncMessage = getTripFareSyncErrorMessage(error);
+      if (tripFareSyncMessage) {
+        return res.status(400).json({
+          error: "TripFareValidationError",
+          details: tripFareSyncMessage,
         });
       }
 
@@ -989,10 +1237,12 @@ const TripController = {
       };
 
       const tripStops = await TripStopRepository.findByTrip(trip.id);
+      const tripFares = await TripFareRepository.findByTrip(trip.id);
 
       res.status(200).json({
         trip: mappedTrip,
         tripStops: tripStops.map(toPlainObject),
+        tripFares: tripFares.map(toPlainObject),
       });
     } catch (error) {
       const errorMsg = error.details
@@ -1121,6 +1371,7 @@ const TripController = {
       price,
       workers = [],
       tripStops = [],
+      tripFares = [],
     } = req.body;
 
     try {
@@ -1286,6 +1537,20 @@ const TripController = {
           );
         }
 
+        if (hasOwn(req.body, "tripFares")) {
+          const tripRouteId = route_id ?? trip.route_id;
+          const tripBranch =
+            currentBranch || (await BranchRepository.findById(trip.branch_id));
+
+          await TripController.syncTripFares(
+            tripUpdated,
+            tripBranch,
+            tripRouteId,
+            tripFares,
+            transaction
+          );
+        }
+
         return tripUpdated;
       });
 
@@ -1296,10 +1561,14 @@ const TripController = {
       const refreshedTripStops = hasOwn(req.body, "tripStops")
         ? await TripStopRepository.findByTrip(updatedTrip.id)
         : [];
+      const refreshedTripFares = hasOwn(req.body, "tripFares")
+        ? await TripFareRepository.findByTrip(updatedTrip.id)
+        : [];
 
       res.status(200).json({
         trip: toPlainObject(updatedTrip),
         tripStops: refreshedTripStops.map(toPlainObject),
+        tripFares: refreshedTripFares.map(toPlainObject),
       });
     } catch (error) {
       const tripStopSyncMessage = getTripStopSyncErrorMessage(error);
@@ -1307,6 +1576,14 @@ const TripController = {
         return res.status(400).json({
           error: "TripStopValidationError",
           details: tripStopSyncMessage,
+        });
+      }
+
+      const tripFareSyncMessage = getTripFareSyncErrorMessage(error);
+      if (tripFareSyncMessage) {
+        return res.status(400).json({
+          error: "TripFareValidationError",
+          details: tripFareSyncMessage,
         });
       }
 
@@ -1666,6 +1943,7 @@ const TripController = {
           destinationImage: route.destination.image,
           estimated: route.estimated,
           routeStops: [],
+          fareSegments: [],
         };
       });
 
@@ -1686,7 +1964,9 @@ const TripController = {
           locationCity: routeStop.location?.city,
           locationCountry: routeStop.location?.country,
           image: routeStop.location?.image,
-        }));
+        })); 
+        const routeFareSegments = await FareSegmentRepository.findByRoute(mappedRoute.id);
+        mappedRoute.fareSegments = mapRouteFareSegments(routeFareSegments);
       }
       const mappedBranchVehicles = branchVehicles.map((branchVehicle) => ({
         id: branchVehicle.vehicle_id,

@@ -20,6 +20,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.hasMany(models.Ticket, { foreignKey: 'trip_id', as: 'tickets' });
       Trip.hasMany(models.TripWorker, { foreignKey: 'trip_id', as: 'tripworkers' });
       Trip.hasMany(models.TripStop, { foreignKey: 'trip_id', as: 'tripStops' });
+      Trip.hasMany(models.TripFare, { foreignKey: 'trip_id', as: 'tripFares' });
     }
   }
   Trip.init({
@@ -86,7 +87,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     price: {
       type: DataTypes.DECIMAL(16, 2), // Define el tipo de datos para el precio
-      allowNull: false, // Si el precio es obligatorio
+      allowNull: true,
       validate: {
         isDecimal: true, // Valida que el valor sea un decimal
       },

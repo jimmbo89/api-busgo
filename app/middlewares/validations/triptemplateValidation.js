@@ -55,6 +55,22 @@ const storeTripTemplateSchema = Joi.object({
     .messages({
       "array.base": "El campo tripStops debe ser un arreglo de objetos",
     }),
+  tripFares: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        fare_segment_ticket_type_id: Joi.number().integer().required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        price: Joi.number().precision(2).allow(null).optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "El campo tripFares debe ser un arreglo de objetos",
+    }),
 });
 
 // Esquema para actualizar un TripTemplate
@@ -107,6 +123,22 @@ const updateTripTemplateSchema = Joi.object({
     .optional()
     .messages({
       "array.base": "El campo tripStops debe ser un arreglo de objetos",
+    }),
+  tripFares: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        fare_segment_ticket_type_id: Joi.number().integer().required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        price: Joi.number().precision(2).allow(null).optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "El campo tripFares debe ser un arreglo de objetos",
     }),
   id: Joi.number().integer().required().messages({
     "number.base": "El campo id debe ser un número entero",

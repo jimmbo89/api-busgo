@@ -16,6 +16,7 @@ module.exports = (sequelize, DataTypes) => {
       Ticket.belongsTo(models.Trip, { foreignKey: 'trip_id', as: 'trip' });
       Ticket.belongsTo(models.Branch, { foreignKey: 'branch_id', as: 'branch' });
       Ticket.belongsTo(models.FareSegment, { foreignKey: 'fare_segment_id', as: 'fareSegment' });
+      Ticket.hasMany(models.TicketItem, { foreignKey: 'ticket_id', as: 'ticketItems', onUpdate: 'CASCADE', onDelete: 'CASCADE' });
       Ticket.hasOne(models.Payment, { foreignKey: 'ticket_id', as: 'payment', onUpdate: 'CASCADE', onDelete: 'CASCADE' });
     }
   }

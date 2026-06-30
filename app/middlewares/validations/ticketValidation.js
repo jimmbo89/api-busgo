@@ -120,6 +120,28 @@ const storeTicketSchema = Joi.object({
       "number.base": "El vuelto debe ser un número.",
       "number.min": "El vuelto no puede ser negativo.",
     }),
+  ticketItems: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        ticket_type_id: Joi.number().integer().allow(null).optional(),
+        trip_fare_id: Joi.number().integer().allow(null).optional(),
+        ticket_type_name: Joi.string().allow(null).optional(),
+        ticket_type_description: Joi.string().allow(null).optional(),
+        quantity: Joi.number().integer().min(1).required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        unit_price: Joi.number().precision(2).allow(null).optional(),
+        subtotal: Joi.number().precision(2).allow(null).optional(),
+        currency: Joi.string().allow(null).optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "Los ticketItems deben ser un array",
+    }),
     promotions: Joi.array()
     .items(Joi.object().unknown(true))
     .optional()
@@ -202,6 +224,28 @@ const storeTicketWebSchema = Joi.object({
     "string.base": "El campo device debe ser un texto",
     "any.required": "El campo method es obligatorio",
   }),
+  ticketItems: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        ticket_type_id: Joi.number().integer().allow(null).optional(),
+        trip_fare_id: Joi.number().integer().allow(null).optional(),
+        ticket_type_name: Joi.string().allow(null).optional(),
+        ticket_type_description: Joi.string().allow(null).optional(),
+        quantity: Joi.number().integer().min(1).required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        unit_price: Joi.number().precision(2).allow(null).optional(),
+        subtotal: Joi.number().precision(2).allow(null).optional(),
+        currency: Joi.string().allow(null).optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "Los ticketItems deben ser un array",
+    }),
   promotions: Joi.array()
     .items(Joi.object().unknown(true))
     .optional()
@@ -326,7 +370,29 @@ const updateTicketSchema = Joi.object({
       "number.base": "El vuelto debe ser un número.",
       "number.min": "El vuelto no puede ser negativo.",
     }),
-    tickettypes: Joi.array()
+  ticketItems: Joi.array()
+    .items(
+      Joi.object({
+        id: Joi.number().integer().optional(),
+        ticket_type_id: Joi.number().integer().allow(null).optional(),
+        trip_fare_id: Joi.number().integer().allow(null).optional(),
+        ticket_type_name: Joi.string().allow(null).optional(),
+        ticket_type_description: Joi.string().allow(null).optional(),
+        quantity: Joi.number().integer().min(1).required(),
+        base_price: Joi.number().precision(2).allow(null).optional(),
+        unit_price: Joi.number().precision(2).allow(null).optional(),
+        subtotal: Joi.number().precision(2).allow(null).optional(),
+        currency: Joi.string().allow(null).optional(),
+        active: Joi.boolean().optional(),
+        source_type: Joi.string().valid("auto", "manual", "override").optional(),
+      })
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "Los ticketItems deben ser un array",
+    }),
+  tickettypes: Joi.array()
     .items(Joi.object().unknown(true))
   .allow(null)
   .optional()

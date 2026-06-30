@@ -1,5 +1,5 @@
 const logger = require('../../config/logger');
-const { FareSegment, Company, Route, RouteStop, Location } = require('../models');
+const { FareSegment, Company, Route, RouteStop, Location, FareSegmentTicketType, TicketType } = require('../models');
 
 const fareSegmentInclude = [
   { model: Company, as: 'company', attributes: ['id', 'name', 'rut'] },
@@ -27,6 +27,18 @@ const fareSegmentInclude = [
         model: Location,
         as: 'location',
         attributes: ['id', 'address', 'country', 'city', 'image', 'active'],
+      },
+    ],
+  },
+  {
+    model: FareSegmentTicketType,
+    as: 'fareSegmentTicketTypes',
+    attributes: ['id', 'fare_segment_id', 'ticket_type_id', 'base_price', 'active'],
+    include: [
+      {
+        model: TicketType,
+        as: 'ticketType',
+        attributes: ['id', 'name', 'description', 'active'],
       },
     ],
   },
@@ -73,7 +85,7 @@ const FareSegmentRepository = {
     });
   },
 
-  async create(body) {
+  async create(body, options = {}) {
     const {
       company_id,
       route_id,
@@ -100,10 +112,10 @@ const FareSegmentRepository = {
       valid_to: valid_to ?? null,
       priority: priority ?? 0,
       active: active ?? true,
-    });
+    }, options);
   },
 
-  async update(fareSegment, body) {
+  async update(fareSegment, body, options = {}) {
     const fieldsToUpdate = [
       'company_id',
       'route_id',
@@ -126,15 +138,15 @@ const FareSegmentRepository = {
       }, {});
 
     if (Object.keys(updatedData).length > 0) {
-      await fareSegment.update(updatedData);
+      await fareSegment.update(updatedData, options);
       logger.info(`FareSegment actualizado exitosamente (ID: ${fareSegment.id})`);
     }
 
     return fareSegment;
   },
 
-  async delete(fareSegment) {
-    return await fareSegment.destroy();
+  async delete(fareSegment, options = {}) {
+    return await fareSegment.destroy(options);
   },
 };
 

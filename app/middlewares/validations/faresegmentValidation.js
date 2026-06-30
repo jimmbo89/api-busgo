@@ -1,5 +1,18 @@
 const Joi = require("joi");
 
+const fareSegmentTicketTypeSchema = Joi.object({
+  id: Joi.number().integer().positive().optional(),
+  ticket_type_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo ticket_type_id debe ser un numero entero",
+    "any.required": "El campo ticket_type_id es obligatorio",
+  }),
+  base_price: Joi.number().precision(2).required().messages({
+    "number.base": "El campo base_price debe ser un numero",
+    "any.required": "El campo base_price es obligatorio",
+  }),
+  active: Joi.boolean().optional(),
+});
+
 const storeFareSegmentSchema = Joi.object({
   company_id: Joi.number().integer().positive().required().messages({
     "number.base": "El campo company_id debe ser un numero entero",
@@ -27,6 +40,8 @@ const storeFareSegmentSchema = Joi.object({
   valid_to: Joi.date().allow(null).optional(),
   priority: Joi.number().integer().optional(),
   active: Joi.boolean().optional(),
+  fareSegmentTicketTypes: Joi.array().items(fareSegmentTicketTypeSchema).optional(),
+  fare_segment_ticket_types: Joi.array().items(fareSegmentTicketTypeSchema).optional(),
 });
 
 const updateFareSegmentSchema = Joi.object({
@@ -45,6 +60,8 @@ const updateFareSegmentSchema = Joi.object({
   valid_to: Joi.date().allow(null).optional(),
   priority: Joi.number().integer().optional(),
   active: Joi.boolean().optional(),
+  fareSegmentTicketTypes: Joi.array().items(fareSegmentTicketTypeSchema).optional(),
+  fare_segment_ticket_types: Joi.array().items(fareSegmentTicketTypeSchema).optional(),
 });
 
 const idFareSegmentSchema = Joi.object({

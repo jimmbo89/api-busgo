@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Route, Location, Sequelize, Branch, BranchRoute } = require('../models');
+const { Route, Location, Sequelize, Branch, BranchRoute, RouteStop } = require('../models');
 const logger = require('../../config/logger');
 
 const RouteRepository = {
@@ -20,6 +20,29 @@ const RouteRepository = {
           as: 'destination',
           attributes: ['id', 'address', 'image'],
         },
+        {
+          model: RouteStop,
+          as: 'routeStops',
+          attributes: [
+            'id',
+            'company_id',
+            'route_id',
+            'location_id',
+            'stop_order',
+            'distance_km',
+            'minutes_from_origin',
+            'allows_boarding',
+            'allows_alighting',
+            'active',
+          ],
+          include: [
+            {
+              model: Location,
+              as: 'location',
+              attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+            },
+          ],
+        },
       ],
     });
   },
@@ -37,6 +60,29 @@ const RouteRepository = {
           model: Location,
           as: 'destination',
           attributes: ['id', 'address', 'image'],
+        },
+        {
+          model: RouteStop,
+          as: 'routeStops',
+          attributes: [
+            'id',
+            'company_id',
+            'route_id',
+            'location_id',
+            'stop_order',
+            'distance_km',
+            'minutes_from_origin',
+            'allows_boarding',
+            'allows_alighting',
+            'active',
+          ],
+          include: [
+            {
+              model: Location,
+              as: 'location',
+              attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+            },
+          ],
         },
       ],
     });
@@ -127,6 +173,29 @@ const RouteRepository = {
           as: 'destination',
           attributes: ['id', 'address', 'image'],
         },
+        {
+          model: RouteStop,
+          as: 'routeStops',
+          attributes: [
+            'id',
+            'company_id',
+            'route_id',
+            'location_id',
+            'stop_order',
+            'distance_km',
+            'minutes_from_origin',
+            'allows_boarding',
+            'allows_alighting',
+            'active',
+          ],
+          include: [
+            {
+              model: Location,
+              as: 'location',
+              attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+            },
+          ],
+        },
       ],
     });
   },
@@ -148,6 +217,29 @@ const RouteRepository = {
           model: Location,
           as: 'destination',
           attributes: ['id', 'address', 'image'],
+        },
+        {
+          model: RouteStop,
+          as: 'routeStops',
+          attributes: [
+            'id',
+            'company_id',
+            'route_id',
+            'location_id',
+            'stop_order',
+            'distance_km',
+            'minutes_from_origin',
+            'allows_boarding',
+            'allows_alighting',
+            'active',
+          ],
+          include: [
+            {
+              model: Location,
+              as: 'location',
+              attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+            },
+          ],
         },
       ],
     });

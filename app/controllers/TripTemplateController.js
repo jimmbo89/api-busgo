@@ -10,7 +10,7 @@ const {
 } = require("../models");
 const moment = require('moment');
 const logger = require("../../config/logger");
-const { VehicleRepository, RouteRepository, BranchRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, RouteStopRepository } = require("../repositories");
+const { VehicleRepository, RouteRepository, BranchRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, RouteStopRepository, TripFareRepository, FareSegmentTicketTypeRepository } = require("../repositories");
 
 const parseJsonArray = (value) => {
   if (Array.isArray(value)) return value;
@@ -38,6 +38,18 @@ const mapTripStops = (template) =>
     source_type: tripStop.source_type ?? "auto",
   }));
 
+const mapTripFares = (template) =>
+  parseJsonArray(template.trip_fares).map((tripFare) => ({
+    id: tripFare.id ?? null,
+    fare_segment_ticket_type_id: tripFare.fare_segment_ticket_type_id ?? null,
+    price: tripFare.price != null ? Number(tripFare.price) : null,
+    base_price: tripFare.base_price != null ? Number(tripFare.base_price) : null,
+    active: tripFare.active ?? true,
+    source_type: tripFare.source_type ?? "auto",
+  }));
+const normalizeNullablePrice = (value) =>
+  value !== undefined && value !== null ? Number(value) : null;
+
 const buildGeneratedTripStopPayload = (trip, companyId, item, routeStop) => ({
   company_id: companyId,
   trip_id: trip.id,
@@ -50,6 +62,21 @@ const buildGeneratedTripStopPayload = (trip, companyId, item, routeStop) => ({
   active: item.active ?? true,
   source_type: item.source_type ?? "auto",
 });
+
+const buildGeneratedTripFarePayload = (trip, companyId, item, fareSegmentTicketType) => {
+  const basePrice = Number(fareSegmentTicketType.base_price ?? 0);
+  const hasPrice = item.price !== undefined && item.price !== null && item.price !== "";
+
+  return {
+    company_id: companyId,
+    trip_id: trip.id,
+    fare_segment_ticket_type_id: fareSegmentTicketType.id,
+    base_price: basePrice,
+    price: hasPrice ? Number(item.price) : basePrice,
+    active: item.active ?? true,
+    source_type: item.source_type ?? "auto",
+  };
+};
 
 const TripTemplateController = {
   // Obtener todas las plantillas de viaje
@@ -71,7 +98,7 @@ const TripTemplateController = {
         route_id: template.route_id,
         schedule: template.schedule,
         duration: template.duration,
-        price: Number(template.price),
+        price: normalizeNullablePrice(template.price),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week,
         active: template.active,
@@ -80,6 +107,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         tripStops: mapTripStops(template),
         trip_stops: mapTripStops(template),
+        tripFares: mapTripFares(template),
+        trip_fares: mapTripFares(template),
         vehicleName: template.vehicle.plate, // Incluir los datos del vehículo asociado
         internal_number: template.vehicle.internal_number,
         internalNumber: template.vehicle.internal_number,
@@ -130,7 +159,7 @@ const TripTemplateController = {
         route_id: template.route_id,
         schedule: template.schedule,
         duration: template.duration,
-        price: Number(template.price),
+        price: normalizeNullablePrice(template.price),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week
           ? template.days_of_week.split(",").map(Number)
@@ -141,6 +170,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         tripStops: mapTripStops(template),
         trip_stops: mapTripStops(template),
+        tripFares: mapTripFares(template),
+        trip_fares: mapTripFares(template),
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
         internal_number: template.vehicle.internal_number,
@@ -213,6 +244,8 @@ const TripTemplateController = {
           ...refreshedTemplate.toJSON(),
           tripStops: mapTripStops(refreshedTemplate),
           trip_stops: mapTripStops(refreshedTemplate),
+          tripFares: mapTripFares(refreshedTemplate),
+          trip_fares: mapTripFares(refreshedTemplate),
         },
       });
     } catch (error) {
@@ -243,7 +276,7 @@ const TripTemplateController = {
         route_id: template.route_id,
         schedule: template.schedule,
         duration: template.duration,
-        price: Number(template.price),
+        price: normalizeNullablePrice(template.price),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week
           ? template.days_of_week.split(",").map(Number)
@@ -254,6 +287,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         tripStops: mapTripStops(template),
         trip_stops: mapTripStops(template),
+        tripFares: mapTripFares(template),
+        trip_fares: mapTripFares(template),
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
         internal_number: template.vehicle.internal_number,
@@ -314,7 +349,7 @@ const TripTemplateController = {
         route_id: template.route_id,
         schedule: template.schedule,
         duration: template.duration,
-        price: Number(template.price),
+        price: normalizeNullablePrice(template.price),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week
           ? template.days_of_week.split(",").map(Number)
@@ -325,6 +360,8 @@ const TripTemplateController = {
           : JSON.parse(template.workers), // Si es una cadena JSON, parsearla,
         tripStops: mapTripStops(template),
         trip_stops: mapTripStops(template),
+        tripFares: mapTripFares(template),
+        trip_fares: mapTripFares(template),
         branch_name: template.branch.name,
         vehicle_plate: template.vehicle.plate,
         internal_number: template.vehicle.internal_number,
@@ -472,6 +509,7 @@ const TripTemplateController = {
             //logger.info(`TripTemplateController->generateTripsForDate: trip creado desde template=${template.id} | trip_id=${trip.id}`);
 
             const templateTripStops = mapTripStops(template);
+            const templateTripFares = mapTripFares(template);
             //logger.info(`TripTemplateController->generateTripsForDate: template=${template.id} tripStops=${templateTripStops.length}`);
             if (templateTripStops.length > 0) {
               for (const item of templateTripStops) {
@@ -498,6 +536,40 @@ const TripTemplateController = {
                 );
 
                 await TripStopRepository.create(tripStopPayload, { transaction });
+              }
+            }
+
+            if (templateTripFares.length > 0) {
+              for (const item of templateTripFares) {
+                const fareSegmentTicketTypeId = Number(item.fare_segment_ticket_type_id);
+                const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+                  fareSegmentTicketTypeId
+                );
+
+                if (!fareSegmentTicketType) {
+                  throw new Error(`FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`);
+                }
+
+                const fareSegment = fareSegmentTicketType.fareSegment;
+                if (
+                  !fareSegment ||
+                  Number(fareSegment.company_id) !== Number(template.branch.company_id)
+                ) {
+                  throw new Error("FareSegmentTicketTypeCompanyMismatch");
+                }
+
+                if (Number(fareSegment.route_id) !== Number(template.route_id)) {
+                  throw new Error("FareSegmentTicketTypeRouteMismatch");
+                }
+
+                const tripFarePayload = buildGeneratedTripFarePayload(
+                  trip,
+                  template.branch.company_id,
+                  item,
+                  fareSegmentTicketType
+                );
+
+                await TripFareRepository.create(tripFarePayload, { transaction });
               }
             }
 

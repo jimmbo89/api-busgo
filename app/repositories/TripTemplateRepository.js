@@ -11,6 +11,10 @@ const {
 const logger = require("../../config/logger");
 
 const normalizeJsonArray = (value) => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
   if (Array.isArray(value)) {
     return value;
   }
@@ -24,7 +28,11 @@ const normalizeJsonArray = (value) => {
     }
   }
 
-  return value ?? null;
+  if (typeof value === "string" && value.trim() === "") {
+    return [];
+  }
+
+  return [];
 };
 
 const normalizeTemplatePayload = (templateData = {}, options = {}) => {
@@ -33,6 +41,9 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
   const hasTripStops =
     Object.prototype.hasOwnProperty.call(templateData, "trip_stops") ||
     Object.prototype.hasOwnProperty.call(templateData, "tripStops");
+  const hasTripFares =
+    Object.prototype.hasOwnProperty.call(templateData, "trip_fares") ||
+    Object.prototype.hasOwnProperty.call(templateData, "tripFares");
 
   if (hasWorkers) {
     payload.workers = normalizeJsonArray(templateData.workers) ?? [];
@@ -44,6 +55,12 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
     );
   }
 
+  if (hasTripFares) {
+    payload.trip_fares = normalizeJsonArray(
+      templateData.trip_fares ?? templateData.tripFares
+    );
+  }
+
   if (options.forceDefaults) {
     if (!hasWorkers) {
       payload.workers = [];
@@ -51,6 +68,10 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
 
     if (!hasTripStops) {
       payload.trip_stops = null;
+    }
+
+    if (!hasTripFares) {
+      payload.trip_fares = null;
     }
   }
 
@@ -94,6 +115,7 @@ const TripTemplateRepository = {
         "active",
         "workers",
         "trip_stops",
+        "trip_fares",
       ],
       where: whereClause,
       include: [
@@ -145,6 +167,7 @@ const TripTemplateRepository = {
         "active",
         "workers",
         "trip_stops",
+        "trip_fares",
         "createdAt",
         "updatedAt"
       ],
@@ -218,6 +241,7 @@ const TripTemplateRepository = {
         "active",
         "workers",
         "trip_stops",
+        "trip_fares",
       ];
 
       const normalizedUpdateData = normalizeTemplatePayload(updateData);

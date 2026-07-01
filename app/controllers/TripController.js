@@ -335,6 +335,105 @@ const mapTripTickets = (tickets = []) =>
         }
       : null,
   }));
+const buildTripStopOrderMap = (tripStops = []) => {
+  const tripStopOrderMap = new Map();
+
+  for (const tripStop of Array.isArray(tripStops) ? tripStops : []) {
+    const routeStopId = Number(tripStop.route_stop_id);
+    const stopOrder = Number(tripStop.stop_order);
+
+    if (routeStopId && stopOrder) {
+      tripStopOrderMap.set(routeStopId, stopOrder);
+    }
+  }
+
+  return tripStopOrderMap;
+};
+
+const buildFareSegmentMap = (tripFares = []) => {
+  const fareSegmentMap = new Map();
+
+  for (const tripFare of Array.isArray(tripFares) ? tripFares : []) {
+    const fareSegment = tripFare?.fareSegmentTicketType?.fareSegment;
+    if (fareSegment?.id !== undefined && fareSegment?.id !== null) {
+      fareSegmentMap.set(Number(fareSegment.id), fareSegment);
+    }
+  }
+
+  return fareSegmentMap;
+};
+
+const getSeatAvailabilityBySegment = (trip, tripTickets = [], fareSegment = null, fareSegmentMap = new Map()) => {
+  const vehicleSeats = Number(trip?.vehicle?.seats ?? 0);
+  if (!vehicleSeats) {
+    return { reservedSeats: [], occupiedSeats: [], availableSeatNumbers: [], availableSeats: 0 };
+  }
+
+  const tripStopOrderMap = buildTripStopOrderMap(trip?.tripStops ?? []);
+  if (!fareSegment) {
+    const availableSeatNumbers = Array.from({ length: vehicleSeats }, (_, index) => index + 1);
+    return {
+      reservedSeats: [],
+      occupiedSeats: [],
+      availableSeatNumbers,
+      availableSeats: availableSeatNumbers.length,
+    };
+  }
+
+  const targetOriginOrder = tripStopOrderMap.get(Number(fareSegment.origin_route_stop_id));
+  const targetDestinationOrder = tripStopOrderMap.get(Number(fareSegment.destination_route_stop_id));
+
+  if (!targetOriginOrder || !targetDestinationOrder) {
+    const availableSeatNumbers = Array.from({ length: vehicleSeats }, (_, index) => index + 1);
+    return {
+      reservedSeats: [],
+      occupiedSeats: [],
+      availableSeatNumbers,
+      availableSeats: availableSeatNumbers.length,
+    };
+  }
+
+  const occupiedSeats = new Set();
+
+  for (const ticket of Array.isArray(tripTickets) ? tripTickets : []) {
+    const existingFareSegment =
+      ticket?.fareSegment ||
+      fareSegmentMap.get(Number(ticket?.fare_segment_id)) ||
+      null;
+    if (!existingFareSegment) {
+      continue;
+    }
+
+    const existingOriginOrder = tripStopOrderMap.get(Number(existingFareSegment.origin_route_stop_id));
+    const existingDestinationOrder = tripStopOrderMap.get(Number(existingFareSegment.destination_route_stop_id));
+    if (!existingOriginOrder || !existingDestinationOrder) {
+      continue;
+    }
+
+    const overlaps =
+      existingOriginOrder < targetDestinationOrder &&
+      existingDestinationOrder > targetOriginOrder;
+
+    if (!overlaps) {
+      continue;
+    }
+
+    for (const seat of Array.isArray(ticket.seats) ? ticket.seats : []) {
+      occupiedSeats.add(Number(seat));
+    }
+  }
+
+  const reservedSeats = Array.from(occupiedSeats).sort((a, b) => a - b);
+  const availableSeatNumbers = Array.from({ length: vehicleSeats }, (_, index) => index + 1).filter(
+    (seatNumber) => !occupiedSeats.has(seatNumber)
+  );
+  return {
+    reservedSeats,
+    occupiedSeats: reservedSeats,
+    availableSeatNumbers,
+    availableSeats: availableSeatNumbers.length,
+  };
+};
 const mapFareSegments = (fareSegments = []) =>
   (Array.isArray(fareSegments) ? fareSegments : []).map((fareSegment) => ({
     id: fareSegment.id,
@@ -1175,15 +1274,30 @@ const TripController = {
           .filter(({ matchingTripFares }) => matchingTripFares.length > 0)
           .map(async (trip) => {
             const tripStops = mapTripStops(trip.trip.tripStops);
-            const tripFares = mapTripFares(trip.matchingTripFares);
             const tripTickets = mapTripTickets(ticketsByTripId.get(Number(trip.trip.id)) || []);
-            const reservedSeats = tripTickets
-              ? tripTickets.flatMap((ticket) => {
-                  return Array.isArray(ticket.seats)
-                    ? ticket.seats
-                    : JSON.parse(ticket.seats);
-                })
-              : [];
+            const fareSegmentMap = buildFareSegmentMap(trip.matchingTripFares);
+            const tripFares = mapTripFares(trip.matchingTripFares).map((fare) => {
+              const fareSegment = fare?.fareSegmentTicketType?.fareSegment ?? null;
+              const {
+                reservedSeats,
+                occupiedSeats,
+                availableSeatNumbers,
+                availableSeats,
+              } = getSeatAvailabilityBySegment(
+                trip.trip,
+                tripTickets,
+                fareSegment,
+                fareSegmentMap
+              );
+
+              return {
+                ...fare,
+                reservedSeats,
+                occupiedSeats,
+                availableSeatNumbers,
+                availableSeats,
+              };
+            });
             const seatMap = trip.trip.vehicle?.structure?.seatMap
               ? Array.isArray(trip.trip.vehicle.structure.seatMap)
                 ? trip.trip.vehicle.structure.seatMap
@@ -1222,7 +1336,6 @@ const TripController = {
               originImage: trip.trip.route.origin.image,
               destination: trip.trip.route.destination.address,
               destinationImage: trip.trip.route.destination.image,
-              reservedSeats,
               seatMap,
               boarding,
               pending,
@@ -1238,10 +1351,9 @@ const TripController = {
       }
 
       const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
-      const notDepartedTrips = sortedTrips.filter((trip) => trip.start === null);
 
       return res.status(200).json({
-        trips: notDepartedTrips,
+        trips: sortedTrips,
       });
     } catch (error) {
       logger.error("TripController->getTripDateBySegment: " + error.message);

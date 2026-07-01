@@ -102,6 +102,21 @@ const RouteController = {
                 return res.status(404).json({ msg: 'DestinationLocationNotFound' });
             }
 
+            if (Number(origin_id) === Number(destination_id)) {
+                return res.status(400).json({
+                    msg: 'RouteOriginDestinationSame',
+                    details: 'Origen y destino no pueden ser iguales',
+                });
+            }
+
+            const existingRoute = await RouteRepository.existsByOriginAndDestination(origin_id, destination_id);
+            if (existingRoute) {
+                return res.status(400).json({
+                    msg: 'DuplicateRoute',
+                    details: 'Ya existe una ruta con ese origen y destino',
+                });
+            }
+
             if (branch_id) {
                 const branch = await BranchRepository.findById(branch_id);
                 if (!branch) {
@@ -211,6 +226,28 @@ const RouteController = {
             if (!route) {
                 logger.error(`BranchRouteController->update: Ruta no encontrada con ID ${branchroute.route_id}`);
                 return res.status(404).json({ msg: 'RouteNotFound' });
+            }
+
+            const nextOriginId = origin_id !== undefined ? origin_id : route.origin_id;
+            const nextDestinationId = destination_id !== undefined ? destination_id : route.destination_id;
+
+            if (Number(nextOriginId) === Number(nextDestinationId)) {
+                return res.status(400).json({
+                    msg: 'RouteOriginDestinationSame',
+                    details: 'Origen y destino no pueden ser iguales',
+                });
+            }
+
+            const existingRoute = await RouteRepository.existsByOriginAndDestination(
+                nextOriginId,
+                nextDestinationId,
+                route.id
+            );
+            if (existingRoute) {
+                return res.status(400).json({
+                    msg: 'DuplicateRoute',
+                    details: 'Ya existe una ruta con ese origen y destino',
+                });
             }
 
             const routeData = {};

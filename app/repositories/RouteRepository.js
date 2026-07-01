@@ -93,6 +93,28 @@ const RouteRepository = {
     return await Route.findOne({ where: whereCondition });
   },
 
+  async existsByOriginAndDestination(origin_id, destination_id, excludeId = null) {
+    if (
+      origin_id === undefined ||
+      origin_id === null ||
+      destination_id === undefined ||
+      destination_id === null
+    ) {
+      return null;
+    }
+
+    const whereCondition = {
+      origin_id,
+      destination_id,
+    };
+
+    if (excludeId !== null && excludeId !== undefined) {
+      whereCondition.id = { [Op.ne]: excludeId };
+    }
+
+    return await Route.findOne({ where: whereCondition });
+  },
+
   async create(body) {
     const { name, origin_id, destination_id, distance, estimated, status } = body;
 

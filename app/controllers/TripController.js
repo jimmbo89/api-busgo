@@ -279,6 +279,62 @@ const mapTripFares = (tripFares = []) =>
         }
       : null,
   }));
+const mapTripTickets = (tickets = []) =>
+  (Array.isArray(tickets) ? tickets : []).map((ticket) => ({
+    id: ticket.id,
+    branch_id: ticket.branch_id,
+    user_id: ticket.user_id,
+    trip_id: ticket.trip_id,
+    fare_segment_id: ticket.fare_segment_id,
+    method: ticket.method,
+    status: ticket.status,
+    quantity: Number(ticket.quantity ?? 0),
+    price: Number(ticket.price ?? 0),
+    total: Number(ticket.total ?? 0),
+    seats: Array.isArray(ticket.seats)
+      ? ticket.seats
+      : typeof ticket.seats === "string"
+        ? (() => {
+            try {
+              const parsed = JSON.parse(ticket.seats);
+              return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+              return [];
+            }
+          })()
+        : [],
+    qr_status: ticket.qr_status,
+    date: ticket.date,
+    sequenceNumber: ticket.sequenceNumber,
+    ticketItems: Array.isArray(ticket.ticketItems)
+      ? ticket.ticketItems.map((ticketItem) => ({
+          id: ticketItem.id,
+          ticket_id: ticketItem.ticket_id,
+          ticket_type_id: ticketItem.ticket_type_id,
+          trip_fare_id: ticketItem.trip_fare_id,
+          ticket_type_name: ticketItem.ticket_type_name,
+          ticket_type_description: ticketItem.ticket_type_description,
+          quantity: Number(ticketItem.quantity ?? 0),
+          base_price: Number(ticketItem.base_price ?? 0),
+          unit_price: Number(ticketItem.unit_price ?? 0),
+          subtotal: Number(ticketItem.subtotal ?? 0),
+          currency: ticketItem.currency,
+          active: ticketItem.active,
+          source_type: ticketItem.source_type,
+        }))
+      : [],
+    fareSegment: ticket.fareSegment
+      ? {
+          id: ticket.fareSegment.id,
+          company_id: ticket.fareSegment.company_id,
+          route_id: ticket.fareSegment.route_id,
+          origin_route_stop_id: ticket.fareSegment.origin_route_stop_id,
+          destination_route_stop_id: ticket.fareSegment.destination_route_stop_id,
+          originRouteStop: ticket.fareSegment.originRouteStop?.location?.address ?? null,
+          destinationRouteStop: ticket.fareSegment.destinationRouteStop?.location?.address ?? null,
+        }
+      : null,
+  }));
 const mapFareSegments = (fareSegments = []) =>
   (Array.isArray(fareSegments) ? fareSegments : []).map((fareSegment) => ({
     id: fareSegment.id,
@@ -1082,6 +1138,18 @@ const TripController = {
       logger.info(
         `TripController->getTripDateBySegment: viajes encontrados para sucursal=${branch_id} fecha=${searchDate} => ${trips.length}`
       );
+      const tickets = await TicketRepository.findAllDate(branch_id, searchDate, null, workerId);
+      const ticketsByTripId = tickets.reduce((acc, ticket) => {
+        const tripId = Number(ticket.trip_id);
+        if (!acc.has(tripId)) {
+          acc.set(tripId, []);
+        }
+        acc.get(tripId).push(ticket);
+        return acc;
+      }, new Map());
+      logger.info(
+        `TripController->getTripDateBySegment: tickets encontrados para sucursal=${branch_id} fecha=${searchDate} => ${tickets.length}`
+      );
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
@@ -1108,8 +1176,9 @@ const TripController = {
           .map(async (trip) => {
             const tripStops = mapTripStops(trip.trip.tripStops);
             const tripFares = mapTripFares(trip.matchingTripFares);
-            const reservedSeats = trip.trip.tickets
-              ? trip.trip.tickets.flatMap((ticket) => {
+            const tripTickets = mapTripTickets(ticketsByTripId.get(Number(trip.trip.id)) || []);
+            const reservedSeats = tripTickets
+              ? tripTickets.flatMap((ticket) => {
                   return Array.isArray(ticket.seats)
                     ? ticket.seats
                     : JSON.parse(ticket.seats);
@@ -1121,12 +1190,12 @@ const TripController = {
                 : JSON.parse(trip.trip.vehicle.structure.seatMap)
               : [];
 
-            const totalPasajeros = trip.trip.tickets
-              ? trip.trip.tickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
+            const totalPasajeros = tripTickets
+              ? tripTickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
               : 0;
 
-            const boarding = trip.trip.tickets
-              ? trip.trip.tickets.reduce(
+            const boarding = tripTickets
+              ? tripTickets.reduce(
                   (sum, ticket) =>
                     sum + ((ticket.qr_status !== null && ticket.qr_status !== 0) ? (ticket.quantity || 1) : 0),
                   0
@@ -1157,6 +1226,7 @@ const TripController = {
               seatMap,
               boarding,
               pending,
+              tickets: tripTickets,
               tripStops,
               tripFares,
             };

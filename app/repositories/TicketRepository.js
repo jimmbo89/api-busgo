@@ -742,13 +742,13 @@ const TicketRepository = {
 
       const targetFareSegment = targetTripFare?.fareSegmentTicketType?.fareSegment;
       if (!targetFareSegment) {
-        return [];
+        return normalizedSelectedSeats;
       }
 
       const targetOriginOrder = tripStopOrderMap.get(Number(targetFareSegment.origin_route_stop_id));
       const targetDestinationOrder = tripStopOrderMap.get(Number(targetFareSegment.destination_route_stop_id));
       if (!targetOriginOrder || !targetDestinationOrder) {
-        return [];
+        return normalizedSelectedSeats;
       }
 
       const existingTickets = await Ticket.findAll({

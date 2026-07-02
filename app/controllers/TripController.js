@@ -476,6 +476,43 @@ const buildFareSegmentMap = (tripFares = []) => {
   return fareSegmentMap;
 };
 
+const extractTicketFareSegments = (ticket, fareSegmentMap = new Map()) => {
+  const segments = [];
+  const seenSegmentIds = new Set();
+
+  const pushSegment = (segment) => {
+    if (!segment || segment.id === undefined || segment.id === null) {
+      return;
+    }
+
+    const segmentId = Number(segment.id);
+    if (!Number.isFinite(segmentId) || seenSegmentIds.has(segmentId)) {
+      return;
+    }
+
+    seenSegmentIds.add(segmentId);
+    segments.push(segment);
+  };
+
+  pushSegment(ticket?.fareSegment || null);
+
+  const mappedFareSegment = fareSegmentMap.get(Number(ticket?.fare_segment_id));
+  if (mappedFareSegment) {
+    pushSegment(mappedFareSegment);
+  }
+
+  for (const ticketItem of Array.isArray(ticket?.ticketItems) ? ticket.ticketItems : []) {
+    const fareSegment =
+      ticketItem?.tripFare?.fareSegmentTicketType?.fareSegment ||
+      ticketItem?.tripFare?.fareSegment ||
+      ticketItem?.fareSegment ||
+      null;
+    pushSegment(fareSegment);
+  }
+
+  return segments;
+};
+
 const getSeatAvailabilityBySegment = (trip, tripTickets = [], fareSegment = null, fareSegmentMap = new Map()) => {
   const vehicleSeats = Number(trip?.vehicle?.seats ?? 0);
   if (!vehicleSeats) {
@@ -509,23 +546,29 @@ const getSeatAvailabilityBySegment = (trip, tripTickets = [], fareSegment = null
   const occupiedSeats = new Set();
 
   for (const ticket of Array.isArray(tripTickets) ? tripTickets : []) {
-    const existingFareSegment =
-      ticket?.fareSegment ||
-      fareSegmentMap.get(Number(ticket?.fare_segment_id)) ||
-      null;
-    if (!existingFareSegment) {
+    const existingFareSegments = Array.isArray(ticket?.fareSegments) && ticket.fareSegments.length
+      ? ticket.fareSegments
+      : extractTicketFareSegments(ticket, fareSegmentMap);
+    if (!existingFareSegments.length) {
       continue;
     }
 
-    const existingOriginOrder = tripStopOrderMap.get(Number(existingFareSegment.origin_route_stop_id));
-    const existingDestinationOrder = tripStopOrderMap.get(Number(existingFareSegment.destination_route_stop_id));
-    if (!existingOriginOrder || !existingDestinationOrder) {
-      continue;
-    }
+    const overlaps = existingFareSegments.some((existingFareSegment) => {
+      const existingOriginOrder = tripStopOrderMap.get(
+        Number(existingFareSegment.origin_route_stop_id)
+      );
+      const existingDestinationOrder = tripStopOrderMap.get(
+        Number(existingFareSegment.destination_route_stop_id)
+      );
+      if (!existingOriginOrder || !existingDestinationOrder) {
+        return false;
+      }
 
-    const overlaps =
-      existingOriginOrder < targetDestinationOrder &&
-      existingDestinationOrder > targetOriginOrder;
+      return (
+        existingOriginOrder < targetDestinationOrder &&
+        existingDestinationOrder > targetOriginOrder
+      );
+    });
 
     if (!overlaps) {
       continue;
@@ -1350,18 +1393,6 @@ const TripController = {
       logger.info(
         `TripController->getTripDateBySegment: viajes encontrados para sucursal=${branch_id} fecha=${searchDate} => ${trips.length}`
       );
-      const tickets = await TicketRepository.findAllDate(branch_id, searchDate, null, workerId);
-      const ticketsByTripId = tickets.reduce((acc, ticket) => {
-        const tripId = Number(ticket.trip_id);
-        if (!acc.has(tripId)) {
-          acc.set(tripId, []);
-        }
-        acc.get(tripId).push(ticket);
-        return acc;
-      }, new Map());
-      logger.info(
-        `TripController->getTripDateBySegment: tickets encontrados para sucursal=${branch_id} fecha=${searchDate} => ${tickets.length}`
-      );
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
@@ -1387,8 +1418,12 @@ const TripController = {
           .filter(({ matchingTripFares }) => matchingTripFares.length > 0)
           .map(async (trip) => {
             const tripStops = mapTripStops(trip.trip.tripStops);
-            const tripTickets = mapTripTickets(ticketsByTripId.get(Number(trip.trip.id)) || []);
             const fareSegmentMap = buildFareSegmentMap(trip.matchingTripFares);
+            const rawTripTickets = Array.isArray(trip.trip.tickets) ? trip.trip.tickets : [];
+            const tripTickets = mapTripTickets(rawTripTickets).map((ticket, index) => ({
+              ...ticket,
+              fareSegments: extractTicketFareSegments(rawTripTickets[index], fareSegmentMap),
+            }));
             const tripFares = mapTripFares(trip.matchingTripFares).map((fare) => {
               const fareSegment = fare?.fareSegmentTicketType?.fareSegment ?? null;
               const {

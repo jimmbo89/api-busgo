@@ -12,6 +12,7 @@ const {
   FareSegment,
   FareSegmentTicketType,
   TicketType,
+  TicketItem,
   Worker,
   Ticket,
   Structure,
@@ -234,9 +235,97 @@ const TripRepository = {
           ],
         },
         {
-          model: Ticket, // Incluir los tickets relacionados
+          model: Ticket,
           as: "tickets",
-          attributes: ["id", "seats", "qr_status", "quantity"], // Suponiendo que los asientos están en el campo 'seat_numbers' (como un array)
+          attributes: ["id", "seats", "qr_status", "quantity", "fare_segment_id", "user_id", "status", "method", "date", "price", "total"],
+          required: false,
+          include: [
+            {
+              model: TicketItem,
+              as: "ticketItems",
+              attributes: [
+                "id",
+                "ticket_id",
+                "ticket_type_id",
+                "trip_fare_id",
+                "ticket_type_name",
+                "ticket_type_description",
+                "quantity",
+                "base_price",
+                "unit_price",
+                "subtotal",
+                "currency",
+                "active",
+                "source_type",
+              ],
+              include: [
+                {
+                  model: TripFare,
+                  as: "tripFare",
+                  attributes: [
+                    "id",
+                    "company_id",
+                    "trip_id",
+                    "fare_segment_ticket_type_id",
+                    "base_price",
+                    "price",
+                    "active",
+                    "source_type",
+                  ],
+                  include: [
+                    {
+                      model: FareSegmentTicketType,
+                      as: "fareSegmentTicketType",
+                      attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+                      include: [
+                        {
+                          model: FareSegment,
+                          as: "fareSegment",
+                          attributes: [
+                            "id",
+                            "company_id",
+                            "route_id",
+                            "origin_route_stop_id",
+                            "destination_route_stop_id",
+                            "base_price",
+                            "currency",
+                            "valid_from",
+                            "valid_to",
+                            "priority",
+                            "active",
+                          ],
+                          include: [
+                            {
+                              model: RouteStop,
+                              as: "originRouteStop",
+                              include: [
+                                {
+                                  model: Location,
+                                  as: "location",
+                                  attributes: ["id", "address", "country", "city", "image", "active"],
+                                },
+                              ],
+                            },
+                            {
+                              model: RouteStop,
+                              as: "destinationRouteStop",
+                              include: [
+                                {
+                                  model: Location,
+                                  as: "location",
+                                  attributes: ["id", "address", "country", "city", "image", "active"],
+                                },
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
         },
         {
           model: TripStop,

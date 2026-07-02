@@ -41,6 +41,119 @@ const getChileDate = (date = new Date()) => {
 
   return `${values.year}-${values.month}-${values.day}`;
 };
+const extractTimePart = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const match = value.match(/(\d{2}:\d{2})(?::\d{2})?$/);
+  return match ? match[1] : null;
+};
+
+const addMinutesToTripTime = (datePart, timePart, minutes = 0) => {
+  if (typeof timePart !== "string") {
+    return timePart;
+  }
+
+  const minutesToAdd = Number(minutes || 0);
+  const dateTimeMatch = timePart.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})(?::(\d{2}))?$/);
+  if (dateTimeMatch) {
+    const [, datePart, timeValue, secondsPart = "00"] = dateTimeMatch;
+    const [hours, mins] = timeValue.split(":").map(Number);
+    if (!Number.isFinite(hours) || !Number.isFinite(mins)) {
+      return timePart;
+    }
+
+    const totalMinutes = (hours * 60) + mins + minutesToAdd;
+    const dayOffset = Math.floor(totalMinutes / 1440);
+    const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+    const nextHours = String(Math.floor(normalizedMinutes / 60)).padStart(2, "0");
+    const nextMinutes = String(normalizedMinutes % 60).padStart(2, "0");
+    if (dayOffset > 0) {
+      const nextDate = new Date(`${datePart}T00:00:00Z`);
+      nextDate.setUTCDate(nextDate.getUTCDate() + dayOffset);
+      const formattedDate = nextDate.toISOString().slice(0, 10);
+      return `${formattedDate} ${nextHours}:${nextMinutes}:${secondsPart}`;
+    }
+
+    return `${nextHours}:${nextMinutes}`;
+  }
+
+  const baseTime = extractTimePart(timePart);
+  if (!baseTime) {
+    return timePart;
+  }
+
+  const [hours, mins] = baseTime.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(mins)) {
+    return baseTime;
+  }
+
+  const totalMinutes = (hours * 60) + mins + minutesToAdd;
+  const dayOffset = Math.floor(totalMinutes / 1440);
+  const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
+  const nextHours = String(Math.floor(normalizedMinutes / 60)).padStart(2, "0");
+  const nextMinutes = String(normalizedMinutes % 60).padStart(2, "0");
+  if (dayOffset > 0) {
+    if (!datePart) {
+      return `${nextHours}:${nextMinutes}`;
+    }
+
+    const nextDate = new Date(`${datePart}T00:00:00Z`);
+    nextDate.setUTCDate(nextDate.getUTCDate() + dayOffset);
+    const formattedDate = nextDate.toISOString().slice(0, 10);
+    return `${formattedDate} ${nextHours}:${nextMinutes}:00`;
+  }
+
+  return `${nextHours}:${nextMinutes}`;
+};
+
+const getSegmentStopMinutes = (tripStops = [], matchingTripFares = [], stopType = "origin") => {
+  const fareSegment = (Array.isArray(matchingTripFares) ? matchingTripFares : [])
+    .map((tripFare) => tripFare?.fareSegmentTicketType?.fareSegment)
+    .find((segment) => segment?.id !== undefined && segment?.id !== null);
+
+  if (!fareSegment) {
+    return 0;
+  }
+
+  const routeStopId = Number(
+    stopType === "destination"
+      ? fareSegment.destination_route_stop_id
+      : fareSegment.origin_route_stop_id
+  );
+  const tripStop = (Array.isArray(tripStops) ? tripStops : []).find(
+    (item) =>
+      Number(item.route_stop_id) === routeStopId ||
+      Number(item.routeStop?.id) === routeStopId
+  );
+
+  logger.info(
+    `TripController->getSegmentStopMinutes: stopType=${stopType} routeStopId=${routeStopId} tripStopId=${tripStop?.route_stop_id ?? tripStop?.routeStop?.id ?? "null"} minutes=${tripStop?.routeStop?.minutes_from_origin ?? tripStop?.minutes_from_origin ?? "null"}`
+  );
+
+  const segmentMinutes = Number(
+    tripStop?.routeStop?.minutes_from_origin ??
+      tripStop?.minutes_from_origin ??
+      0
+  );
+
+  if (segmentMinutes === 0) {
+    const candidates = (Array.isArray(tripStops) ? tripStops : []).map((item) => ({
+      route_stop_id: item?.route_stop_id ?? item?.routeStop?.id ?? null,
+      minutes_from_origin: item?.routeStop?.minutes_from_origin ?? item?.minutes_from_origin ?? null,
+    }));
+    logger.info(
+      `TripController->getSegmentStopMinutes: stopType=${stopType} routeStopId=${routeStopId} candidates=${JSON.stringify(candidates)}`
+    );
+  }
+
+  return segmentMinutes;
+};
+const getSegmentOriginMinutes = (tripStops = [], matchingTripFares = []) =>
+  getSegmentStopMinutes(tripStops, matchingTripFares, "origin");
+const getSegmentDestinationMinutes = (tripStops = [], matchingTripFares = []) =>
+  getSegmentStopMinutes(tripStops, matchingTripFares, "destination");
 const isFareSegmentActiveForDate = (fareSegment, currentDate) => {
   if (!fareSegment || !fareSegment.active) {
     return false;
@@ -1298,6 +1411,31 @@ const TripController = {
                 availableSeats,
               };
             });
+            const segmentOriginMinutes = getSegmentOriginMinutes(
+              trip.trip.tripStops,
+              trip.matchingTripFares
+            );
+            const segmentDestinationMinutes = getSegmentDestinationMinutes(
+              trip.trip.tripStops,
+              trip.matchingTripFares
+            );
+            const baseSchedule = trip.trip.start || trip.trip.schedule;
+            const adjustedSchedule = addMinutesToTripTime(
+              trip.trip.date,
+              baseSchedule,
+              segmentOriginMinutes
+            );
+            const adjustedArrival = addMinutesToTripTime(
+              trip.trip.date,
+              baseSchedule,
+              segmentDestinationMinutes
+            );
+            const segmentPrice = tripFares.length
+              ? Math.max(...tripFares.map((fare) => Number(fare.price) || 0))
+              : Number(trip.trip.price ?? 0);
+            logger.info(
+              `TripController->getTripDateBySegment: trip=${trip.trip.id} originMinutes=${segmentOriginMinutes} destinationMinutes=${segmentDestinationMinutes} baseSchedule=${baseSchedule} adjustedSchedule=${adjustedSchedule} adjustedArrival=${adjustedArrival} segmentPrice=${segmentPrice}`
+            );
             const seatMap = trip.trip.vehicle?.structure?.seatMap
               ? Array.isArray(trip.trip.vehicle.structure.seatMap)
                 ? trip.trip.vehicle.structure.seatMap
@@ -1322,17 +1460,17 @@ const TripController = {
               id: trip.trip.id,
               trip_id: trip.trip.id,
               date: trip.trip.date,
-              schedule: trip.trip.schedule,
-              arrival: trip.trip.arrival,
               start: trip.trip.start,
               end: trip.trip.end,
+              arrival: adjustedArrival,
+              price: segmentPrice,
+              schedule: adjustedSchedule,
               seats: trip.trip.vehicle.seats,
               plate: trip.trip.vehicle.plate,
               internal_number: trip.trip.vehicle.internal_number,
               imageVehicle: trip.trip.vehicle.image,
               name: trip.trip.route.name,
               origin: trip.trip.route.origin.address,
-              price: trip.trip.price,
               originImage: trip.trip.route.origin.image,
               destination: trip.trip.route.destination.address,
               destinationImage: trip.trip.route.destination.image,

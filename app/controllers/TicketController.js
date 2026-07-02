@@ -84,6 +84,31 @@ const resolveTripFareById = (trip, tripFareId) => {
   );
 };
 
+const resolveFareSegmentIdsFromTicketItems = (trip, ticketItems = []) => {
+  const tripFares = Array.isArray(trip?.tripFares) ? trip.tripFares : [];
+  const tripFareMap = new Map();
+  for (const tripFare of tripFares) {
+    const fareSegmentId = Number(
+      tripFare?.fareSegmentTicketType?.fareSegment?.id
+    );
+    if (Number.isFinite(fareSegmentId) && fareSegmentId > 0) {
+      tripFareMap.set(Number(tripFare.id), fareSegmentId);
+    }
+  }
+
+  const fareSegmentIds = [];
+  const seen = new Set();
+  for (const item of Array.isArray(ticketItems) ? ticketItems : []) {
+    const fareSegmentId = tripFareMap.get(Number(item.trip_fare_id));
+    if (Number.isFinite(fareSegmentId) && fareSegmentId > 0 && !seen.has(fareSegmentId)) {
+      seen.add(fareSegmentId);
+      fareSegmentIds.push(fareSegmentId);
+    }
+  }
+
+  return fareSegmentIds;
+};
+
 const normalizeTicketItemsFromRequest = (body = {}, trip = null) => {
   const hasTicketItems = hasOwn(body, "ticketItems");
   const hasLegacyTicketTypes =
@@ -97,7 +122,6 @@ const normalizeTicketItemsFromRequest = (body = {}, trip = null) => {
     ? body.ticketItems
     : body.tickettypes ?? body.ticketType ?? [];
   const sourceItems = parseArrayValue(rawItems);
-  const fareSegmentId = body.fare_segment_id ?? null;
   const isLegacy = !hasTicketItems;
 
   return sourceItems.map((item) => {
@@ -112,7 +136,7 @@ const normalizeTicketItemsFromRequest = (body = {}, trip = null) => {
       tripFareFromId ??
       (item.trip_fare_id || item.tripFareId
         ? null
-        : resolveTripFareMatch(trip, fareSegmentId, ticketTypeId));
+        : resolveTripFareMatch(trip, null, ticketTypeId));
     const tripFareId = item.trip_fare_id ?? item.tripFareId ?? tripFare?.id ?? null;
     const resolvedTicketType = tripFare?.fareSegmentTicketType?.ticketType || {};
 
@@ -547,15 +571,40 @@ const TicketController = {
     } = req.body;
     let ticket = {};
 
+    const trip = await TripRepository.findByIdWithTickets(trip_id);
+    if (!trip) {
+      logger.error(
+        `TicketController->store: Viaje no encontrado con ID ${trip_id}`
+      );
+      return res.status(400).json({ msg: "TripNotFound" });
+    }
+
+    const branch = await BranchRepository.findById(branch_id);
+    if (!branch) {
+      logger.error(
+        `TicketController->store: Sucursal no encontrada con ID ${branch_id}`
+      );
+      return res.status(400).json({ msg: "BranchNotFound" });
+    }
+
     const t = await sequelize.transaction(); // Inicia la transacción
     try {
+      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
+      if (normalizedTicketItems !== null) {
+        req.body.ticketItems = normalizedTicketItems;
+      }
+
+      const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
+        trip,
+        normalizedTicketItems ?? []
+      );
+
       // Verifica los asientos reservados
-      const hasFareSegment = req.body.fare_segment_id !== undefined && req.body.fare_segment_id !== null && req.body.fare_segment_id !== "";
-      const conflictingSeats = hasFareSegment
+      const conflictingSeats = fareSegmentIdsForValidation.length > 0
         ? await TicketRepository.checkReservedSeatsBySegment(
             trip_id,
             seats,
-            req.body.fare_segment_id
+            fareSegmentIdsForValidation
           )
         : await TicketRepository.checkReservedSeats(trip_id, seats);
 
@@ -570,59 +619,39 @@ const TicketController = {
           .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
 
-      // Verificar si el viaje, usuario y sucursal existen
-      const trip = await TripRepository.findByIdWithTickets(trip_id);
-      if (!trip) {
-        logger.error(
-          `TicketController->store: Viaje no encontrado con ID ${trip_id}`
+      for (const fareSegmentId of fareSegmentIdsForValidation) {
+        const fareSegmentValidation = await validateFareSegmentForTrip(
+          fareSegmentId,
+          trip,
+          branch
         );
-        return res.status(400).json({ msg: "TripNotFound" });
-      }
-
-      const branch = await BranchRepository.findById(branch_id);
-      if (!branch) {
-        logger.error(
-          `TicketController->store: Sucursal no encontrada con ID ${branch_id}`
-        );
-        return res.status(400).json({ msg: "BranchNotFound" });
-      }
-
-      const fareSegmentValidation = await validateFareSegmentForTrip(
-        req.body.fare_segment_id,
-        trip,
-        branch
-      );
-      if (fareSegmentValidation?.error === "FareSegmentNotFound") {
-        logger.error(
-          `TicketController->store: Tramo no encontrado con ID ${req.body.fare_segment_id}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (fareSegmentValidation?.error === "FareSegmentNotFound") {
+          logger.error(
+            `TicketController->store: Tramo no encontrado con ID ${fareSegmentId}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: "FareSegmentNotFound" });
         }
-        return res.status(400).json({ msg: "FareSegmentNotFound" });
-      }
-      if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
-        logger.error(
-          `TicketController->store: El tramo ${req.body.fare_segment_id} no pertenece a la ruta ${trip.route_id}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
+          logger.error(
+            `TicketController->store: El tramo ${fareSegmentId} no pertenece a la ruta ${trip.route_id}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
         }
-        return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
-      }
-      if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
-        logger.error(
-          `TicketController->store: El tramo ${req.body.fare_segment_id} no pertenece a la empresa de la sucursal ${branch_id}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
+          logger.error(
+            `TicketController->store: El tramo ${fareSegmentId} no pertenece a la empresa de la sucursal ${branch_id}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
         }
-        return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
-      }
-
-      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
-      if (normalizedTicketItems !== null) {
-        req.body.ticketItems = normalizedTicketItems;
       }
 
       if(id){
@@ -716,6 +745,22 @@ const TicketController = {
     logger.info(JSON.stringify(req.body));
     req.body.user_id = req.user.id;
 
+    const trip = await TripRepository.findByIdWithTickets(req.body.trip_id);
+    if (!trip) {
+      logger.error(
+        `TicketController->store_web: Viaje no encontrado con ID ${req.body.trip_id}`
+      );
+      return res.status(400).json({ msg: "TripNotFound" });
+    }
+
+    const branch = await BranchRepository.findById(req.body.branch_id);
+    if (!branch) {
+      logger.error(
+        `TicketController->store_web: Sucursal no encontrada con ID ${req.body.branch_id}`
+      );
+      return res.status(400).json({ msg: "BranchNotFound" });
+    }
+
     const {
       branch_id,
       user_id,
@@ -736,13 +781,22 @@ const TicketController = {
 
     const t = await sequelize.transaction(); // Inicia la transacción
     try {
+      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
+      if (normalizedTicketItems !== null) {
+        req.body.ticketItems = normalizedTicketItems;
+      }
+
+      const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
+        trip,
+        normalizedTicketItems ?? []
+      );
+
       // Verifica los asientos reservados
-      const hasFareSegment = req.body.fare_segment_id !== undefined && req.body.fare_segment_id !== null && req.body.fare_segment_id !== "";
-      const conflictingSeats = hasFareSegment
+      const conflictingSeats = fareSegmentIdsForValidation.length > 0
         ? await TicketRepository.checkReservedSeatsBySegment(
             trip_id,
             seats,
-            req.body.fare_segment_id
+            fareSegmentIdsForValidation
           )
         : await TicketRepository.checkReservedSeats(trip_id, seats);
 
@@ -757,58 +811,39 @@ const TicketController = {
           .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
 
-      // Verificar si el viaje, usuario y sucursal existen
-      const trip = await TripRepository.findByIdWithTickets(trip_id);
-      if (!trip) {
-        logger.error(
-          `TicketController->store_web: Viaje no encontrado con ID ${trip_id}`
+      for (const fareSegmentId of fareSegmentIdsForValidation) {
+        const fareSegmentValidation = await validateFareSegmentForTrip(
+          fareSegmentId,
+          trip,
+          branch
         );
-        return res.status(400).json({ msg: "TripNotFound" });
-      }
-
-      const branch = await BranchRepository.findById(branch_id);
-      if (!branch) {
-        logger.error(
-          `TicketController->store_web: Sucursal no encontrada con ID ${branch_id}`
-        );
-        return res.status(400).json({ msg: "BranchNotFound" });
-      }
-
-      const fareSegmentValidation = await validateFareSegmentForTrip(
-        req.body.fare_segment_id,
-        trip,
-        branch
-      );
-      if (fareSegmentValidation?.error === "FareSegmentNotFound") {
-        logger.error(
-          `TicketController->store_web: Tramo no encontrado con ID ${req.body.fare_segment_id}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (fareSegmentValidation?.error === "FareSegmentNotFound") {
+          logger.error(
+            `TicketController->store_web: Tramo no encontrado con ID ${fareSegmentId}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: "FareSegmentNotFound" });
         }
-        return res.status(400).json({ msg: "FareSegmentNotFound" });
-      }
-      if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
-        logger.error(
-          `TicketController->store_web: El tramo ${req.body.fare_segment_id} no pertenece a la ruta ${trip.route_id}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
+          logger.error(
+            `TicketController->store_web: El tramo ${fareSegmentId} no pertenece a la ruta ${trip.route_id}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
         }
-        return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
-      }
-      if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
-        logger.error(
-          `TicketController->store_web: El tramo ${req.body.fare_segment_id} no pertenece a la empresa de la sucursal ${branch_id}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
+          logger.error(
+            `TicketController->store_web: El tramo ${fareSegmentId} no pertenece a la empresa de la sucursal ${branch_id}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
         }
-        return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
-      }
-      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
-      if (normalizedTicketItems !== null) {
-        req.body.ticketItems = normalizedTicketItems;
       }
 
       if (method === "Efectivo") {
@@ -1267,22 +1302,38 @@ async verifyEncryptedQR(req, res) {
       return res.status(400).json({ msg: "TicketNotFound" });
     }
 
-    const fareSegmentIdForValidation =
-      req.body.fare_segment_id !== undefined
-        ? req.body.fare_segment_id
-        : ticket.fare_segment_id;
-    const hasFareSegmentForValidation =
-      fareSegmentIdForValidation !== undefined &&
-      fareSegmentIdForValidation !== null &&
-      fareSegmentIdForValidation !== "";
-    const conflictingSeats = hasFareSegmentForValidation
+    const tripForValidation = trip_id
+      ? await TripRepository.findByIdWithTickets(trip_id)
+      : await TripRepository.findByIdWithTickets(ticket.trip_id);
+    if (!tripForValidation) {
+      return res.status(400).json({ msg: "TripNotFound" });
+    }
+
+    const branchForValidation = branch_id
+      ? await BranchRepository.findById(branch_id)
+      : ticket.branch;
+    if (!branchForValidation) {
+      return res.status(400).json({ msg: "BranchNotFound" });
+    }
+
+    const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, tripForValidation);
+    if (normalizedTicketItems !== null) {
+      req.body.ticketItems = normalizedTicketItems;
+    }
+
+    const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
+      tripForValidation,
+      normalizedTicketItems ?? []
+    );
+
+    const conflictingSeats = fareSegmentIdsForValidation.length > 0
       ? await TicketRepository.checkReservedSeatsBySegment(
-          trip_id,
+          tripForValidation.id,
           seats,
-          fareSegmentIdForValidation,
+          fareSegmentIdsForValidation,
           id
         )
-      : await TicketRepository.checkReservedSeats(trip_id, seats, id);
+      : await TicketRepository.checkReservedSeats(tripForValidation.id, seats, id);
 
     if (conflictingSeats.length > 0) {
       logger.error(
@@ -1293,61 +1344,30 @@ async verifyEncryptedQR(req, res) {
       return res.status(400).json({ msg: "SeatsReserved" });
     }
 
-    let tripForValidation = ticket.trip;
-    let branchForValidation = ticket.branch;
-
-    // Verificar si el viaje, usuario y sucursal existen
-    if (trip_id) {
-      const tripFound = await TripRepository.findByIdWithTickets(trip_id);
-      if (!tripFound) {
-        logger.error(
-          `TicketController->update: Viaje no encontrado con ID ${trip_id}`
-        );
-        return res.status(400).json({ msg: "TripNotFound" });
-      }
-      tripForValidation = tripFound;
-    }
-
-    if (branch_id) {
-      const branchFound = await BranchRepository.findById(branch_id);
-      if (!branchFound) {
-        logger.error(
-          `TicketController->update: Sucursal no encontrada con ID ${branch_id}`
-        );
-        return res.status(400).json({ msg: "BranchNotFound" });
-      }
-      branchForValidation = branchFound;
-    }
-
-    if (req.body.fare_segment_id !== undefined) {
+    for (const fareSegmentId of fareSegmentIdsForValidation) {
       const fareSegmentValidation = await validateFareSegmentForTrip(
-        req.body.fare_segment_id,
+        fareSegmentId,
         tripForValidation,
         branchForValidation
       );
       if (fareSegmentValidation?.error === "FareSegmentNotFound") {
         logger.error(
-          `TicketController->update: Tramo no encontrado con ID ${req.body.fare_segment_id}`
+          `TicketController->update: Tramo no encontrado con ID ${fareSegmentId}`
         );
         return res.status(400).json({ msg: "FareSegmentNotFound" });
       }
       if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
         logger.error(
-          `TicketController->update: El tramo ${req.body.fare_segment_id} no pertenece a la ruta ${tripForValidation.route_id}`
+          `TicketController->update: El tramo ${fareSegmentId} no pertenece a la ruta ${tripForValidation.route_id}`
         );
         return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
       }
       if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
         logger.error(
-          `TicketController->update: El tramo ${req.body.fare_segment_id} no pertenece a la empresa de la sucursal ${branchForValidation.id || branchForValidation.branch_id || branch_id}`
+          `TicketController->update: El tramo ${fareSegmentId} no pertenece a la empresa de la sucursal ${branchForValidation.id || branchForValidation.branch_id || branch_id}`
         );
         return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
       }
-    }
-
-      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, tripForValidation);
-    if (normalizedTicketItems !== null) {
-      req.body.ticketItems = normalizedTicketItems;
     }
 
     try {

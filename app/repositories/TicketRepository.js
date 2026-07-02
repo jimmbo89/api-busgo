@@ -184,6 +184,43 @@ const ticketItemInclude = [
   },
 ];
 
+const extractTicketFareSegments = (ticket, fareSegmentMap = new Map()) => {
+  const segments = [];
+  const seenIds = new Set();
+
+  const pushSegment = (segment) => {
+    if (!segment || segment.id === undefined || segment.id === null) {
+      return;
+    }
+
+    const segmentId = Number(segment.id);
+    if (!Number.isFinite(segmentId) || seenIds.has(segmentId)) {
+      return;
+    }
+
+    seenIds.add(segmentId);
+    segments.push(segment);
+  };
+
+  pushSegment(ticket?.fareSegment || null);
+
+  const mappedSegment = fareSegmentMap.get(Number(ticket?.fare_segment_id));
+  if (mappedSegment) {
+    pushSegment(mappedSegment);
+  }
+
+  for (const ticketItem of Array.isArray(ticket?.ticketItems) ? ticket.ticketItems : []) {
+    const segment =
+      ticketItem?.tripFare?.fareSegmentTicketType?.fareSegment ||
+      ticketItem?.tripFare?.fareSegment ||
+      ticketItem?.fareSegment ||
+      null;
+    pushSegment(segment);
+  }
+
+  return segments;
+};
+
 const TicketRepository = {
   async findAll() {
     return await Ticket.findAll({
@@ -679,12 +716,17 @@ const TicketRepository = {
       const normalizedSelectedSeats = Array.isArray(selectedSeats)
         ? selectedSeats.map((seat) => Number(seat))
         : [];
+      const normalizedFareSegmentIds = Array.isArray(fareSegmentId)
+        ? fareSegmentId
+            .map((item) => Number(item))
+            .filter((item) => Number.isFinite(item) && item > 0)
+        : fareSegmentId !== undefined && fareSegmentId !== null && fareSegmentId !== ""
+          ? [Number(fareSegmentId)].filter((item) => Number.isFinite(item) && item > 0)
+          : [];
 
       if (
         normalizedSelectedSeats.length === 0 ||
-        fareSegmentId === undefined ||
-        fareSegmentId === null ||
-        fareSegmentId === ""
+        normalizedFareSegmentIds.length === 0
       ) {
         return [];
       }
@@ -735,19 +777,26 @@ const TicketRepository = {
         }
       }
 
-      const targetTripFare = (Array.isArray(trip.tripFares) ? trip.tripFares : []).find((tripFare) => {
-        const fareSegment = tripFare?.fareSegmentTicketType?.fareSegment;
-        return fareSegment && Number(fareSegment.id) === Number(fareSegmentId);
-      });
+      const targetFareSegments = (Array.isArray(trip.tripFares) ? trip.tripFares : [])
+        .map((tripFare) => tripFare?.fareSegmentTicketType?.fareSegment)
+        .filter((fareSegment) => fareSegment && normalizedFareSegmentIds.includes(Number(fareSegment.id)));
 
-      const targetFareSegment = targetTripFare?.fareSegmentTicketType?.fareSegment;
-      if (!targetFareSegment) {
+      if (!targetFareSegments.length) {
         return normalizedSelectedSeats;
       }
 
-      const targetOriginOrder = tripStopOrderMap.get(Number(targetFareSegment.origin_route_stop_id));
-      const targetDestinationOrder = tripStopOrderMap.get(Number(targetFareSegment.destination_route_stop_id));
-      if (!targetOriginOrder || !targetDestinationOrder) {
+      const targetOrders = targetFareSegments
+        .map((fareSegment) => {
+          const originOrder = tripStopOrderMap.get(Number(fareSegment.origin_route_stop_id));
+          const destinationOrder = tripStopOrderMap.get(Number(fareSegment.destination_route_stop_id));
+          if (!originOrder || !destinationOrder) {
+            return null;
+          }
+          return { originOrder, destinationOrder, fareSegment };
+        })
+        .filter(Boolean);
+
+      if (!targetOrders.length) {
         return normalizedSelectedSeats;
       }
 
@@ -763,6 +812,7 @@ const TicketRepository = {
             as: "fareSegment",
             attributes: ["id", "origin_route_stop_id", "destination_route_stop_id", "active"],
           },
+          ...ticketItemInclude,
         ],
       });
 
@@ -778,22 +828,27 @@ const TicketRepository = {
           continue;
         }
 
-        const existingFareSegment = existingTicket.fareSegment;
-        if (!existingFareSegment) {
+        const existingFareSegments = extractTicketFareSegments(existingTicket);
+        if (!existingFareSegments.length) {
           seatIntersection.forEach((seat) => conflictingSeats.add(seat));
           continue;
         }
 
-        const existingOriginOrder = tripStopOrderMap.get(Number(existingFareSegment.origin_route_stop_id));
-        const existingDestinationOrder = tripStopOrderMap.get(Number(existingFareSegment.destination_route_stop_id));
-        if (!existingOriginOrder || !existingDestinationOrder) {
-          seatIntersection.forEach((seat) => conflictingSeats.add(seat));
-          continue;
-        }
+        const overlaps = existingFareSegments.some((existingFareSegment) => {
+          const existingOriginOrder = tripStopOrderMap.get(
+            Number(existingFareSegment.origin_route_stop_id)
+          );
+          const existingDestinationOrder = tripStopOrderMap.get(
+            Number(existingFareSegment.destination_route_stop_id)
+          );
+          if (!existingOriginOrder || !existingDestinationOrder) {
+            return false;
+          }
 
-        const overlaps =
-          existingOriginOrder < targetDestinationOrder &&
-          existingDestinationOrder > targetOriginOrder;
+          return targetOrders.some(({ originOrder, destinationOrder }) =>
+            existingOriginOrder < destinationOrder && existingDestinationOrder > originOrder
+          );
+        });
 
         if (overlaps) {
           seatIntersection.forEach((seat) => conflictingSeats.add(seat));

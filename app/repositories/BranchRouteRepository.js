@@ -23,6 +23,8 @@ const BranchRouteRepository = {
                         {
                             model: RouteStop,
                             as: 'routeStops',
+                            separate: true,
+                            order: [['stop_order', 'ASC']],
                             attributes: [
                                 'id',
                                 'company_id',
@@ -71,6 +73,8 @@ const BranchRouteRepository = {
                         {
                             model: RouteStop,
                             as: 'routeStops',
+                            separate: true,
+                            order: [['stop_order', 'ASC']],
                             attributes: [
                                 'id',
                                 'company_id',
@@ -117,6 +121,8 @@ const BranchRouteRepository = {
                         {
                             model: RouteStop,
                             as: 'routeStops',
+                            separate: true,
+                            order: [['stop_order', 'ASC']],
                             attributes: [
                                 'id',
                                 'company_id',

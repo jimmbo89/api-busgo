@@ -8,7 +8,7 @@ let isRunning = false;
 
 async function runScheduledJob() {
   if (isRunning) {
-    logger.info('scheduler->runScheduledJob: omitido porque ya hay una ejecucion en curso');
+    //logger.info('scheduler->runScheduledJob: omitido porque ya hay una ejecucion en curso');
     return;
   }
 
@@ -30,7 +30,7 @@ async function runScheduledJob() {
     logger.error(`scheduler->runScheduledJob: error | ${error.message}`);
   } finally {
     isRunning = false;
-    logger.info(`scheduler->runScheduledJob: fin | ${new Date().toISOString()}`);
+    //logger.info(`scheduler->runScheduledJob: fin | ${new Date().toISOString()}`);
   }
 }
 

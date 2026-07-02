@@ -14,7 +14,8 @@ const LocationController = {
                 return res.status(204).json({ msg: 'LocationsNotFound' });
             }
 
-            const mappedLocations = locations.map(location => ({
+            const mappedLocations = locations
+                .map(location => ({
                 id: location.id,
                 latitude: location.latitude,
                 longitude: location.longitude,
@@ -23,7 +24,12 @@ const LocationController = {
                 city: location.city,
                 image: location.image,
                 active: location.active,
-            }));
+            }))
+                .sort((a, b) =>
+                    (a.address || "").localeCompare(b.address || "", "es", {
+                        sensitivity: "base",
+                    })
+                );
 
             res.status(200).json({ locations: mappedLocations });
         } catch (error) {

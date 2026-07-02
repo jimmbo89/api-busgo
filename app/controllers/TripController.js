@@ -1250,7 +1250,12 @@ const TripController = {
           city: location.city,
           image: location.image,
           active: location.active,
-        }));
+        }))
+        .sort((a, b) =>
+          (a.address || "").localeCompare(b.address || "", "es", {
+            sensitivity: "base",
+          })
+        );
       /*const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
 
       if (!trips.length) {

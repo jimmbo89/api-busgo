@@ -38,6 +38,22 @@ const mapTicketItems = (ticketItems = []) =>
     ticketType: ticketItem.ticketType ? toPlainObject(ticketItem.ticketType) : null,
   }));
 
+const extractTimePart = (value) => {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const match = value.match(/(\d{2}:\d{2})(?::\d{2})?$/);
+  return match ? match[1] : null;
+};
+
+const getTicketSaleTime = (ticket) =>
+  (typeof ticket?.get === "function" ? ticket.get("saleTime") : null) ||
+  ticket?.saleTime ||
+  extractTimePart(ticket?.createdAt) ||
+  extractTimePart(ticket?.updatedAt) ||
+  null;
+
 const resolveTripFareMatch = (trip, fareSegmentId, ticketTypeId) => {
   const tripFares = Array.isArray(trip?.tripFares) ? trip.tripFares : [];
   if (!ticketTypeId || tripFares.length === 0) {
@@ -421,7 +437,7 @@ const TicketController = {
         tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociadoc
         destinationImage: ticket.trip.route.destination.image, // Incluir los detalles del viaje asociado
         tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
-        schedule: ticket.trip.schedule, // Incluir los detalles del viaje asociado
+        schedule: ticket.saleTime || getTicketSaleTime(ticket), // Hora de venta del ticket
         vehiclePlate: ticket.trip.vehicle?.plate,
         internal_number: ticket.trip.vehicle?.internal_number,
         internalNumber: ticket.trip.vehicle?.internal_number,
@@ -514,7 +530,7 @@ const TicketController = {
         tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociadoc
         destinationImage: ticket.trip.route.destination.image, // Incluir los detalles del viaje asociado
         tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
-        schedule: ticket.trip.schedule, // Incluir los detalles del viaje asociado
+        schedule: ticket.saleTime || (typeof ticket.get === "function" ? ticket.get("saleTime") : null) || getTicketSaleTime(ticket), // Hora de venta del ticket
         vehiclePlate: ticket.trip.vehicle?.plate,
         internal_number: ticket.trip.vehicle?.internal_number,
         internalNumber: ticket.trip.vehicle?.internal_number,

@@ -5,7 +5,7 @@ const validateSchema = (schema) => {
   return (req, res, next) => {
     // Normalización de valores en req.body
     const normalizeValue = (value) => {
-      if (value === "" || value === 0 || value === null) {
+      if (value === "" || value === null) {
         return null;
       }
       return value;

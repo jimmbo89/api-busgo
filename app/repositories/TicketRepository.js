@@ -324,7 +324,8 @@ const TicketRepository = {
         "barcode",
         "print",
         "promotions",
-        "tickettypes"
+        "tickettypes",
+        [sequelize.fn("DATE_FORMAT", sequelize.col("Ticket.createdAt"), "%H:%i"), "saleTime"],
       ],
       where: whereClause,
       include: [

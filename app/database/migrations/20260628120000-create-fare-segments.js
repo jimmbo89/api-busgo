@@ -31,7 +31,7 @@ module.exports = {
       },
       base_price: {
         type: Sequelize.DECIMAL(14, 2),
-        allowNull: false,
+        allowNull: true,
         defaultValue: 0,
       },
       currency: {

@@ -69,11 +69,11 @@ const addMinutesToTripTime = (datePart, timePart, minutes = 0) => {
     const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
     const nextHours = String(Math.floor(normalizedMinutes / 60)).padStart(2, "0");
     const nextMinutes = String(normalizedMinutes % 60).padStart(2, "0");
-    if (dayOffset > 0) {
+    if (datePart) {
       const nextDate = new Date(`${datePart}T00:00:00Z`);
       nextDate.setUTCDate(nextDate.getUTCDate() + dayOffset);
       const formattedDate = nextDate.toISOString().slice(0, 10);
-      return `${formattedDate} ${nextHours}:${nextMinutes}:${secondsPart}`;
+      return `${formattedDate} ${nextHours}:${nextMinutes}`;
     }
 
     return `${nextHours}:${nextMinutes}`;
@@ -94,15 +94,11 @@ const addMinutesToTripTime = (datePart, timePart, minutes = 0) => {
   const normalizedMinutes = ((totalMinutes % 1440) + 1440) % 1440;
   const nextHours = String(Math.floor(normalizedMinutes / 60)).padStart(2, "0");
   const nextMinutes = String(normalizedMinutes % 60).padStart(2, "0");
-  if (dayOffset > 0) {
-    if (!datePart) {
-      return `${nextHours}:${nextMinutes}`;
-    }
-
+  if (datePart) {
     const nextDate = new Date(`${datePart}T00:00:00Z`);
     nextDate.setUTCDate(nextDate.getUTCDate() + dayOffset);
     const formattedDate = nextDate.toISOString().slice(0, 10);
-    return `${formattedDate} ${nextHours}:${nextMinutes}:00`;
+    return `${formattedDate} ${nextHours}:${nextMinutes}`;
   }
 
   return `${nextHours}:${nextMinutes}`;

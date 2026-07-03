@@ -160,7 +160,7 @@ const IncidentRepository = {
       const incidents = await Incident.findAll({
         where: whereClause,
         include,
-        order: [['date', 'DESC']],
+        order: [['date', 'DESC'], ['id', 'DESC']],
       });
 
       return {
@@ -224,7 +224,7 @@ const IncidentRepository = {
             ],
           },
         ],
-        order: [["date", "DESC"]], // Ordenar por date en lugar de createdAt
+        order: [["date", "DESC"], ["id", "DESC"]], // Más reciente a más antigua
       });
 
       return incidents;
@@ -278,7 +278,7 @@ const IncidentRepository = {
             ],
           },
         ],
-        order: [["date", "DESC"]],
+        order: [["date", "DESC"], ["id", "DESC"]],
       });
 
       return incidents;

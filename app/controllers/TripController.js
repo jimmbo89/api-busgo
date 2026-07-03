@@ -1253,13 +1253,13 @@ const TripController = {
             sensitivity: "base",
           })
         );
-      /*const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
+      const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
       }
 
-      /*const mappedTrips = await Promise.all(
+      const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
           const tripStops = mapTripStops(trip.tripStops);
           const routeStops = mapRouteStops(
@@ -1328,12 +1328,12 @@ const TripController = {
             tripFares: tripFares,
           };
         })
-      );*/
+      );
 
-      //const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
+      const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
 
-      //const notDepartedTrips = sortedTrips.filter(trip => trip.start === null);
-      const promotions = (await PromotionRepository.findByActiveStatus(true)).map((promotion) => ({
+      const notDepartedTrips = sortedTrips.filter(trip => trip.start === null);
+      /*const promotions = (await PromotionRepository.findByActiveStatus(true)).map((promotion) => ({
         ...promotion.toJSON(),
         discountType: promotion.discount_type,
       }));
@@ -1342,13 +1342,13 @@ const TripController = {
         adjustmentType: ticketType.adjustment_type,
         valueType: ticketType.value_type,
         adjustmentValue: ticketType.adjustment_value,
-      }));
+      }));*/
 
       res.status(200).json({
-        // trips: notDepartedTrips,
-        //allTrips: sortedTrips,
-        promotions: promotions,
-        tickettypes: tickettypes,
+        trips: notDepartedTrips,
+        allTrips: sortedTrips,
+        //promotions: promotions,
+        //tickettypes: tickettypes,
         locations,
       });
     } catch (error) {

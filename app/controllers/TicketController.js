@@ -1048,6 +1048,7 @@ const TicketController = {
       let mappedTicket = [];
       //if (ticket.print < 2) {
         // Incrementar el contador de impresiones
+        const ticketIdentifier = ticket.sequenceNumber || ticket.id;
         mappedTicket = {
           id: ticket.id,
           branchId: ticket.branch_id,
@@ -1086,18 +1087,18 @@ const TicketController = {
         branch_id: ticket.branch_id, // ID de la sucursal
         user_id: req.user.id, // ID del usuario que realiza la acción
         title: "Reimpresión de ticket",
-        description: `${req.user.name} imprime ticket: ${ticket.sequenceNumber} por ${ticket.print} ocasión`,
+        description: `${req.user.name} imprime ticket: ${ticketIdentifier} por ${ticket.print} ocasión`,
         details: {
           print: ticket.print,
           ticket_id: ticket.id,
-          sequenceNumber: ticket.sequenceNumber,
+          sequenceNumber: ticketIdentifier,
           method: ticket.method,
           quantity: ticket.quantity,
           price: ticket.price,
           total: ticket.total,
           trip_id: ticket.trip_id,
 
-          transactionNumber: ticket.sequenceNumber || ticket.id,
+          transactionNumber: ticketIdentifier,
     
           // 2. Ruta: origen y destino (direcciones)
           routeOrigin: ticket.trip?.route?.origin?.address || null,

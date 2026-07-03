@@ -8,9 +8,6 @@ const storeRouteSchema = Joi.object({
     distance: Joi.number().precision(2).positive().allow(null).empty('').optional(),
     estimated: Joi.number().integer().allow(null).empty('').optional(),
     status: Joi.number().integer().allow(null).empty('').optional(),
-    branch_id: Joi.number().integer().allow(null).empty('').optional(),
-    route_id: Joi.number().integer().allow(null).optional(),
-    price: Joi.number().precision(2).allow(null).empty('').optional()
 });
 
 // Validacion para actualizar una ruta
@@ -22,9 +19,6 @@ const updateRouteSchema = Joi.object({
     distance: Joi.number().precision(2).positive().allow(null).empty('').optional(),
     estimated: Joi.number().integer().allow(null).empty('').optional(),
     status: Joi.number().integer().allow(null).empty('').optional(),
-    branch_id: Joi.number().integer().allow(null).optional(),
-    route_id: Joi.number().integer().allow(null).optional(),
-    price: Joi.number().precision(2).allow(null).optional(),
 });
 
 // Validacion para obtener una ruta por ID

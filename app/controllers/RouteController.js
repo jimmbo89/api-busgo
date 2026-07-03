@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const logger = require('../../config/logger');
 const { Route, Location } = require('../models');
-const { RouteRepository, BranchRepository, BranchRouteRepository, LocationRepository } = require('../repositories');
+const { RouteRepository, BranchRepository, LocationRepository } = require('../repositories');
 
 const RouteController = {
     async index(req, res) {
@@ -81,15 +81,7 @@ const RouteController = {
         logger.info('Datos recibidos al crear una ruta:');
         logger.info(JSON.stringify(req.body));
 
-        const rawBranchId = req.body?.branch_id;
-        const branch_id = rawBranchId === null || rawBranchId === undefined || rawBranchId === '' || rawBranchId === 'null'
-            ? null
-            : rawBranchId;
-        const rawPrice = req.body?.price;
-        const price = rawPrice === null || rawPrice === undefined || rawPrice === '' || rawPrice === 'null'
-            ? null
-            : rawPrice;
-        const { origin_id, destination_id, route_id } = req.body;
+        const { origin_id, destination_id } = req.body;
 
         try {
             const originLocation = await Location.findByPk(origin_id);
@@ -117,31 +109,7 @@ const RouteController = {
                 });
             }
 
-            if (branch_id) {
-                const branch = await BranchRepository.findById(branch_id);
-                if (!branch) {
-                    logger.error(`BranchRouteController->store: Sucursal no encontrada con ID ${branch_id}`);
-                    return res.status(404).json({ msg: 'BranchNotFound' });
-                }
-            }
-
-            if (route_id) {
-                const routeId = await RouteRepository.findById(route_id);
-                if (!routeId) {
-                    logger.error(`BranchRouteController->store: Ruta no encontrada con ID ${route_id}`);
-                    return res.status(404).json({ msg: 'RouteNotFound' });
-                }
-            }
-
             const route = await RouteRepository.create(req.body);
-
-            if (branch_id) {
-                req.body.branch_id = branch_id;
-                req.body.price = price;
-                req.body.route_id = route.id;
-                const branchRoute = await BranchRouteRepository.create(req.body);
-                return res.status(201).json({ route: route, branchRoute: branchRoute });
-            }
 
             return res.status(201).json({ route: route });
         } catch (error) {
@@ -200,32 +168,26 @@ const RouteController = {
         logger.info('Datos recibidos al editar una ruta:');
         logger.info(JSON.stringify(req.body));
 
-        const { id, name, origin_id, destination_id, distance, estimated, status, route_id, branch_id, price } = req.body;
+        const { id, name, origin_id, destination_id, distance, estimated, status } = req.body;
 
         try {
-            let branchroute = await BranchRouteRepository.findById(id);
-            if (!branchroute) {
-                return res.status(404).json({ msg: 'BranchRouteNotFound' });
+            const route = await RouteRepository.findById(id);
+            if (!route) {
+                return res.status(404).json({ msg: 'RouteNotFound' });
             }
 
-            if (origin_id) {
+            if (origin_id !== undefined && origin_id !== null) {
                 const originLocation = await LocationRepository.findById(origin_id);
                 if (!originLocation) {
                     return res.status(404).json({ msg: 'OriginLocationNotFound' });
                 }
             }
 
-            if (destination_id) {
+            if (destination_id !== undefined && destination_id !== null) {
                 const destinationLocation = await LocationRepository.findById(destination_id);
                 if (!destinationLocation) {
                     return res.status(404).json({ msg: 'DestinationLocationNotFound' });
                 }
-            }
-
-            const route = await RouteRepository.findById(branchroute.route_id);
-            if (!route) {
-                logger.error(`BranchRouteController->update: Ruta no encontrada con ID ${branchroute.route_id}`);
-                return res.status(404).json({ msg: 'RouteNotFound' });
             }
 
             const nextOriginId = origin_id !== undefined ? origin_id : route.origin_id;
@@ -265,18 +227,8 @@ const RouteController = {
                 routeUpdate = route;
             }
 
-            const branchRouteData = {};
-            if (price !== undefined) branchRouteData.price = price;
-            if (route_id !== undefined) branchRouteData.route_id = route_id;
-
-            let updatedBranchRoute = branchroute;
-            if (Object.keys(branchRouteData).length > 0) {
-                updatedBranchRoute = await BranchRouteRepository.update(branchroute, branchRouteData);
-            }
-
             return res.status(200).json({
                 route: routeUpdate,
-                branchroute: updatedBranchRoute
             });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
@@ -289,15 +241,12 @@ const RouteController = {
         logger.info(`${req.user.name} - Elimina la ruta con ID ${req.body.id}`);
 
         try {
-            const branchroute = await BranchRouteRepository.findById(req.body.id);
+            const route = await RouteRepository.findById(req.body.id);
 
-            if (!branchroute) {
+            if (!route) {
                 return res.status(404).json({ msg: 'RouteNotFound' });
             }
 
-            const { route_id } = branchroute;
-            await branchroute.destroy();
-            const route = await RouteRepository.findById(route_id);
             await route.destroy();
             res.status(200).json({ msg: 'RouteDeleted' });
         } catch (error) {

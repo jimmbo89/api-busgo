@@ -1009,7 +1009,7 @@ async existsByUpdatedFields(trip, updatedFields) {
     }
   },
 
-  async findTripsByBranchAndWorker(branchId, date, endDate, workerId) {
+  async findTripsByBranchAndWorker(branchId, date, endDate, userId) {
     // Obtener fecha actual en zona horaria de Chile (America/Santiago)
     const now = new Date();
     const todayChile = now.toLocaleDateString('es-CL', {
@@ -1063,14 +1063,8 @@ async existsByUpdatedFields(trip, updatedFields) {
         {
           model: Ticket,
           as: "tickets",
-          attributes: ["quantity", "total"], // Necesario para calcular pasajeros y monto por viaje
-          required: false, // LEFT JOIN: incluye viajes incluso sin tickets
-        },
-        {
-          model: TripWorker, // Asume que TripWorker es el modelo de la tabla de unión
-          as: "tripworkers",
-          where: { branch_id: branchId, worker_id: workerId }, // Aplicar la condición directamente en la tabla de unión
-          attributes: [], // No seleccionamos columnas individuales de TripWorker
+          attributes: ["quantity", "total", "user_id"], // Necesario para calcular pasajeros y monto por viaje
+          where: { user_id: userId },
           required: true,
         },
         {

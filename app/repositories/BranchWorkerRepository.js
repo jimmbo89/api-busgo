@@ -79,7 +79,7 @@ const BranchWorkerRepository = {
         {
           model: Worker,
           as: 'worker',
-          attributes: ['id', 'name', 'image']
+          attributes: ['id', 'user_id', 'name', 'image']
         },
         {
           model: Role,
@@ -91,7 +91,7 @@ const BranchWorkerRepository = {
 
     // 3. Obtener los datos del worker objetivo
     const targetWorker = await Worker.findByPk(targetWorkerId, {
-        attributes: ['id', 'name', 'role_id'],
+        attributes: ['id', 'user_id', 'name', 'role_id'],
         include: [{
         model: Role,
         as: 'role', // debe coincidir con tu relación
@@ -109,6 +109,7 @@ const BranchWorkerRepository = {
 
       const associatedWorkers = relationsForBranch.map(bw => ({
         id: bw.worker.id,
+        user_id: bw.worker.user_id,
         name: bw.worker.name,
         image: bw.worker.image,
         role_id: bw.role_id,
@@ -123,6 +124,7 @@ const BranchWorkerRepository = {
             ...associatedWorkers,
             {
               id: targetWorker.id,
+              user_id: targetWorker.user_id,
               name: targetWorker.name,
               image: targetWorker.image,
               role_id: targetWorker.role_id,

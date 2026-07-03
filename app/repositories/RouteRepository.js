@@ -145,7 +145,7 @@ const RouteRepository = {
       logger.info(`Ruta actualizada exitosamente (ID: ${route.id})`);
     }
 
-    return await route.update(updatedData);
+    return route;
   },
 
   async delete(route) {

@@ -9,6 +9,7 @@ const {
   BranchRouteRepository,
   BranchWorkerRepository,
   TripWorkerRepository,
+  WorkerRepository,
   TripStopRepository,
   TripFareRepository,
   RouteStopRepository,
@@ -2899,9 +2900,26 @@ const TripController = {
   },
 
   async getTripsByBranchAndWorker(req, res) {
-    let { branch_id, date, endDate, worker_id:bodyWorkerId } = req.body;
-    // Verifica si worker_id es undefined, null o 0
-    let worker_id = bodyWorkerId || req.worker.id;
+    let { branch_id, date, endDate, worker_id: bodyWorkerId, user_id: bodyUserId } = req.body;
+    let user_id = bodyUserId !== undefined && bodyUserId !== null && bodyUserId !== ""
+      ? bodyUserId
+      : null;
+
+    if (!user_id && bodyWorkerId) {
+      const worker = await WorkerRepository.findById(bodyWorkerId);
+      if (!worker) {
+        logger.error(
+          `TripController->getTripsByBranchAndWorker: Trabajador no encontrado con ID ${bodyWorkerId}`
+        );
+        return res.status(404).json({ msg: "WorkerNotFound" });
+      }
+
+      user_id = worker.user_id;
+    }
+
+    if (!user_id) {
+      user_id = req.user.id;
+    }
     // Validar si la sucursal o compañía existe
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
@@ -2917,7 +2935,7 @@ const TripController = {
         branch_id,
         date,
         endDate,
-        worker_id
+        user_id
       );
 
       // Obtener fecha actual en zona horaria de Chile para comparación

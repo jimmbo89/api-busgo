@@ -38,7 +38,7 @@ async function runScheduledJob() {
 // runScheduledJob();
 
 // Programar ejecución diaria a las 3:00 AM (hora Chile)
-cron.schedule('* * * * *', runScheduledJob, {
+cron.schedule('0 3 * * *', runScheduledJob, {
   scheduled: true,
   timezone: "America/Santiago"
 });

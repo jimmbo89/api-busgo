@@ -78,6 +78,184 @@ const buildGeneratedTripFarePayload = (trip, companyId, item, fareSegmentTicketT
   };
 };
 
+const processTemplateGeneration = async (template, formattedToday) => {
+  let transaction = null;
+
+  try {
+    if (!template || !template.active) {
+      return { created: false, reason: "inactive" };
+    }
+
+    const shouldGenerate = await TripTemplateController.shouldGenerateForDate(
+      template,
+      formattedToday
+    );
+
+    if (!shouldGenerate) {
+      return { created: false, reason: "not_applicable" };
+    }
+
+    const now = new Date();
+    const [hoursStr, minutesStr] = template.schedule.split(":");
+    const hours = parseInt(hoursStr, 10);
+    const minutes = parseInt(minutesStr, 10);
+
+    const tripDateTime = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      hours,
+      minutes,
+      0,
+      0
+    );
+
+    if (tripDateTime < now) {
+      return { created: false, reason: "past_time" };
+    }
+
+    let arrival = await TripTemplateController.calculateArrivalTime(
+      formattedToday,
+      template.schedule,
+      template.duration
+    );
+
+    if (!arrival) {
+      return { created: false, reason: "arrival_not_generated" };
+    }
+
+    const existingTrip = await Trip.findOne({
+      where: {
+        date: formattedToday,
+        schedule: template.schedule,
+        branch_id: template.branch_id,
+        vehicle_id: template.vehicle_id,
+        route_id: template.route_id,
+      },
+      transaction,
+    });
+
+    if (existingTrip) {
+      return { created: false, reason: "duplicate" };
+    }
+
+    transaction = await sequelize.transaction();
+
+    const tripData = {
+      date: formattedToday,
+      schedule: template.schedule,
+      arrival,
+      branch_id: template.branch_id,
+      vehicle_id: template.vehicle_id,
+      route_id: template.route_id,
+      price: template.price,
+    };
+
+    const trip = await TripRepository.create(tripData, { transaction });
+
+    const templateTripStops = mapTripStops(template);
+    const templateTripFares = mapTripFares(template);
+
+    if (templateTripStops.length > 0) {
+      for (const item of templateTripStops) {
+        const routeStopId = Number(item.route_stop_id);
+        const routeStop = await RouteStopRepository.findById(routeStopId);
+
+        if (!routeStop) {
+          throw new Error(`RouteStopNotFound:${routeStopId}`);
+        }
+
+        if (Number(routeStop.company_id) !== Number(template.branch.company_id)) {
+          throw new Error("RouteStopCompanyMismatch");
+        }
+
+        if (Number(routeStop.route_id) !== Number(template.route_id)) {
+          throw new Error("RouteStopRouteMismatch");
+        }
+
+        const tripStopPayload = buildGeneratedTripStopPayload(
+          trip,
+          template.branch.company_id,
+          item,
+          routeStop
+        );
+
+        await TripStopRepository.create(tripStopPayload, { transaction });
+      }
+    }
+
+    if (templateTripFares.length > 0) {
+      for (const item of templateTripFares) {
+        const fareSegmentTicketTypeId = Number(item.fare_segment_ticket_type_id);
+        const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+          fareSegmentTicketTypeId
+        );
+
+        if (!fareSegmentTicketType) {
+          throw new Error(`FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`);
+        }
+
+        const fareSegment = fareSegmentTicketType.fareSegment;
+        if (
+          !fareSegment ||
+          Number(fareSegment.company_id) !== Number(template.branch.company_id)
+        ) {
+          throw new Error("FareSegmentTicketTypeCompanyMismatch");
+        }
+
+        if (Number(fareSegment.route_id) !== Number(template.route_id)) {
+          throw new Error("FareSegmentTicketTypeRouteMismatch");
+        }
+
+        const tripFarePayload = buildGeneratedTripFarePayload(
+          trip,
+          template.branch.company_id,
+          item,
+          fareSegmentTicketType
+        );
+
+        await TripFareRepository.create(tripFarePayload, { transaction });
+      }
+    }
+
+    if (template.workers) {
+      try {
+        const workersArray = typeof template.workers === "string"
+          ? JSON.parse(template.workers)
+          : template.workers;
+
+        if (Array.isArray(workersArray) && workersArray.length > 0) {
+          await Promise.all(workersArray.map(async (worker) => {
+            if (worker && worker.id) {
+              await TripWorkerRepository.create({
+                branch_id: template.branch_id,
+                trip_id: trip.id,
+                worker_id: worker.id,
+                date: formattedToday,
+              }, { transaction });
+            }
+          }));
+        }
+      } catch (error) {
+        logger.error("Error procesando workers:", error);
+      }
+    }
+
+    if (transaction && !transaction.finished) {
+      await transaction.commit();
+      transaction = null;
+    }
+
+    return { created: true, trip };
+  } catch (error) {
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+      transaction = null;
+    }
+    throw error;
+  }
+};
+
 const TripTemplateController = {
   // Obtener todas las plantillas de viaje
   async index(req, res) {
@@ -239,6 +417,18 @@ const TripTemplateController = {
       const template = await TripTemplateRepository.create(req.body);
       const refreshedTemplate = await TripTemplateRepository.findById(template.id);
 
+      try {
+        const formattedToday = await TripTemplateController.formatDateToYYYYMMDD(
+          new Date()
+        );
+        await processTemplateGeneration(refreshedTemplate, formattedToday);
+      } catch (generationError) {
+        logger.error(
+          "TripTemplateController->store: error generando viaje desde template: " +
+            generationError.message
+        );
+      }
+
       res.status(201).json({
         template: {
           ...refreshedTemplate.toJSON(),
@@ -341,6 +531,18 @@ const TripTemplateController = {
         req.body
       );
 
+      try {
+        const formattedToday = await TripTemplateController.formatDateToYYYYMMDD(
+          new Date()
+        );
+        await processTemplateGeneration(template, formattedToday);
+      } catch (generationError) {
+        logger.error(
+          "TripTemplateController->update: error generando viaje desde template: " +
+            generationError.message
+        );
+      }
+
       // Mapear respuesta
       const mappedTemplate = {
         id: template.id,
@@ -416,6 +618,16 @@ const TripTemplateController = {
 
       const today = new Date();
       const formattedToday = await TripTemplateController.formatDateToYYYYMMDD(today);
+
+      for (const template of templates) {
+        try {
+          await processTemplateGeneration(template, formattedToday);
+        } catch (templateError) {
+          continue;
+        }
+      }
+
+      return res.status(201).json({ msg: "TemplatesGenerated" });
       //logger.info(`TripTemplateController->generateTripsForDate: inicio | fecha=${formattedToday} | plantillas=${templates.length}`);
 
       //logger.info(`Iniciando generación de viajes para ${formattedToday}`);

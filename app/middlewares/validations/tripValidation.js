@@ -253,6 +253,11 @@ const tripWorkerDateSchema = Joi.object({
     "number.positive": "El campo branch_id debe ser un numero positivo",
     "any.required": "El campo branch_id es requerido",
   }),
+  user_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "El campo user_id debe ser un numero entero",
+    "number.integer": "El campo user_id debe ser un numero entero",
+    "number.positive": "El campo user_id debe ser un numero positivo",
+  }),
   date: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
     .messages({

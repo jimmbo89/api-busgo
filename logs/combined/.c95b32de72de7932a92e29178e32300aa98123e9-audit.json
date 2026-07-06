@@ -6,21 +6,6 @@
     "auditLog": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\.c95b32de72de7932a92e29178e32300aa98123e9-audit.json",
     "files": [
         {
-            "date": 1782611973868,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-06-27.log",
-            "hash": "d9c3fa399cf190b86049eda38ae1ff8be2903a7653ddfa9c2ea9dd2a9119f963"
-        },
-        {
-            "date": 1782650940042,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-06-28.log",
-            "hash": "4db6a931ccef35ca1b438d10bbac32e59c5b06c40dd7d267948149a1094f9ebf"
-        },
-        {
-            "date": 1782735360076,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-06-29.log",
-            "hash": "66de512b43e09697a2d07460f19ec943e761c85433fe90781bef96c31bba94ff"
-        },
-        {
             "date": 1782821580135,
             "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-06-30.log",
             "hash": "700db757fa5c2c48ee6279f37d1b77320096e1338a5972d2785b8ef28c122bf0"
@@ -39,6 +24,11 @@
             "date": 1783086631553,
             "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-03.log",
             "hash": "5eea5f12da3bf1e319ce76fd49774faf21da7050ac6c94eb2818151f5404feca"
+        },
+        {
+            "date": 1783342198161,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-06.log",
+            "hash": "18c8feb0a307867b25bc51b3ffaddfdbe94c72074e398833f3aa23e022acf2c4"
         }
     ],
     "hashType": "sha256"

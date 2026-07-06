@@ -45,11 +45,11 @@ module.exports = {
       },
       schedule: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       arrival: {
         type: Sequelize.STRING,
-        allowNull: false
+        allowNull: true
       },
       start: {
         type: Sequelize.STRING,

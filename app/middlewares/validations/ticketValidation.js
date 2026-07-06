@@ -420,6 +420,9 @@ const branchTicketTripSchema = Joi.object({
     "number.base": "El campo id debe ser un número entero",
     "any.required": "El campo id es obligatorio",
   }),
+  trips: Joi.boolean().optional().messages({
+    "boolean.base": "El campo trips debe ser un booleano",
+  }),
   ticket_id: Joi.number().allow(null).empty("").optional().messages({
     "number.base": "El campo ticket_id debe ser un número entero",
   }),

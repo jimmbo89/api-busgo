@@ -109,6 +109,58 @@ const BranchRouteRepository = {
         return await BranchRoute.findAll(queryOptions);
     },
 
+    async findRoutesByBranch(branchId) {
+        return await BranchRoute.findAll({
+            where: {
+                branch_id: branchId
+            },
+            include: [
+                {
+                    model: Route,
+                    as: 'route',
+                    attributes: ['id', 'name', 'estimated', 'origin_id', 'destination_id', 'distance'],
+                    include: [
+                        {
+                            model: Location,
+                            as: 'origin',
+                            attributes: ['id', 'address', 'image'],
+                        },
+                        {
+                            model: Location,
+                            as: 'destination',
+                            attributes: ['id', 'address', 'image'],
+                        },
+                        {
+                            model: RouteStop,
+                            as: 'routeStops',
+                            separate: true,
+                            order: [['stop_order', 'ASC']],
+                            attributes: [
+                                'id',
+                                'company_id',
+                                'route_id',
+                                'location_id',
+                                'stop_order',
+                                'distance_km',
+                                'minutes_from_origin',
+                                'allows_boarding',
+                                'allows_alighting',
+                                'active',
+                            ],
+                            include: [
+                                {
+                                    model: Location,
+                                    as: 'location',
+                                    attributes: ['id', 'address', 'image', 'city', 'country', 'active'],
+                                },
+                            ],
+                        },
+                    ],
+                }
+            ]
+        });
+    },
+
     async findById(id) {
         return await BranchRoute.findByPk(id, {
             include: [

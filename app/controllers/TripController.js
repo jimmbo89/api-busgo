@@ -976,11 +976,27 @@ const TripController = {
 
     // 2. Función para crear timestamp comparable (fecha + hora)
     const createTripTimestamp = (trip) => {
-        return `${trip.date}T${trip.schedule}:00`;
+        const scheduleValue = trip?.schedule;
+        if (!scheduleValue) {
+          return null;
+        }
+        return `${trip.date}T${scheduleValue}:00`;
     };
 
     // 3. Función de comparación
     const compareTrips = (a, b) => {
+        const hasScheduleA = a.schedule !== undefined && a.schedule !== null && String(a.schedule).trim() !== "";
+        const hasScheduleB = b.schedule !== undefined && b.schedule !== null && String(b.schedule).trim() !== "";
+
+        if (hasScheduleA && !hasScheduleB) return 1;
+        if (!hasScheduleA && hasScheduleB) return -1;
+
+        if (!hasScheduleA && !hasScheduleB) {
+          const dateA = new Date(`${a.date}T00:00:00`);
+          const dateB = new Date(`${b.date}T00:00:00`);
+          return dateA - dateB;
+        }
+
         // a) Primero verificar viajes en curso (hoy, horario pasado pero no terminado)
         const isTodayA = a.date === chileanDate;
         const isTodayB = b.date === chileanDate;
@@ -1213,7 +1229,13 @@ const TripController = {
     logger.info( `${req.user.name} - Entra a buscar los viajes de una fecha dada`);
      logger.info("datos recibidos");
     logger.info(JSON.stringify(req.body));
-    const { ticket_id, branch_id, date } = req.body;
+    const { ticket_id, branch_id, date, trips } = req.body;
+    const includeTrips = !(
+      trips === false ||
+      trips === "false" ||
+      trips === 0 ||
+      trips === "0"
+    );
     //const workerId = req.worker.id;
     const workerId = null;
     const branch = await BranchRepository.findById(branch_id);
@@ -1253,13 +1275,12 @@ const TripController = {
             sensitivity: "base",
           })
         );
-      const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
+      let sortedTrips = [];
+      let sortedTripsData = [];
+      if (includeTrips) {
+        const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
 
-      if (!trips.length) {
-        return res.status(204).json({ msg: "TripsNotFound" });
-      }
-
-      const mappedTrips = await Promise.all(
+        const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
           const tripStops = mapTripStops(trip.tripStops);
           const routeStops = mapRouteStops(
@@ -1328,11 +1349,11 @@ const TripController = {
             tripFares: tripFares,
           };
         })
-      );
+        );
 
-      const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
-
-      const notDepartedTrips = sortedTrips.filter(trip => trip.start === null);
+        sortedTripsData = await TripController.sortTripsBySchedule(mappedTrips);
+        sortedTrips = sortedTripsData.filter(trip => trip.start === null);
+      }
       /*const promotions = (await PromotionRepository.findByActiveStatus(true)).map((promotion) => ({
         ...promotion.toJSON(),
         discountType: promotion.discount_type,
@@ -1344,13 +1365,18 @@ const TripController = {
         adjustmentValue: ticketType.adjustment_value,
       }));*/
 
-      res.status(200).json({
-        trips: notDepartedTrips,
-        allTrips: sortedTrips,
+      const response = {
         //promotions: promotions,
         //tickettypes: tickettypes,
         locations,
-      });
+      };
+      logger.info(`TripController->getTripDate: locations=${JSON.stringify(locations)}`);
+      if (includeTrips) {
+        response.trips = sortedTrips;
+        response.allTrips = sortedTripsData;
+      }
+
+      res.status(200).json({response});
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
@@ -2056,6 +2082,10 @@ const TripController = {
         }
       }
 
+      const routeForTiming = route_id
+        ? await RouteRepository.findById(route_id)
+        : await RouteRepository.findById(trip.route_id);
+
       let currentBranch = null;
       if (branch_id) {
         currentBranch = await BranchRepository.findById(branch_id);
@@ -2088,6 +2118,38 @@ const TripController = {
             .json({ msg: "Datos no encontrados para algunas asociaciones." });
         }
       }
+
+      const scheduleWasProvided =
+        hasOwn(req.body, "schedule") &&
+        schedule !== undefined &&
+        schedule !== null &&
+        String(schedule).trim() !== "";
+
+      if (start && !scheduleWasProvided) {
+        const today = new Date().toISOString().split("T")[0];
+        const actualStart = await TripController.createDateTime(today, start);
+        const formattedStart = await TripController.formatToMySQLDateTime(
+          actualStart
+        );
+        const routeEstimatedMinutes = Number(routeForTiming?.estimated);
+
+        req.body.start = formattedStart;
+        req.body.schedule = extractTimePart(formattedStart);
+        trip.date = today;
+        trip.schedule = req.body.schedule;
+
+        if (Number.isFinite(routeEstimatedMinutes) && routeEstimatedMinutes >= 0) {
+          const arrivalDate = new Date(
+            actualStart.getTime() + routeEstimatedMinutes * 60000
+          );
+          req.body.arrival = await TripController.formatToMySQLDateTime(
+            arrivalDate
+          );
+        } else if (!hasOwn(req.body, "arrival") || !arrival) {
+          req.body.arrival = trip.arrival ?? null;
+        }
+      }
+
       if (start) {
         const today = new Date().toISOString().split("T")[0]; // Fecha actual en YYYY-MM-DD
         const actualStart = await TripController.createDateTime(today, start);
@@ -2557,7 +2619,9 @@ const TripController = {
     logger.info(`${req.user.name} - Entra a la ruta unificada de viajes`);
 
     try {
-      const routes = await RouteRepository.findAll();
+      const branchRoutes = await BranchRouteRepository.findRoutesByBranch(
+        req.body.branch_id
+      );
       const branchVehicles = await BranchVehicleRepository.findByBranch(
         req.body.branch_id
       );
@@ -2566,7 +2630,8 @@ const TripController = {
       );
 
       // Mapeamos los resultados para obtener solo los IDs y nombres
-      const mappedRoutes = routes.map((route) => {
+      const mappedRoutes = branchRoutes.map((branchRoute) => {
+        const route = branchRoute.route;
         return {
           id: route.id,
           name: route.name,

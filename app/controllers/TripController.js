@@ -1258,6 +1258,8 @@ const TripController = {
 
     try {
       const currentChileDate = getChileDate();
+      const searchDate = date || currentChileDate;
+      logger.info(`TripController->getTripDate: searchDate=${searchDate}`);
       const locations = (await LocationRepository.findAll())
         .filter((location) => Number(location.active) === 1 || location.active === true)
         .map((location) => ({
@@ -1278,7 +1280,7 @@ const TripController = {
       let sortedTrips = [];
       let sortedTripsData = [];
       if (includeTrips) {
-        const trips = await TripRepository.findDate(branch_id, workerId, date, ticket_id);
+        const trips = await TripRepository.findDate(branch_id, workerId, searchDate, ticket_id);
 
         const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
@@ -1368,15 +1370,14 @@ const TripController = {
       const response = {
         //promotions: promotions,
         //tickettypes: tickettypes,
-        locations,
+        locations: locations,
       };
-      logger.info(`TripController->getTripDate: locations=${JSON.stringify(locations)}`);
       if (includeTrips) {
         response.trips = sortedTrips;
         response.allTrips = sortedTripsData;
       }
 
-      res.status(200).json({response});
+      res.status(200).json(response);
     } catch (error) {
       logger.error("TripController->getTripDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
@@ -1558,6 +1559,178 @@ const TripController = {
       });
     } catch (error) {
       logger.error("TripController->getTripDateBySegment: " + error.message);
+      return res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
+  async getTripDateBySegmentAll(req, res) {
+    logger.info(`${req.user.name} - Entra a buscar los viajes por tramo de una fecha dada sin filtros de origen y destino`);
+    logger.info("TripController->getTripDateBySegmentAll: datos recibidos");
+    logger.info(JSON.stringify(req.body));
+
+    const { branch_id, date } = req.body;
+    const workerId = null;
+    const branch = await BranchRepository.findById(branch_id);
+    if (!branch) {
+      logger.error(
+        `TripController->getTripDateBySegmentAll: Sucursal no encontrada con ID ${branch_id}`
+      );
+      return res.status(400).json({ msg: "BranchNotFound" });
+    }
+
+    try {
+      const currentChileDate = getChileDate();
+      const searchDate = date || currentChileDate;
+      logger.info(
+        `TripController->getTripDateBySegmentAll: currentChileDate=${currentChileDate} searchDate=${searchDate}`
+      );
+      const trips = await TripRepository.findDate(branch_id, workerId, searchDate, null);
+      logger.info(
+        `TripController->getTripDateBySegmentAll: viajes encontrados para sucursal=${branch_id} fecha=${searchDate} => ${trips.length}`
+      );
+
+      if (!trips.length) {
+        return res.status(204).json({ msg: "TripsNotFound" });
+      }
+
+      const mappedTrips = await Promise.all(
+        trips
+          .map((trip) => ({
+            trip,
+            matchingTripFares: (Array.isArray(trip.tripFares) ? trip.tripFares : []).filter(
+              (tripFare) => {
+                const fareSegmentTicketType = tripFare?.fareSegmentTicketType || {};
+                const fareSegment = fareSegmentTicketType?.fareSegment || {};
+
+                if (tripFare.active === false || fareSegmentTicketType.active === false) {
+                  return false;
+                }
+
+                return isFareSegmentActiveForDate(fareSegment, currentChileDate);
+              }
+            ),
+          }))
+          .map((entry) => {
+            logger.info(
+              `TripController->getTripDateBySegmentAll: trip=${entry.trip?.id} matchingTripFares=${entry.matchingTripFares.length}`
+            );
+            return entry;
+          })
+          .filter(({ matchingTripFares }) => matchingTripFares.length > 0)
+          .map(async (trip) => {
+            const tripStops = mapTripStops(trip.trip.tripStops);
+            const fareSegmentMap = buildFareSegmentMap(trip.matchingTripFares);
+            const rawTripTickets = Array.isArray(trip.trip.tickets) ? trip.trip.tickets : [];
+            const tripTickets = mapTripTickets(rawTripTickets).map((ticket, index) => ({
+              ...ticket,
+              fareSegments: extractTicketFareSegments(rawTripTickets[index], fareSegmentMap),
+            }));
+            const tripFares = mapTripFares(trip.matchingTripFares).map((fare) => {
+              const fareSegment = fare?.fareSegmentTicketType?.fareSegment ?? null;
+              const {
+                reservedSeats,
+                occupiedSeats,
+                availableSeatNumbers,
+                availableSeats,
+              } = getSeatAvailabilityBySegment(
+                trip.trip,
+                tripTickets,
+                fareSegment,
+                fareSegmentMap
+              );
+
+              return {
+                ...fare,
+                reservedSeats,
+                occupiedSeats,
+                availableSeatNumbers,
+                availableSeats,
+              };
+            });
+            const segmentOriginMinutes = getSegmentOriginMinutes(
+              trip.trip.tripStops,
+              trip.matchingTripFares
+            );
+            const segmentDestinationMinutes = getSegmentDestinationMinutes(
+              trip.trip.tripStops,
+              trip.matchingTripFares
+            );
+            const baseSchedule = trip.trip.start || trip.trip.schedule;
+            const adjustedSchedule = addMinutesToTripTime(
+              trip.trip.date,
+              baseSchedule,
+              segmentOriginMinutes
+            );
+            const adjustedArrival = addMinutesToTripTime(
+              trip.trip.date,
+              baseSchedule,
+              segmentDestinationMinutes
+            );
+            const segmentPrice = tripFares.length
+              ? Math.max(...tripFares.map((fare) => Number(fare.price) || 0))
+              : Number(trip.trip.price ?? 0);
+            logger.info(
+              `TripController->getTripDateBySegmentAll: trip=${trip.trip.id} originMinutes=${segmentOriginMinutes} destinationMinutes=${segmentDestinationMinutes} baseSchedule=${baseSchedule} adjustedSchedule=${adjustedSchedule} adjustedArrival=${adjustedArrival} segmentPrice=${segmentPrice}`
+            );
+            const seatMap = trip.trip.vehicle?.structure?.seatMap
+              ? Array.isArray(trip.trip.vehicle.structure.seatMap)
+                ? trip.trip.vehicle.structure.seatMap
+                : JSON.parse(trip.trip.vehicle.structure.seatMap)
+              : [];
+
+            const totalPasajeros = tripTickets
+              ? tripTickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
+              : 0;
+
+            const boarding = tripTickets
+              ? tripTickets.reduce(
+                  (sum, ticket) =>
+                    sum + ((ticket.qr_status !== null && ticket.qr_status !== 0) ? (ticket.quantity || 1) : 0),
+                  0
+                )
+              : 0;
+
+            const pending = totalPasajeros - boarding;
+
+            return {
+              id: trip.trip.id,
+              trip_id: trip.trip.id,
+              date: trip.trip.date,
+              start: trip.trip.start,
+              end: trip.trip.end,
+              arrival: adjustedArrival,
+              price: segmentPrice,
+              schedule: adjustedSchedule,
+              seats: trip.trip.vehicle.seats,
+              plate: trip.trip.vehicle.plate,
+              internal_number: trip.trip.vehicle.internal_number,
+              imageVehicle: trip.trip.vehicle.image,
+              name: trip.trip.route.name,
+              origin: trip.trip.route.origin.address,
+              originImage: trip.trip.route.origin.image,
+              destination: trip.trip.route.destination.address,
+              destinationImage: trip.trip.route.destination.image,
+              seatMap,
+              boarding,
+              pending,
+              tickets: tripTickets,
+              tripStops,
+              tripFares,
+            };
+          })
+      );
+
+      if (!mappedTrips.length) {
+        return res.status(204).json({ msg: "TripsNotFound" });
+      }
+
+      const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
+
+      return res.status(200).json({
+        trips: sortedTrips,
+      });
+    } catch (error) {
+      logger.error("TripController->getTripDateBySegmentAll: " + error.message);
       return res.status(500).json({ error: "ServerError", details: error.message });
     }
   },
@@ -2989,7 +3162,7 @@ const TripController = {
     const branch = await BranchRepository.findById(branch_id);
     if (!branch) {
       logger.error(
-        `TripController->getTripsByBranchAndWorker: Sucursal no encontrada con ID ${branch_id}`
+        `TripController->getTripsDateWorker: Sucursal no encontrada con ID ${branch_id}`
       );
       return res.status(404).json({ msg: "BranchNotFound" });
     }
@@ -3039,11 +3212,128 @@ const TripController = {
 
       const mappedTrips = sortedTripsData.map((trip) => {
         // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
-        const passenger = trip.tickets.reduce(
+        const tickets = Array.isArray(trip.tickets) ? trip.tickets : [];
+        const vehicle = trip.vehicle || {};
+        const route = trip.route || {};
+        const passenger = tickets.reduce(
           (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
           0
         );
-        const totalAmount = trip.tickets.reduce(
+        const totalAmount = tickets.reduce(
+          (sum, ticket) => sum + (parseFloat(ticket.total) || 0),
+          0
+        );
+
+        if (!vehicle.id) {
+          logger.warn(
+            `TripController->getTripsDateWorker: trip ${trip.id} no trae vehículo asociado`
+          );
+        }
+
+        return {
+          id: trip.id,
+          date: trip.date,
+          schedule: trip.schedule,
+          arrival: trip.arrival,
+          start: trip.start,
+          end: trip.end,
+          plate: vehicle.plate ?? null,
+          internal_number: vehicle.internal_number ?? null,
+          internalNumber: vehicle.internal_number ?? null,
+          vehicleImage: vehicle.image ?? null,
+          name: route.name ?? null,
+          origin: route.origin?.address ?? null,
+          originImage: route.origin?.image ?? null,
+          destination: route.destination?.address ?? null,
+          destinationImage: route.destination?.image ?? null,
+          passenger, // Usar la suma calculada
+          totalAmount,
+        };
+      });
+
+      const totalGeneral = mappedTrips.reduce(
+        (sum, trip) => sum + (trip.totalAmount || 0),
+        0
+      );
+
+      res.status(200).json({ trips: mappedTrips, totalGeneral });
+    } catch (error) {
+      logger.error(
+        "Error en TripController->getTripsDateWorker:",
+        error
+      );
+      res.status(500).json({ error: error.message });
+    }
+  },
+
+  async getTripsDateWorker(req, res) {
+    let { branch_id, date, endDate, worker_id:bodyWorkerId } = req.body;
+    // Verifica si worker_id es undefined, null o 0
+    let worker_id = bodyWorkerId || req.worker.id;
+    const searchDate = date || getChileDate();
+    const searchEndDate = endDate && endDate.trim() !== "" ? endDate : null;
+    // Validar si la sucursal o compañía existe
+    const branch = await BranchRepository.findById(branch_id);
+    if (!branch) {
+      logger.error(
+        `TripController->getTripsByBranchAndWorker: Sucursal no encontrada con ID ${branch_id}`
+      );
+      return res.status(404).json({ msg: "BranchNotFound" });
+    }
+
+    try {
+      // Obtener los trips que no han finalizado
+      const trips = await TripRepository.getTripsDateWorker(
+        branch_id,
+        searchDate,
+        searchEndDate,
+        worker_id
+      );
+
+      // Obtener fecha actual en zona horaria de Chile para comparación
+      const now = new Date();
+      const chileanDate = now.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).split('-').reverse().join('-'); // Formato: YYYY-MM-DD
+
+      // Ordenar los trips según la lógica requerida:
+      // 1. Viajes de otro día primero (date < chileanDate)
+      // 2. Viajes del día actual ordenados por schedule
+      // 3. Dentro de cada grupo, ordenar por schedule ASC
+      const sortedTripsData = trips.sort((a, b) => {
+        const isTodayA = a.date === chileanDate;
+        const isTodayB = b.date === chileanDate;
+
+        // Si A es de otro día y B es de hoy, A va primero
+        if (!isTodayA && isTodayB) return -1;
+        // Si B es de otro día y A es de hoy, B va primero
+        if (isTodayA && !isTodayB) return 1;
+
+        // Si ambos son del mismo día (ambos hoy o ambos otro día)
+        // Ordenar por schedule ASC
+        if (a.schedule < b.schedule) return -1;
+        if (a.schedule > b.schedule) return 1;
+
+        // Si tienen el mismo schedule, ordenar por fecha ASC
+        if (a.date < b.date) return -1;
+        if (a.date > b.date) return 1;
+
+        return 0;
+      });
+
+      const mappedTrips = sortedTripsData.map((trip) => {
+        // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
+        const tickets = Array.isArray(trip.tickets) ? trip.tickets : [];
+        const vehicle = trip.vehicle || {};
+        const route = trip.route || {};
+        const passenger = tickets.reduce(
+          (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
+          0
+        );
+        const totalAmount = tickets.reduce(
           (sum, ticket) => sum + (parseFloat(ticket.total) || 0),
           0
         );
@@ -3055,15 +3345,15 @@ const TripController = {
           arrival: trip.arrival,
           start: trip.start,
           end: trip.end,
-          plate: trip.vehicle.plate,
-          internal_number: trip.vehicle.internal_number,
-          internalNumber: trip.vehicle.internal_number,
-          vehicleImage: trip.vehicle.image,
-          name: trip.route.name,
-          origin: trip.route.origin.address,
-          originImage: trip.route.origin.image,
-          destination: trip.route.destination.address,
-          destinationImage: trip.route.destination.image,
+          plate: vehicle.plate ?? null,
+          internal_number: vehicle.internal_number ?? null,
+          internalNumber: vehicle.internal_number ?? null,
+          vehicleImage: vehicle.image ?? null,
+          name: route.name ?? null,
+          origin: route.origin?.address ?? null,
+          originImage: route.origin?.image ?? null,
+          destination: route.destination?.address ?? null,
+          destinationImage: route.destination?.image ?? null,
           passenger, // Usar la suma calculada
           totalAmount,
         };

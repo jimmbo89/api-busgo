@@ -146,7 +146,9 @@ const {
   changeTripSchema,
   branch_idTripSchema,
   branchOriginDestinationTripSchema,
+  branchTripDateSegmentAllSchema,
   tripWorkerDateSchema,
+  tripWorkerReportSchema,
 } = require("./middlewares/validations/tripValidation");
 const {
   storeTripWorkerSchema,
@@ -601,6 +603,7 @@ router.post(
 router.get("/trip", TripController.index);
 router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );
 router.post("/get-trip-date-segment", validateSchema(branchOriginDestinationTripSchema), TripController.getTripDateBySegment);
+router.post("/get-trip-date-segment-all", validateSchema(branchTripDateSegmentAllSchema), TripController.getTripDateBySegmentAll);
 router.post("/get-trip-vehicle", validateSchema(branch_idTripSchema), TripController.getTripVehicle );
 router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
 router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
@@ -640,7 +643,8 @@ router.post(
   validateSchema(idTripWorkerSchema),
   TripWorkerController.destroy
 );
-router.post("/trips-worker-date", validateSchema(tripWorkerDateSchema), TripController.getTripsByBranchAndWorker);
+router.post("/trips-worker-date", validateSchema(tripWorkerDateSchema), TripController.getTripsDateWorker);
+router.post("/trips-worker-report", validateSchema(tripWorkerReportSchema), TripController.getTripsByBranchAndWorker);
 
 //Rutas Ticket
 router.get("/ticket", TicketController.index);

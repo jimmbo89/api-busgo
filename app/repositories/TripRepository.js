@@ -917,6 +917,11 @@ async existsByUpdatedFields(trip, updatedFields) {
             as: "tickets",
           },
           {
+            model: Vehicle,
+            as: "vehicle",
+            attributes: ["id", "plate", "internal_number", "image"],
+          },
+          {
             model: Route,
             as: "route",
             attributes: ["id", "name"],
@@ -945,35 +950,53 @@ async existsByUpdatedFields(trip, updatedFields) {
 
   async getTripsDateWorker(branchId, date, endDate, workerId) {
     try {
+      const now = new Date();
+      const todayChile = now.toLocaleDateString("es-CL", {
+        timeZone: "America/Santiago",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).split("-").reverse().join("-");
+      const searchDate = date || todayChile;
       const whereClause = {
-        branch_id: branchId // Siempre filtramos por sucursal
+        branch_id: branchId, // Siempre filtramos por branch_id
       };
 
-      // Manejo de fechas
+      whereClause[Op.or] = [
+        { start: { [Op.is]: null } },
+        {
+          [Op.and]: [
+            { start: { [Op.not]: null } },
+            { end: { [Op.is]: null } }
+          ]
+        }
+      ];
+
       if (endDate && endDate.trim() !== "") {
-        whereClause.date = {
-          [Op.between]: [date, endDate], // Rango de fechas (inclusive)
-        };
+        whereClause[Op.and] = whereClause[Op.and] || [];
+        whereClause[Op.and].push({
+          date: {
+            [Op.between]: [searchDate, endDate],
+          }
+        });
       } else {
-        whereClause.date = date;
+        whereClause[Op.and] = whereClause[Op.and] || [];
+        whereClause[Op.and].push({ date: searchDate });
       }
 
       const trips = await Trip.findAll({
         where: whereClause,
         include: [
           {
-            model: Branch,
-            as: "branch",
-            include: [
-              {
-                model: Company,
-                as: "company",
-              },
-            ],
-          },
-          {
             model: Ticket,
             as: "tickets",
+            attributes: ["quantity", "total", "user_id"],
+            required: false,
+          },
+          {
+            model: Vehicle,
+            as: "vehicle",
+            attributes: ["id", "plate", "internal_number", "image"],
           },
           {
             model: Route,
@@ -995,11 +1018,14 @@ async existsByUpdatedFields(trip, updatedFields) {
           {
             model: TripWorker,
             as: "tripworkers",
-            where: { worker_id: workerId }, // Filtramos por el trabajador
-            required: true, // INNER JOIN para asegurar que existe la relación
-          }
+            where: { worker_id: workerId },
+            required: true,
+          },
         ],
-        order: [['date', 'ASC'], ['schedule', 'ASC']] // Ordenamos por fecha y hora de salida
+        order: [
+          ['date', 'ASC'],
+          ['schedule', 'ASC']
+        ],
       });
 
       return trips;

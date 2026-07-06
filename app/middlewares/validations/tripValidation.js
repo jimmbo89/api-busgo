@@ -229,13 +229,25 @@ const branchOriginDestinationTripSchema = Joi.object({
     "number.base": "El campo branch_id debe ser un numero entero",
     "any.required": "El campo branch_id es obligatorio",
   }),
-  origin_id: Joi.number().required().messages({
+  origin_id: Joi.number().allow(null).optional().messages({
     "number.base": "El campo origin_id debe ser un numero entero",
-    "any.required": "El campo origin_id es obligatorio",
   }),
-  destination_id: Joi.number().required().messages({
+  destination_id: Joi.number().allow(null).optional().messages({
     "number.base": "El campo destination_id debe ser un numero entero",
-    "any.required": "El campo destination_id es obligatorio",
+  }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "El formato de date debe ser YYYY-MM-DD",
+    }),
+});
+
+const branchTripDateSegmentAllSchema = Joi.object({
+  branch_id: Joi.number().required().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+    "any.required": "El campo branch_id es obligatorio",
   }),
   date: Joi.string()
     .pattern(/^\d{4}-\d{2}-\d{2}$/)
@@ -247,6 +259,30 @@ const branchOriginDestinationTripSchema = Joi.object({
 });
 
 const tripWorkerDateSchema = Joi.object({
+  branch_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+    "number.integer": "El campo branch_id debe ser un numero entero",
+    "number.positive": "El campo branch_id debe ser un numero positivo",
+    "any.required": "El campo branch_id es requerido",
+  }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .messages({
+      "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
+    }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
+  worker_id: Joi.number().allow(null).empty("").optional().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+  }),
+});
+
+const tripWorkerReportSchema = Joi.object({
   branch_id: Joi.number().integer().positive().required().messages({
     "number.base": "El campo branch_id debe ser un numero entero",
     "number.integer": "El campo branch_id debe ser un numero entero",
@@ -282,5 +318,7 @@ module.exports = {
   changeTripSchema,
   branch_idTripSchema,
   branchOriginDestinationTripSchema,
+  branchTripDateSegmentAllSchema,
   tripWorkerDateSchema,
+  tripWorkerReportSchema
 };

@@ -3219,6 +3219,7 @@ const TripController = {
           (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
           0
         );
+        
         const totalAmount = tickets.reduce(
           (sum, ticket) => sum + (parseFloat(ticket.total) || 0),
           0
@@ -3246,7 +3247,7 @@ const TripController = {
           originImage: route.origin?.image ?? null,
           destination: route.destination?.address ?? null,
           destinationImage: route.destination?.image ?? null,
-          passenger, // Usar la suma calculada
+          passenger, // Mantener compatibilidad con el formato actual
           totalAmount,
         };
       });
@@ -3325,17 +3326,27 @@ const TripController = {
       });
 
       const mappedTrips = sortedTripsData.map((trip) => {
-        // Sumar la cantidad de pasajeros (quantity) de los tickets asociados
+        // Sumar la cantidad de pasajeros (sold) y los ya escaneados
         const tickets = Array.isArray(trip.tickets) ? trip.tickets : [];
         const vehicle = trip.vehicle || {};
         const route = trip.route || {};
-        const passenger = tickets.reduce(
-          (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
-          0
-        );
-        const totalAmount = tickets.reduce(
-          (sum, ticket) => sum + (parseFloat(ticket.total) || 0),
-          0
+        const ticketSummary = tickets.reduce(
+          (acc, ticket) => {
+            const quantity = parseInt(ticket.quantity, 10) || 0;
+            const total = parseFloat(ticket.total) || 0;
+            const isScanned = Number(ticket.qr_status) > 0;
+
+            acc.ticketsVendidos += quantity;
+            acc.ticketsEscaneados += isScanned ? quantity : 0;
+            acc.totalAmount += total;
+
+            return acc;
+          },
+          {
+            ticketsVendidos: 0,
+            ticketsEscaneados: 0,
+            totalAmount: 0,
+          }
         );
 
         return {
@@ -3347,15 +3358,16 @@ const TripController = {
           end: trip.end,
           plate: vehicle.plate ?? null,
           internal_number: vehicle.internal_number ?? null,
-          internalNumber: vehicle.internal_number ?? null,
+          seats: vehicle.seats ?? 0,
           vehicleImage: vehicle.image ?? null,
           name: route.name ?? null,
           origin: route.origin?.address ?? null,
           originImage: route.origin?.image ?? null,
           destination: route.destination?.address ?? null,
           destinationImage: route.destination?.image ?? null,
-          passenger, // Usar la suma calculada
-          totalAmount,
+          ticketsVendidos: ticketSummary.ticketsVendidos,
+          ticketsEscaneados: ticketSummary.ticketsEscaneados,
+          totalAmount: ticketSummary.totalAmount,
         };
       });
 

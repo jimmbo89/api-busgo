@@ -990,13 +990,13 @@ async existsByUpdatedFields(trip, updatedFields) {
           {
             model: Ticket,
             as: "tickets",
-            attributes: ["quantity", "total", "user_id"],
+            attributes: ["quantity", "total", "user_id", "qr_status"],
             required: false,
           },
           {
             model: Vehicle,
             as: "vehicle",
-            attributes: ["id", "plate", "internal_number", "image"],
+            attributes: ["id", "plate", "internal_number", "image", "seats"],
           },
           {
             model: Route,

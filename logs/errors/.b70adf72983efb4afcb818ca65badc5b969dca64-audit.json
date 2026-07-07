@@ -64,6 +64,11 @@
             "date": 1783342198126,
             "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2026-07-06.log",
             "hash": "4ab0b7c9a81e6b8a0d2bbedb060791e104cfdc7a7efb03c710511cdc91e187e0"
+        },
+        {
+            "date": 1783423771885,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\errors\\error-2026-07-07.log",
+            "hash": "2bf55919f70cd7d3fa8a842776ab15d169a4c6feb912a8a5ab9629e6712ce1b2"
         }
     ],
     "hashType": "sha256"

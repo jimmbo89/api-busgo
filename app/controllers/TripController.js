@@ -1446,6 +1446,13 @@ const TripController = {
           })
           .filter(({ matchingTripFares }) => matchingTripFares.length > 0)
           .map(async (trip) => {
+            if (trip.trip.end !== null) {
+              logger.info(
+                `TripController->getTripDateBySegment: trip=${trip.trip.id} excluded because end is not null`
+              );
+              return null;
+            }
+
             const tripStops = mapTripStops(trip.trip.tripStops);
             const fareSegmentMap = buildFareSegmentMap(trip.matchingTripFares);
             const rawTripTickets = Array.isArray(trip.trip.tickets) ? trip.trip.tickets : [];
@@ -1548,11 +1555,15 @@ const TripController = {
           })
       );
 
-      if (!mappedTrips.length) {
+      const activeTrips = mappedTrips.filter(Boolean);
+
+      if (!activeTrips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
       }
 
-      const sortedTrips = await TripController.sortTripsBySchedule(mappedTrips);
+      const sortedTrips = [...activeTrips].sort((a, b) =>
+        String(a.schedule ?? "").localeCompare(String(b.schedule ?? ""))
+      );
 
       return res.status(200).json({
         trips: sortedTrips,

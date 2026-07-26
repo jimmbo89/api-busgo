@@ -1178,14 +1178,47 @@ async validateDecryptedData(decryptedData, ticket) {
     return false;
   }
 },
+
+normalizarEscaneoSunmi(value) {
+  const raw = String(value ?? "").trim();
+
+  // Solo intenta corregir números.
+  if (!/^\d+$/.test(raw)) {
+    return raw;
+  }
+
+  let offset = 0;
+  let codigo = "";
+
+  // Espera bloques: 1, 17, 178, 1784, ...
+  for (let size = 1; offset + size <= raw.length; size++) {
+    const bloque = raw.slice(offset, offset + size);
+    const ultimo = bloque[bloque.length - 1];
+    const esperado = codigo + ultimo;
+
+    // No tiene el patrón defectuoso: devolver tal cual.
+    if (bloque !== esperado) {
+      return raw;
+    }
+
+    codigo += ultimo;
+    offset += size;
+  }
+
+  // Si terminó exactamente, era el patrón acumulado.
+  return offset === raw.length ? codigo : raw;
+},
+
 async verifyEncryptedQR(req, res) {
   logger.info(`${req.user.name} - Verificando QR/SequenceNumber para trip_id ${req.body.trip_id}`);
   
   const { qr, trip_id } = req.body; // 'qr' ahora contiene el sequenceNumber
   
   try {
+    const qrNormalizado = TicketController.normalizarEscaneoSunmi(qr);
+
     // 1. Buscar ticket por sequenceNumber
-    const ticket = await TicketRepository.findBySequenceNumberWithTrip(qr);
+    const ticket = await TicketRepository.findBySequenceNumberWithTrip(qrNormalizado);
 
     // 2. Si no se encuentra el ticket
     if (!ticket) {

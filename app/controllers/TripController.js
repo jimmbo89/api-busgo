@@ -1,4 +1,4 @@
-const { Worker, TripWorker, sequelize } = require("../models");
+const { Worker, TripWorker, Incident, sequelize } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 const {
   TripRepository,
@@ -2780,6 +2780,12 @@ const TripController = {
         worker_id,
       }));
 
+      const oldVehicleLabel = trip.vehicle?.internal_number || trip.vehicle?.plate || trip.vehicle_id;
+      const newVehicleLabel = newVehicle.internal_number || newVehicle.plate || newVehicle.id;
+      const tripOrigin = trip.route?.origin?.address || "origen";
+      const tripDestination = trip.route?.destination?.address || "destino";
+      const tripSchedule = trip.schedule;
+
       await sequelize.transaction(async (transaction) => {
         logger.info(`TripController->changeTrip: eliminando choferes actuales del viaje ${trip.id}`);
         await TripWorker.destroy({
@@ -2802,16 +2808,37 @@ const TripController = {
           },
           { transaction }
         );
+
+        logger.info(`TripController->changeTrip: registrando incidencia por cambio de vehiculo del viaje ${trip.id}`);
+        await Incident.create(
+          {
+            branch_id: trip.branch_id,
+            user_id: req.user.id,
+            title: "Cambio de vehiculo del viaje",
+            description: `Se cambio el vehiculo ${oldVehicleLabel} por el vehiculo ${newVehicleLabel} en el viaje ${trip.id}.`,
+            details: JSON.stringify({
+              trip_id: trip.id,
+              trip_code: trip.code ?? null,
+              date: trip.date,
+              schedule: trip.schedule,
+              route_id: trip.route_id,
+              route_name: trip.route?.name ?? null,
+              origin: trip.route?.origin?.address ?? null,
+              destination: trip.route?.destination?.address ?? null,
+              old_vehicle_id: trip.vehicle_id,
+              old_vehicle: oldVehicleLabel,
+              new_vehicle_id: newVehicle.id,
+              new_vehicle: newVehicleLabel,
+              reassignedSeats: reassignedSeatsByTicket,
+            }),
+            date: new Date(),
+          },
+          { transaction }
+        );
       });
 
       const refreshedTrip = await TripRepository.findByIdWithTickets(trip.id);
       const refreshedWorkers = await TripWorkerRepository.workersTrip(refreshedTrip);
-
-      const oldVehicleLabel = trip.vehicle?.internal_number || trip.vehicle?.plate || trip.vehicle_id;
-      const newVehicleLabel = newVehicle.internal_number || newVehicle.plate || newVehicle.id;
-      const tripOrigin = refreshedTrip?.route?.origin?.address || "origen";
-      const tripDestination = refreshedTrip?.route?.destination?.address || "destino";
-      const tripSchedule = refreshedTrip?.schedule || trip.schedule;
 
       return res.status(200).json({
         msg: "TripVehicleChanged",
@@ -3320,10 +3347,11 @@ const TripController = {
         const tickets = Array.isArray(trip.tickets) ? trip.tickets : [];
         const vehicle = trip.vehicle || {};
         const route = trip.route || {};
-        const passenger = tickets.reduce(
+        const asientosComprados = tickets.reduce(
           (sum, ticket) => sum + (parseInt(ticket.quantity, 10) || 0),
           0
         );
+        const passenger = tickets.length;
         
         const totalAmount = tickets.reduce(
           (sum, ticket) => sum + (parseFloat(ticket.total) || 0),
@@ -3355,6 +3383,7 @@ const TripController = {
           destination: route.destination?.address ?? null,
           destinationImage: route.destination?.image ?? null,
           passenger, // Mantener compatibilidad con el formato actual
+          asientosComprados,
           totalAmount,
         };
       });
@@ -3363,8 +3392,16 @@ const TripController = {
         (sum, trip) => sum + (trip.totalAmount || 0),
         0
       );
+      const totalAsientosComprados = mappedTrips.reduce(
+        (sum, trip) => sum + (trip.asientosComprados || 0),
+        0
+      );
 
-      res.status(200).json({ trips: mappedTrips, totalGeneral });
+      res.status(200).json({
+        trips: mappedTrips,
+        totalGeneral,
+        totalAsientosComprados,
+      });
     } catch (error) {
       logger.error(
         "Error en TripController->getTripsDateWorker:",

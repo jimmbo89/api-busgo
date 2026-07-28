@@ -1713,6 +1713,7 @@ const TicketRepository = {
           {
             model: Branch,
             as: 'branch',
+            where: type === 'Sucursal' ? { id } : undefined,
             required: true,
             include: [
               {

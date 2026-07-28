@@ -37,6 +37,15 @@ const normalizeSeatNumbers = (seats) =>
     .map((seat) => Number(seat))
     .filter((seat) => Number.isFinite(seat));
 
+const getTicketSeatCount = (ticket) => {
+  const quantity = Number(ticket?.quantity ?? 0);
+  if (Number.isFinite(quantity) && quantity > 0) {
+    return quantity;
+  }
+
+  return parseArrayValue(ticket?.seats).length;
+};
+
 const mapTicketItems = (ticketItems = []) =>
   parseArrayValue(ticketItems).map((ticketItem) => ({
     ...toPlainObject(ticketItem),
@@ -1845,25 +1854,31 @@ async verifyEncryptedQR(req, res) {
       const totalsByMethod = {}; // Objeto para almacenar los totales por método de pago
       let totalGeneral = 0; // Variable para almacenar el total general en dinero
       let totalPasajesVendidos = 0; // Variable para almacenar el total general de pasajes vendidos
+      let totalAsientosComprados = 0;
       let reimpresiones = 0;
       // Procesar los tickets
       tickets.forEach((ticket) => {
         const method = ticket.method.toUpperCase(); // Convertir a mayúsculas para consistencia
         const total = parseFloat(ticket.total); // Convertir a número
 
+        const asientosComprados = getTicketSeatCount(ticket);
+
         if (!totalsByMethod[method]) {
           totalsByMethod[method] = {
             total: 0, // Total en dinero
             cantidad: 0, // Cantidad de pasajes
+            asientosComprados: 0,
           };
         }
         reimpresiones += ticket.print - 1;
         totalsByMethod[method].total += total; // Sumar el total en dinero
         //totalsByMethod[method].cantidad += quantity; // Sumar la cantidad de pasajes
         totalsByMethod[method].cantidad += 1; // Sumar la cantidad de pasajes
+        totalsByMethod[method].asientosComprados += asientosComprados;
         totalGeneral += total; // Sumar al total general en dinero
         //totalPasajesVendidos += quantity; // Sumar al total general de pasajes
         totalPasajesVendidos++; // Sumar al total general de pasajes
+        totalAsientosComprados += asientosComprados;
       });
 
       // Convertir el objeto totalsByMethod en un array
@@ -1871,6 +1886,7 @@ async verifyEncryptedQR(req, res) {
         metodo: method,
         total: totalsByMethod[method].total, // Total en dinero
         cantidad: totalsByMethod[method].cantidad, // Cantidad de pasajes
+        asientosComprados: totalsByMethod[method].asientosComprados,
       }));
 
       const tripsSummary = trips.map((trip) => {
@@ -1884,22 +1900,27 @@ async verifyEncryptedQR(req, res) {
         const tripTotalsByMethod = {};
         let tripTotal = 0;
         let tripPasajesVendidos = 0;
+        let tripAsientosComprados = 0;
 
         tripTickets.forEach((ticket) => {
           const method = ticket.method.toUpperCase();
           const total = parseFloat(ticket.total);
+          const asientosComprados = getTicketSeatCount(ticket);
 
           if (!tripTotalsByMethod[method]) {
             tripTotalsByMethod[method] = {
               total: 0,
               cantidad: 0,
+              asientosComprados: 0,
             };
           }
 
           tripTotalsByMethod[method].total += total;
           tripTotalsByMethod[method].cantidad += 1;
+          tripTotalsByMethod[method].asientosComprados += asientosComprados;
           tripTotal += total;
           tripPasajesVendidos += 1;
+          tripAsientosComprados += asientosComprados;
         });
 
         return {
@@ -1911,11 +1932,13 @@ async verifyEncryptedQR(req, res) {
           origin: tripOrigin,
           destination: tripDestination,
           totalPasajes: tripPasajesVendidos,
+          totalAsientosComprados: tripAsientosComprados,
           totalTramo: tripTotal,
           totalesPorMetodo: Object.keys(tripTotalsByMethod).map((method) => ({
             metodo: method,
             total: tripTotalsByMethod[method].total,
             cantidad: tripTotalsByMethod[method].cantidad,
+            asientosComprados: tripTotalsByMethod[method].asientosComprados,
           })),
         };
       });
@@ -1936,6 +1959,7 @@ async verifyEncryptedQR(req, res) {
         nombre: entityName,
         fecha: fecha,
         pasajesEmitidos: totalPasajesVendidos, // Total de pasajes vendidos
+        asientosComprados: totalAsientosComprados,
         reimpresiones: reimpresiones,
         totalesPorMetodo: totalsByMethodArray, // Array de totales por método de pago
         totales: totalGeneral, // Total general en dinero

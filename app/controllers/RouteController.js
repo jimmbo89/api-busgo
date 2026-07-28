@@ -83,9 +83,21 @@ const RouteController = {
         logger.info('Datos recibidos al crear una ruta:');
         logger.info(JSON.stringify(req.body));
 
-        const { origin_id, destination_id } = req.body;
+        const { code, origin_id, destination_id } = req.body;
 
         try {
+            const normalizedCode = RouteRepository.normalizeRouteCode(code);
+            req.body.code = normalizedCode;
+
+            const existingCode = await RouteRepository.existsByCode(normalizedCode);
+            if (existingCode) {
+                logger.error('El code ya estÃ¡ registrado en otra ruta:' + normalizedCode);
+                return res.status(400).json({
+                    error: 'DuplicateRouteCode',
+                    msg: 'El cÃ³digo ya estÃ¡ registrado en otra ruta.',
+                });
+            }
+
             const originLocation = await Location.findByPk(origin_id);
             if (!originLocation) {
                 return res.status(404).json({ msg: 'OriginLocationhNotFound' });
@@ -126,7 +138,7 @@ const RouteController = {
 
         try {
             const route = await Route.findByPk(req.body.id, {
-                attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+                attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
                 include: [
                     {
                         model: Location,
@@ -171,12 +183,26 @@ const RouteController = {
         logger.info('Datos recibidos al editar una ruta:');
         logger.info(JSON.stringify(req.body));
 
-        const { id, name, origin_id, destination_id, distance, estimated, status } = req.body;
+        const { id, code, name, origin_id, destination_id, distance, estimated, status } = req.body;
 
         try {
             const route = await RouteRepository.findById(id);
             if (!route) {
                 return res.status(404).json({ msg: 'RouteNotFound' });
+            }
+
+            if (code !== undefined && code !== null) {
+                const normalizedCode = RouteRepository.normalizeRouteCode(code);
+                req.body.code = normalizedCode;
+
+                const existingCode = await RouteRepository.existsByCode(normalizedCode, id);
+                if (existingCode) {
+                    logger.error('El code ya estÃ¡ registrado en otra ruta:' + normalizedCode);
+                    return res.status(400).json({
+                        error: 'DuplicateRouteCode',
+                        msg: 'El cÃ³digo ya estÃ¡ registrado en otra ruta.',
+                    });
+                }
             }
 
             if (origin_id !== undefined && origin_id !== null) {
@@ -216,6 +242,7 @@ const RouteController = {
             }
 
             const routeData = {};
+            if (code !== undefined && code !== null) routeData.code = req.body.code;
             if (name !== undefined) routeData.name = name;
             if (origin_id !== undefined) routeData.origin_id = origin_id;
             if (destination_id !== undefined) routeData.destination_id = destination_id;

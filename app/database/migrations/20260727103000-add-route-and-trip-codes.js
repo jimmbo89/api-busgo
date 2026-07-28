@@ -4,7 +4,7 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.addColumn('routes', 'code', {
-      type: Sequelize.STRING(16),
+      type: Sequelize.STRING(20),
       allowNull: true,
     });
 
@@ -53,14 +53,21 @@ module.exports = {
       { type: Sequelize.QueryTypes.SELECT }
     );
 
+    let routeSequence = 0;
     for (const route of routeRows) {
-      const routeCode = `R${String(route.id).padStart(3, '0')}`;
+      routeSequence += 1;
+      const routeCode = `ROUTE-${String(routeSequence).padStart(3, '0')}`;
       await queryInterface.bulkUpdate(
         'routes',
         { code: routeCode },
         { id: route.id }
       );
     }
+
+    await queryInterface.changeColumn('routes', 'code', {
+      type: Sequelize.STRING(20),
+      allowNull: false,
+    });
 
     const routeCodeRows = await queryInterface.sequelize.query(
       'SELECT id, code FROM routes ORDER BY id ASC',

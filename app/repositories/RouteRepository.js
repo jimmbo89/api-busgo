@@ -4,7 +4,8 @@ const fs = require('fs');
 const { Route, Location, Sequelize, Branch, BranchRoute, RouteStop, sequelize } = require('../models');
 const logger = require('../../config/logger');
 
-const formatRouteCode = (routeId) => `R${String(routeId).padStart(3, '0')}`;
+const normalizeRouteCode = (code) =>
+  typeof code === 'string' ? code.trim().toUpperCase() : code;
 
 const RouteRepository = {
   async findAll() {
@@ -95,6 +96,17 @@ const RouteRepository = {
     return await Route.findOne({ where: whereCondition });
   },
 
+  normalizeRouteCode,
+
+  async existsByCode(code, excludeId = null) {
+    const normalizedCode = normalizeRouteCode(code);
+    const whereCondition = excludeId
+      ? { code: normalizedCode, id: { [Op.ne]: excludeId } }
+      : { code: normalizedCode };
+
+    return await Route.findOne({ where: whereCondition });
+  },
+
   async existsByOriginAndDestination(origin_id, destination_id, excludeId = null) {
     if (
       origin_id === undefined ||
@@ -118,13 +130,14 @@ const RouteRepository = {
   },
 
   async create(body, options = {}) {
-    const { name, origin_id, destination_id, distance, estimated, status } = body;
+    const { code, name, origin_id, destination_id, distance, estimated, status } = body;
 
     const transaction = options.transaction || await sequelize.transaction();
     const ownsTransaction = !options.transaction;
 
     try {
       const route = await Route.create({
+        code: normalizeRouteCode(code),
         name,
         origin_id,
         destination_id,
@@ -132,9 +145,6 @@ const RouteRepository = {
         estimated,
         status,
       }, { transaction });
-
-      const routeCode = formatRouteCode(route.id);
-      await route.update({ code: routeCode }, { transaction });
 
       if (ownsTransaction) {
         await transaction.commit();
@@ -151,12 +161,12 @@ const RouteRepository = {
   },
 
   async update(route, body) {
-    const fieldsToUpdate = ['name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'];
+    const fieldsToUpdate = ['code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'];
 
     const updatedData = Object.keys(body)
       .filter(key => fieldsToUpdate.includes(key) && body[key] !== undefined)
       .reduce((obj, key) => {
-        obj[key] = body[key];
+        obj[key] = key === 'code' ? normalizeRouteCode(body[key]) : body[key];
         return obj;
       }, {});
 

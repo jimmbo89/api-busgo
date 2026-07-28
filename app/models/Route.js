@@ -45,9 +45,14 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false,
     },
     code: {
-      type: DataTypes.STRING(16),
-      allowNull: true,
+      type: DataTypes.STRING(20),
+      allowNull: false,
       unique: true,
+      validate: {
+        notEmpty: true,
+        len: [1, 20],
+        is: /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/,
+      },
     },
     origin_id: {
       type: DataTypes.INTEGER,

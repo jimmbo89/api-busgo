@@ -132,7 +132,7 @@ const TripTemplateRepository = {
         {
           model: Route,
           as: "route",
-          attributes: ["id", "name"],
+          attributes: ["id", "code", "name"],
           include: [
             {
               model: Location, // Relación con el modelo de origen
@@ -185,7 +185,7 @@ const TripTemplateRepository = {
         {
           model: Route,
           as: "route",
-          attributes: ["id", "name"],
+          attributes: ["id", "code", "name"],
           include: [
             {
               model: Location, // Relación con el modelo de origen

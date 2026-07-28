@@ -8,7 +8,7 @@ const BranchRouteRepository = {
             include: [
                 { model: Branch, as: 'branch', attributes: ['id', 'name', 'image'] },
                 {
-                    model: Route, as: 'route', attributes: ['id', 'name'],
+                    model: Route, as: 'route', attributes: ['id', 'code', 'name'],
                     include: [
                         {
                             model: Location,
@@ -58,7 +58,7 @@ const BranchRouteRepository = {
                 {
                     model: Route,
                     as: 'route',
-                    attributes: ['id', 'name', 'estimated', 'origin_id', 'destination_id', 'distance'],
+                    attributes: ['id', 'code', 'name', 'estimated', 'origin_id', 'destination_id', 'distance'],
                     include: [
                         {
                             model: Location,
@@ -118,7 +118,7 @@ const BranchRouteRepository = {
                 {
                     model: Route,
                     as: 'route',
-                    attributes: ['id', 'name', 'estimated', 'origin_id', 'destination_id', 'distance'],
+                    attributes: ['id', 'code', 'name', 'estimated', 'origin_id', 'destination_id', 'distance'],
                     include: [
                         {
                             model: Location,
@@ -168,7 +168,7 @@ const BranchRouteRepository = {
                 {
                     model: Route,
                     as: 'route',
-                    attributes: ['id', 'name'],
+                    attributes: ['id', 'code', 'name'],
                     include: [
                         {
                             model: RouteStop,

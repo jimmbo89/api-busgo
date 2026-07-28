@@ -1,4 +1,5 @@
 const logger = require('../../config/logger');
+const { Op } = require('sequelize');
 const { FareSegment, Company, Route, RouteStop, Location, FareSegmentTicketType, TicketType } = require('../models');
 
 const fareSegmentInclude = [
@@ -71,6 +72,45 @@ const FareSegmentRepository = {
         ['id', 'ASC'],
       ],
     });
+  },
+
+  async findByRouteIds(routeIds) {
+    const normalizedRouteIds = Array.from(
+      new Set(
+        (Array.isArray(routeIds) ? routeIds : [])
+          .map((routeId) => Number(routeId))
+          .filter((routeId) => Number.isFinite(routeId) && routeId > 0)
+      )
+    );
+
+    if (normalizedRouteIds.length === 0) {
+      return new Map();
+    }
+
+    const fareSegments = await FareSegment.findAll({
+      where: { route_id: { [Op.in]: normalizedRouteIds } },
+      include: fareSegmentInclude,
+      order: [
+        ['route_id', 'ASC'],
+        ['priority', 'DESC'],
+        ['id', 'ASC'],
+      ],
+    });
+
+    const fareSegmentsByRouteId = new Map(
+      normalizedRouteIds.map((routeId) => [routeId, []])
+    );
+
+    for (const fareSegment of fareSegments) {
+      const routeId = Number(fareSegment.route_id);
+      if (!fareSegmentsByRouteId.has(routeId)) {
+        fareSegmentsByRouteId.set(routeId, []);
+      }
+
+      fareSegmentsByRouteId.get(routeId).push(fareSegment);
+    }
+
+    return fareSegmentsByRouteId;
   },
 
   async findByCompany(companyId) {

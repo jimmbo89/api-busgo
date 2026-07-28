@@ -5,6 +5,7 @@ const {
   Vehicle,
   Route,
   Location,
+  TripCodeSequence,
   TripWorker,
   TripStop,
   TripFare,
@@ -20,6 +21,53 @@ const {
   sequelize,
 } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
+
+const formatRouteCode = (routeId, routeCode = null) => routeCode || `R${String(routeId).padStart(3, '0')}`;
+const formatTripDateCode = (tripDate) => {
+  if (!tripDate) {
+    return null;
+  }
+
+  const normalizedDate = typeof tripDate === "string"
+    ? tripDate.slice(0, 10)
+    : new Date(tripDate).toISOString().slice(0, 10);
+
+  return normalizedDate.replace(/-/g, "");
+};
+const formatTripCode = (routeCode, tripDate, sequence) =>
+  `${routeCode}-${formatTripDateCode(tripDate)}-${String(sequence).padStart(3, "0")}`;
+const reserveTripSequence = async (routeId, tripDate, transaction) => {
+  await sequelize.query(
+    `
+      INSERT IGNORE INTO trip_code_sequences (route_id, trip_date, last_sequence, createdAt, updatedAt)
+      VALUES (:route_id, :trip_date, 0, NOW(), NOW())
+    `,
+    {
+      replacements: {
+        route_id: routeId,
+        trip_date: tripDate,
+      },
+      transaction,
+    }
+  );
+
+  const sequenceRow = await TripCodeSequence.findOne({
+    where: {
+      route_id: routeId,
+      trip_date: tripDate,
+    },
+    transaction,
+    lock: Sequelize.Transaction.LOCK.UPDATE,
+  });
+
+  if (!sequenceRow) {
+    throw new Error("TripCodeSequenceNotFound");
+  }
+
+  const nextSequence = Number(sequenceRow.last_sequence || 0) + 1;
+  await sequenceRow.update({ last_sequence: nextSequence }, { transaction });
+  return nextSequence;
+};
 
 const tripFareInclude = [
   {
@@ -93,11 +141,276 @@ const tripFareInclude = [
   },
 ];
 
+const tripStopDetailInclude = [
+  {
+    model: RouteStop,
+    as: "routeStop",
+    attributes: [
+      "id",
+      "company_id",
+      "route_id",
+      "location_id",
+      "stop_order",
+      "distance_km",
+      "minutes_from_origin",
+      "allows_boarding",
+      "allows_alighting",
+      "active",
+    ],
+    include: [
+      {
+        model: Location,
+        as: "location",
+        attributes: ["id", "address", "country", "city", "image", "active"],
+      },
+    ],
+  },
+];
+
+const tripFareDetailInclude = [
+  {
+    model: FareSegmentTicketType,
+    as: "fareSegmentTicketType",
+    attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+    include: [
+      {
+        model: TicketType,
+        as: "ticketType",
+        attributes: ["id", "name", "description", "active"],
+      },
+      {
+        model: FareSegment,
+        as: "fareSegment",
+        attributes: [
+          "id",
+          "company_id",
+          "route_id",
+          "origin_route_stop_id",
+          "destination_route_stop_id",
+          "base_price",
+          "currency",
+          "valid_from",
+          "valid_to",
+          "priority",
+          "active",
+        ],
+        include: [
+          {
+            model: RouteStop,
+            as: "originRouteStop",
+            include: [
+              {
+                model: Location,
+                as: "location",
+                attributes: ["id", "address", "country", "city", "image", "active"],
+              },
+            ],
+          },
+          {
+            model: RouteStop,
+            as: "destinationRouteStop",
+            include: [
+              {
+                model: Location,
+                as: "location",
+                attributes: ["id", "address", "country", "city", "image", "active"],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const buildSegmentTripFareFilterInclude = (originLocationId, destinationLocationId, currentDate) => [
+  {
+    model: TripFare,
+    as: "tripFares",
+    attributes: ["id", "trip_id", "fare_segment_ticket_type_id"],
+    required: true,
+    where: { active: true },
+    include: [
+      {
+        model: FareSegmentTicketType,
+        as: "fareSegmentTicketType",
+        attributes: ["id", "fare_segment_id", "ticket_type_id", "active"],
+        required: true,
+        where: { active: true },
+        include: [
+          {
+            model: FareSegment,
+            as: "fareSegment",
+            attributes: ["id", "route_id", "origin_route_stop_id", "destination_route_stop_id", "active", "valid_from", "valid_to"],
+            required: true,
+            where: {
+              active: true,
+              [Op.and]: [
+                {
+                  [Op.or]: [
+                    { valid_from: null },
+                    { valid_from: { [Op.lte]: currentDate } },
+                  ],
+                },
+                {
+                  [Op.or]: [
+                    { valid_to: null },
+                    { valid_to: { [Op.gte]: currentDate } },
+                  ],
+                },
+              ],
+            },
+            include: [
+              {
+                model: RouteStop,
+                as: "originRouteStop",
+                attributes: ["id", "location_id"],
+                required: true,
+                where: { location_id: originLocationId },
+              },
+              {
+                model: RouteStop,
+                as: "destinationRouteStop",
+                attributes: ["id", "location_id"],
+                required: true,
+                where: { location_id: destinationLocationId },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
+const buildSegmentTripFareInclude = (originLocationId, destinationLocationId, currentDate) => [
+  {
+    model: TripFare,
+    as: "tripFares",
+    attributes: [
+      "id",
+      "company_id",
+      "trip_id",
+      "fare_segment_ticket_type_id",
+      "base_price",
+      "price",
+      "active",
+      "source_type",
+    ],
+    required: true,
+    where: { active: true },
+    include: [
+      {
+        model: FareSegmentTicketType,
+        as: "fareSegmentTicketType",
+        attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+        required: true,
+        where: { active: true },
+        include: [
+          {
+            model: TicketType,
+            as: "ticketType",
+            attributes: ["id", "name", "description", "active"],
+          },
+          {
+            model: FareSegment,
+            as: "fareSegment",
+            attributes: [
+              "id",
+              "company_id",
+              "route_id",
+              "origin_route_stop_id",
+              "destination_route_stop_id",
+              "base_price",
+              "currency",
+              "valid_from",
+              "valid_to",
+              "priority",
+              "active",
+            ],
+            required: true,
+            where: {
+              active: true,
+              [Op.and]: [
+                {
+                  [Op.or]: [
+                    { valid_from: null },
+                    { valid_from: { [Op.lte]: currentDate } },
+                  ],
+                },
+                {
+                  [Op.or]: [
+                    { valid_to: null },
+                    { valid_to: { [Op.gte]: currentDate } },
+                  ],
+                },
+              ],
+            },
+            include: [
+              {
+                model: RouteStop,
+                as: "originRouteStop",
+                attributes: [
+                  "id",
+                  "company_id",
+                  "route_id",
+                  "location_id",
+                  "stop_order",
+                  "distance_km",
+                  "minutes_from_origin",
+                  "allows_boarding",
+                  "allows_alighting",
+                  "active",
+                ],
+                required: true,
+                where: { location_id: originLocationId },
+                include: [
+                  {
+                    model: Location,
+                    as: "location",
+                    attributes: ["id", "address", "country", "city", "image", "active"],
+                  },
+                ],
+              },
+              {
+                model: RouteStop,
+                as: "destinationRouteStop",
+                attributes: [
+                  "id",
+                  "company_id",
+                  "route_id",
+                  "location_id",
+                  "stop_order",
+                  "distance_km",
+                  "minutes_from_origin",
+                  "allows_boarding",
+                  "allows_alighting",
+                  "active",
+                ],
+                required: true,
+                where: { location_id: destinationLocationId },
+                include: [
+                  {
+                    model: Location,
+                    as: "location",
+                    attributes: ["id", "address", "country", "city", "image", "active"],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+];
+
 const TripRepository = {
   async findAll() {
     return await Trip.findAll({
       attributes: [
         "id",
+        "code",
         "date",
         "schedule",
         "arrival",
@@ -381,6 +694,603 @@ const TripRepository = {
     });
   },
 
+  async findDateBySegment(branchId, originLocationId, destinationLocationId, currentDate, workerId = null) {
+    const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('-').reverse().join('-');
+    const searchDate = currentDate || formattedToday;
+
+    const whereClause = {
+      branch_id: branchId,
+      date: { [Op.eq]: searchDate },
+    };
+
+    if (workerId) {
+      whereClause[Op.or] = [
+        { date: { [Op.eq]: searchDate } },
+        {
+          [Op.and]: [
+            { start: { [Op.lte]: today } },
+            { end: { [Op.is]: null } },
+            Sequelize.where(
+              Sequelize.fn('DATE', Sequelize.col('arrival')),
+              { [Op.eq]: searchDate }
+            ),
+          ],
+        },
+      ];
+      delete whereClause.date;
+    }
+
+    return await Trip.findAll({
+      attributes: [
+        "id",
+        "code",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
+      where: whereClause,
+      order: [['date', 'ASC'], ['schedule', 'ASC']],
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
+          include: [
+            {
+              model: Structure,
+              as: "structure",
+            },
+          ],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "code", "name"],
+          include: [
+            {
+              model: Location,
+              as: "origin",
+              attributes: ["id", "address", "image"],
+            },
+            {
+              model: Location,
+              as: "destination",
+              attributes: ["id", "address", "image"],
+            },
+          ],
+        },
+        {
+          model: Ticket,
+          as: "tickets",
+          attributes: ["id", "seats", "qr_status", "quantity", "fare_segment_id", "user_id", "status", "method", "date", "price", "total"],
+          required: false,
+          include: [
+            {
+              model: FareSegment,
+              as: "fareSegment",
+              attributes: ["id", "company_id", "route_id", "origin_route_stop_id", "destination_route_stop_id", "active"],
+            },
+            {
+              model: TicketItem,
+              as: "ticketItems",
+              attributes: [
+                "id",
+                "ticket_id",
+                "ticket_type_id",
+                "trip_fare_id",
+                "ticket_type_name",
+                "ticket_type_description",
+                "quantity",
+                "base_price",
+                "unit_price",
+                "subtotal",
+                "currency",
+                "active",
+                "source_type",
+              ],
+              include: [
+                {
+                  model: TripFare,
+                  as: "tripFare",
+                  attributes: [
+                    "id",
+                    "company_id",
+                    "trip_id",
+                    "fare_segment_ticket_type_id",
+                    "base_price",
+                    "price",
+                    "active",
+                    "source_type",
+                  ],
+                  include: [
+                    {
+                      model: FareSegmentTicketType,
+                      as: "fareSegmentTicketType",
+                      attributes: ["id", "fare_segment_id", "ticket_type_id", "base_price", "active"],
+                      include: [
+                        {
+                          model: FareSegment,
+                          as: "fareSegment",
+                          attributes: ["id", "company_id", "route_id", "origin_route_stop_id", "destination_route_stop_id", "active"],
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          model: TripStop,
+          as: "tripStops",
+          attributes: [
+            "id",
+            "company_id",
+            "trip_id",
+            "route_stop_id",
+            "stop_order",
+            "arrival_time",
+            "departure_time",
+            "can_board",
+            "can_alight",
+            "active",
+            "source_type",
+          ],
+          include: [
+            {
+              model: RouteStop,
+              as: "routeStop",
+              attributes: [
+                "id",
+                "company_id",
+                "route_id",
+                "location_id",
+                "stop_order",
+                "distance_km",
+                "minutes_from_origin",
+                "allows_boarding",
+                "allows_alighting",
+                "active",
+              ],
+              include: [
+                {
+                  model: Location,
+                  as: "location",
+                  attributes: ["id", "address", "country", "city", "image", "active"],
+                },
+              ],
+            },
+          ],
+        },
+        ...buildSegmentTripFareInclude(originLocationId, destinationLocationId, searchDate),
+      ],
+    });
+  },
+
+  async findDateForBranchDate(branchId, date = null) {
+    const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('-').reverse().join('-');
+    const searchDate = date || formattedToday;
+
+    return await Trip.findAll({
+      attributes: [
+        "id",
+        "code",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
+      where: {
+        branch_id: branchId,
+        date: { [Op.eq]: searchDate },
+      },
+      order: [['date', 'ASC'], ['schedule', 'ASC']],
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
+          include: [
+            {
+              model: Structure,
+              as: "structure",
+            },
+          ],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "code", "name"],
+          include: [
+            {
+              model: Location,
+              as: "origin",
+              attributes: ["id", "address", "image"],
+            },
+            {
+              model: Location,
+              as: "destination",
+              attributes: ["id", "address", "image"],
+            },
+          ],
+        },
+        {
+          model: TripStop,
+          as: "tripStops",
+          attributes: [
+            "id",
+            "company_id",
+            "trip_id",
+            "route_stop_id",
+            "stop_order",
+            "arrival_time",
+            "departure_time",
+            "can_board",
+            "can_alight",
+            "active",
+            "source_type",
+          ],
+          include: [
+            {
+              model: RouteStop,
+              as: "routeStop",
+              attributes: [
+                "id",
+                "company_id",
+                "route_id",
+                "location_id",
+                "stop_order",
+                "distance_km",
+                "minutes_from_origin",
+                "allows_boarding",
+                "allows_alighting",
+                "active",
+              ],
+              include: [
+                {
+                  model: Location,
+                  as: "location",
+                  attributes: ["id", "address", "country", "city", "image", "active"],
+                },
+              ],
+            },
+          ],
+        },
+        ...tripFareInclude,
+      ],
+    });
+  },
+
+  async findDateForBranchDateBase(branchId, date = null) {
+    const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('-').reverse().join('-');
+    const searchDate = date || formattedToday;
+
+    return await Trip.findAll({
+      attributes: [
+        "id",
+        "code",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
+      where: {
+        branch_id: branchId,
+        date: { [Op.eq]: searchDate },
+      },
+      order: [['date', 'ASC'], ['schedule', 'ASC']],
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
+          include: [
+            {
+              model: Structure,
+              as: "structure",
+            },
+          ],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "code", "name"],
+          include: [
+            {
+              model: Location,
+              as: "origin",
+              attributes: ["id", "address", "image"],
+            },
+            {
+              model: Location,
+              as: "destination",
+              attributes: ["id", "address", "image"],
+            },
+          ],
+        },
+      ],
+    });
+  },
+
+  async getTripStopsByTripIds(tripIds) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const tripStops = await TripStop.findAll({
+      where: {
+        trip_id: { [Op.in]: normalizedTripIds },
+      },
+      attributes: [
+        "id",
+        "company_id",
+        "trip_id",
+        "route_stop_id",
+        "stop_order",
+        "arrival_time",
+        "departure_time",
+        "can_board",
+        "can_alight",
+        "active",
+        "source_type",
+      ],
+      include: tripStopDetailInclude,
+      order: [
+        ["trip_id", "ASC"],
+        ["stop_order", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const tripStopsByTripId = new Map(
+      normalizedTripIds.map((tripId) => [tripId, []])
+    );
+
+    for (const tripStop of tripStops) {
+      const tripId = Number(tripStop.trip_id);
+      if (!tripStopsByTripId.has(tripId)) {
+        tripStopsByTripId.set(tripId, []);
+      }
+
+      tripStopsByTripId.get(tripId).push(tripStop);
+    }
+
+    return tripStopsByTripId;
+  },
+
+  async getTripFaresByTripIds(tripIds) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const tripFares = await TripFare.findAll({
+      where: {
+        trip_id: { [Op.in]: normalizedTripIds },
+      },
+      attributes: [
+        "id",
+        "company_id",
+        "trip_id",
+        "fare_segment_ticket_type_id",
+        "base_price",
+        "price",
+        "active",
+        "source_type",
+      ],
+      include: tripFareDetailInclude,
+      order: [
+        ["trip_id", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const tripFaresByTripId = new Map(
+      normalizedTripIds.map((tripId) => [tripId, []])
+    );
+
+    for (const tripFare of tripFares) {
+      const tripId = Number(tripFare.trip_id);
+      if (!tripFaresByTripId.has(tripId)) {
+        tripFaresByTripId.set(tripId, []);
+      }
+
+      tripFaresByTripId.get(tripId).push(tripFare);
+    }
+
+    return tripFaresByTripId;
+  },
+
+  async findDateBySegmentBase(branchId, originLocationId, destinationLocationId, currentDate, workerId = null) {
+    const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+      timeZone: 'America/Santiago',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).split('-').reverse().join('-');
+    const searchDate = currentDate || formattedToday;
+
+    const whereClause = {
+      branch_id: branchId,
+      date: { [Op.eq]: searchDate },
+    };
+
+    if (workerId) {
+      whereClause[Op.or] = [
+        { date: { [Op.eq]: searchDate } },
+        {
+          [Op.and]: [
+            { start: { [Op.lte]: today } },
+            { end: { [Op.is]: null } },
+            Sequelize.where(
+              Sequelize.fn('DATE', Sequelize.col('arrival')),
+              { [Op.eq]: searchDate }
+            ),
+          ],
+        },
+      ];
+      delete whereClause.date;
+    }
+
+    return await Trip.findAll({
+      attributes: [
+        "id",
+        "code",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
+      where: whereClause,
+      order: [['date', 'ASC'], ['schedule', 'ASC']],
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: Vehicle,
+          as: "vehicle",
+          attributes: ["id", "plate", "internal_number", "seats", "image"],
+          include: [
+            {
+              model: Structure,
+              as: "structure",
+            },
+          ],
+        },
+        {
+          model: Route,
+          as: "route",
+          attributes: ["id", "code", "name"],
+          include: [
+            {
+              model: Location,
+              as: "origin",
+              attributes: ["id", "address", "image"],
+            },
+            {
+              model: Location,
+              as: "destination",
+              attributes: ["id", "address", "image"],
+            },
+          ],
+        },
+        ...buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate),
+      ],
+    });
+  },
+
+  async getSegmentTripFaresByTripIds(tripIds, originLocationId, destinationLocationId, currentDate) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const trips = await Trip.findAll({
+      attributes: ["id"],
+      where: {
+        id: { [Op.in]: normalizedTripIds },
+      },
+      include: buildSegmentTripFareInclude(originLocationId, destinationLocationId, currentDate),
+      order: [["id", "ASC"]],
+    });
+
+    const faresByTripId = new Map(
+      normalizedTripIds.map((tripId) => [tripId, []])
+    );
+
+    for (const trip of trips) {
+      const tripId = Number(trip.id);
+      if (!faresByTripId.has(tripId)) {
+        faresByTripId.set(tripId, []);
+      }
+
+      faresByTripId.get(tripId).push(...(Array.isArray(trip.tripFares) ? trip.tripFares : []));
+    }
+
+    return faresByTripId;
+  },
+
   async findDateWeb(branchId, workerId = null, date = null, ticket_id = null) {
   // Zona horaria fija para Chile
   const timeZone = 'America/Santiago';
@@ -455,11 +1365,12 @@ const TripRepository = {
     }
   }
 
-  return await Trip.findAll({
-    attributes: [
-      "id",
-      "date",
-      "schedule",
+    return await Trip.findAll({
+      attributes: [
+        "id",
+        "code",
+        "date",
+        "schedule",
       "arrival",
       "start",
       "end",
@@ -554,7 +1465,7 @@ const TripRepository = {
         {
           model: Route,
           as: "route",
-          attributes: ["id", "name"],
+          attributes: ["id", "code", "name"],
           include: [
             {
               model: Location, // Relación con el modelo de origen
@@ -576,6 +1487,7 @@ const TripRepository = {
     return await Trip.findByPk(id, {
       attributes: [
         "id",
+        "code",
         "date",
         "schedule",
         "arrival",
@@ -606,7 +1518,7 @@ const TripRepository = {
         {
           model: Route,
           as: "route",
-          attributes: ["id", "name"],
+          attributes: ["id", "code", "name"],
           include: [
             {
               model: Location,
@@ -684,8 +1596,13 @@ const TripRepository = {
       branch_id,
       vehicle_id,
       route_id,
+      route_code: providedRouteCode,
+      routeCode: providedRouteCodeCamel,
       price,
     } = body;
+
+    const transaction = options.transaction || await sequelize.transaction();
+    const ownsTransaction = !options.transaction;
 
     try {
       const trip = await Trip.create({
@@ -698,11 +1615,30 @@ const TripRepository = {
         vehicle_id,
         route_id,
         price: price ?? null,
-      }, options);
+      }, { ...options, transaction });
+
+      const routeRow = providedRouteCode || providedRouteCodeCamel
+        ? { code: providedRouteCode || providedRouteCodeCamel }
+        : await Route.findByPk(route_id, {
+            attributes: ["id", "code"],
+            transaction,
+          });
+
+      const routeCode = formatRouteCode(route_id, routeRow?.code ?? null);
+      const sequence = await reserveTripSequence(route_id, date, transaction);
+      const tripCode = formatTripCode(routeCode, date, sequence);
+
+      await trip.update({ code: tripCode }, { transaction });
 
       logger.info(`Viaje creado exitosamente (ID: ${trip.id})`);
+      if (ownsTransaction) {
+        await transaction.commit();
+      }
       return trip;
     } catch (error) {
+      if (ownsTransaction && transaction && !transaction.finished) {
+        await transaction.rollback();
+      }
       logger.error(`Error creando el viaje: ${error.message}`);
       throw new Error("Error creando el viaje");
     }
@@ -900,6 +1836,19 @@ async existsByUpdatedFields(trip, updatedFields) {
       }
 
       const trips = await Trip.findAll({
+        attributes: [
+          "id",
+          "code",
+          "date",
+          "schedule",
+          "arrival",
+          "start",
+          "end",
+          "branch_id",
+          "vehicle_id",
+          "route_id",
+          "price",
+        ],
         where: whereClause,
         include: [
           {
@@ -924,7 +1873,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           {
             model: Route,
             as: "route",
-            attributes: ["id", "name"],
+            attributes: ["id", "code", "name"],
             include: [
               {
                 model: Location, // Relación con el modelo de origen
@@ -985,6 +1934,19 @@ async existsByUpdatedFields(trip, updatedFields) {
       }
 
       const trips = await Trip.findAll({
+        attributes: [
+          "id",
+          "code",
+          "date",
+          "schedule",
+          "arrival",
+          "start",
+          "end",
+          "branch_id",
+          "vehicle_id",
+          "route_id",
+          "price",
+        ],
         where: whereClause,
         include: [
           {
@@ -1001,7 +1963,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           {
             model: Route,
             as: "route",
-            attributes: ["id", "name"],
+            attributes: ["id", "code", "name"],
             include: [
               {
                 model: Location,
@@ -1085,6 +2047,19 @@ async existsByUpdatedFields(trip, updatedFields) {
     }
 
     return await Trip.findAll({
+      attributes: [
+        "id",
+        "code",
+        "date",
+        "schedule",
+        "arrival",
+        "start",
+        "end",
+        "branch_id",
+        "vehicle_id",
+        "route_id",
+        "price",
+      ],
       include: [
         {
           model: Ticket,
@@ -1101,7 +2076,7 @@ async existsByUpdatedFields(trip, updatedFields) {
         {
           model: Route,
           as: "route",
-          attributes: ["id", "name"],
+          attributes: ["id", "code", "name"],
           include: [
             {
               model: Location, // Relación con el modelo de origen
@@ -1157,6 +2132,7 @@ async existsByUpdatedFields(trip, updatedFields) {
       return await Trip.findAll({
         attributes: [
           "id",
+          "code",
           "date",
           "schedule",
           "arrival",
@@ -1191,7 +2167,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           {
             model: Route,
             as: "route",
-            attributes: ["id", "name", "estimated"],
+            attributes: ["id", "code", "name", "estimated"],
             include: [
               {
                 model: Location,

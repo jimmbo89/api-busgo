@@ -43,4 +43,4 @@ cron.schedule('0 3 * * *', runScheduledJob, {
   timezone: "America/Santiago"
 });
 
-//logger.info('Programador de generación de viajes iniciado');
+logger.info('Programador de generación de viajes iniciado');

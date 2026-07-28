@@ -548,6 +548,21 @@ const ticketReportSchema = Joi.object({
   limit: Joi.number().integer().default(100).optional()
 });
 
+const checkReservedSeatsSchema = Joi.object({
+  trip_id: Joi.number().integer().required().messages({
+    "number.base": "El campo trip_id debe ser un nÃºmero entero",
+    "any.required": "El campo trip_id es obligatorio",
+  }),
+  seats: Joi.array().items(Joi.number().integer()).min(1).required().messages({
+    "array.base": "El campo seats debe ser un arreglo",
+    "array.min": "El campo seats debe tener al menos un asiento",
+    "any.required": "El campo seats es obligatorio",
+  }),
+  fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo fare_segment_id debe ser un nÃºmero entero",
+  }),
+});
+
 module.exports = {
   storeTicketSchema,
   updateTicketSchema,
@@ -558,5 +573,6 @@ module.exports = {
   storeTicketWebSchema,
   qrEncryptedSchema,
   ticketSoldDateWorkerSchema,
-  ticketReportSchema
+  ticketReportSchema,
+  checkReservedSeatsSchema
 };

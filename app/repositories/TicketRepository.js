@@ -221,6 +221,25 @@ const extractTicketFareSegments = (ticket, fareSegmentMap = new Map()) => {
   return segments;
 };
 
+const normalizeSeatNumbers = (seats) => {
+  let parsedSeats = [];
+
+  if (Array.isArray(seats)) {
+    parsedSeats = seats;
+  } else if (typeof seats === "string" && seats.trim() !== "") {
+    try {
+      const decodedSeats = JSON.parse(seats);
+      parsedSeats = Array.isArray(decodedSeats) ? decodedSeats : [];
+    } catch (error) {
+      parsedSeats = [];
+    }
+  }
+
+  return parsedSeats
+    .map((seat) => Number(seat))
+    .filter((seat) => Number.isFinite(seat));
+};
+
 const TicketRepository = {
   async findAll() {
     return await Ticket.findAll({
@@ -373,6 +392,240 @@ const TicketRepository = {
         ...fareSegmentTicketInclude,
       ],
     });
+  },
+
+  async findAllDateBase(branchId, date = null, endDate = null, workerId = null) {
+    const today = new Date();
+    const formattedToday = today.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    }).split('-').reverse().join('-');
+    const searchDate = date && date.trim() !== "" ? date : formattedToday;
+
+    const whereClause = {
+      branch_id: branchId,
+      date: endDate && endDate.trim() !== ""
+        ? { [Op.between]: [searchDate, endDate] }
+        : searchDate,
+    };
+
+    return await Ticket.findAll({
+      attributes: [
+        "id",
+        "branch_id",
+        "user_id",
+        "trip_id",
+        "fare_segment_id",
+        "method",
+        "status",
+        "quantity",
+        "price",
+        "total",
+        "seats",
+        "date",
+        "adults",
+        "minors",
+        "qr",
+        "barcode",
+        "print",
+        "promotions",
+        "tickettypes",
+        [sequelize.fn("DATE_FORMAT", sequelize.col("Ticket.createdAt"), "%H:%i"), "saleTime"],
+      ],
+      where: whereClause,
+      include: [
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name"],
+        },
+        {
+          model: User,
+          as: "user",
+          attributes: ["id", "name", "email"],
+        },
+        {
+          model: Trip,
+          as: "trip",
+          attributes: ["id", "code", "date", "schedule", "start", "end"],
+          required: true,
+          include: [
+            {
+              model: Vehicle,
+              as: "vehicle",
+              attributes: ["id", "plate", "internal_number", "image", "seats"],
+            },
+            {
+              model: Route,
+              as: "route",
+              attributes: ["id", "code", "name"],
+              include: [
+                {
+                  model: Location,
+                  as: "origin",
+                  attributes: ["id", "address", "image"],
+                },
+                {
+                  model: Location,
+                  as: "destination",
+                  attributes: ["id", "address", "image"],
+                },
+              ],
+            },
+          ],
+        },
+        ...fareSegmentTicketInclude,
+      ],
+    });
+  },
+
+  async getTicketItemsByTicketIds(ticketIds, options = {}) {
+    const normalizedTicketIds = Array.from(
+      new Set(
+        (Array.isArray(ticketIds) ? ticketIds : [])
+          .map((ticketId) => Number(ticketId))
+          .filter((ticketId) => Number.isFinite(ticketId) && ticketId > 0)
+      )
+    );
+
+    if (normalizedTicketIds.length === 0) {
+      return new Map();
+    }
+
+    const ticketItems = await TicketItem.findAll({
+      where: {
+        ticket_id: { [Op.in]: normalizedTicketIds },
+      },
+      include: ticketItemInclude[0].include,
+      order: [
+        ["ticket_id", "ASC"],
+        ["id", "ASC"],
+      ],
+      transaction: options.transaction || null,
+    });
+
+    const ticketItemsByTicketId = new Map(
+      normalizedTicketIds.map((ticketId) => [ticketId, []])
+    );
+
+    for (const ticketItem of ticketItems) {
+      const ticketId = Number(ticketItem.ticket_id);
+      if (!ticketItemsByTicketId.has(ticketId)) {
+        ticketItemsByTicketId.set(ticketId, []);
+      }
+
+      ticketItemsByTicketId.get(ticketId).push(ticketItem);
+    }
+
+    return ticketItemsByTicketId;
+  },
+
+  async getTicketsByTripIds(tripIds) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const tickets = await Ticket.findAll({
+      attributes: [
+        "id",
+        "branch_id",
+        "user_id",
+        "trip_id",
+        "fare_segment_id",
+        "method",
+        "status",
+        "quantity",
+        "price",
+        "total",
+        "seats",
+        "date",
+        "adults",
+        "minors",
+        "qr",
+        "barcode",
+        "qr_status",
+        "sequenceNumber",
+        "promotions",
+        "tickettypes",
+      ],
+      where: {
+        trip_id: { [Op.in]: normalizedTripIds },
+      },
+      include: [
+        {
+          model: FareSegment,
+          as: "fareSegment",
+          attributes: [
+            "id",
+            "company_id",
+            "route_id",
+            "origin_route_stop_id",
+            "destination_route_stop_id",
+            "service_class",
+            "base_price",
+            "currency",
+            "valid_from",
+            "valid_to",
+            "priority",
+            "active",
+          ],
+          include: [
+            {
+              model: RouteStop,
+              as: "originRouteStop",
+              include: [
+                {
+                  model: Location,
+                  as: "location",
+                  attributes: ["id", "address", "country", "city", "image", "active"],
+                },
+              ],
+            },
+            {
+              model: RouteStop,
+              as: "destinationRouteStop",
+              include: [
+                {
+                  model: Location,
+                  as: "location",
+                  attributes: ["id", "address", "country", "city", "image", "active"],
+                },
+              ],
+            },
+          ],
+        },
+        ...ticketItemInclude,
+      ],
+      order: [
+        ["trip_id", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const ticketsByTripId = new Map(
+      normalizedTripIds.map((tripId) => [tripId, []])
+    );
+
+    for (const ticket of tickets) {
+      const tripId = Number(ticket.trip_id);
+      if (!ticketsByTripId.has(tripId)) {
+        ticketsByTripId.set(tripId, []);
+      }
+
+      ticketsByTripId.get(tripId).push(ticket);
+    }
+
+    return ticketsByTripId;
   },
 
   async findById(id) {
@@ -649,16 +902,13 @@ const TicketRepository = {
       attributes: ["seats"], // Obtiene solo los asientos reservados
     });
 
-    return tickets.reduce((acc, ticket) => {
-      // Asegúrate de que los asientos están correctamente accesibles
-      if (Array.isArray(ticket.seats)) {
-        acc = acc.concat(ticket.seats);
-      }
-      return acc;
-    }, []);
+    return tickets.reduce(
+      (acc, ticket) => acc.concat(normalizeSeatNumbers(ticket.seats)),
+      []
+    );
   },
 
-  async checkReservedSeats(tripId, selectedSeats, ticketId = null) {
+  async checkReservedSeats(tripId, selectedSeats, ticketId = null, options = {}) {
     try {
       // Define las condiciones de búsqueda
       const conditions = {
@@ -676,6 +926,7 @@ const TicketRepository = {
       const tickets = await Ticket.findAll({
         where: conditions,
         attributes: ["seats"], // Obtiene solo los asientos reservados
+        transaction: options.transaction || null,
       });
 
       // Si no hay tickets, no hay asientos reservados, por lo que no hay conflicto
@@ -684,16 +935,13 @@ const TicketRepository = {
       }
 
       // Combina los asientos ya reservados en un único array
-      const reservedSeats = tickets.reduce((acc, ticket) => {
-        // Asegúrate de que los asientos están correctamente accesibles
-        if (Array.isArray(ticket.seats)) {
-          acc = acc.concat(ticket.seats);
-        }
-        return acc;
-      }, []);
+      const reservedSeats = tickets.reduce(
+        (acc, ticket) => acc.concat(normalizeSeatNumbers(ticket.seats)),
+        []
+      );
 
       // Normaliza los asientos seleccionados a números (por si vienen como strings)
-      const normalizedSelectedSeats = selectedSeats.map((seat) => Number(seat));
+      const normalizedSelectedSeats = normalizeSeatNumbers(selectedSeats);
 
       // Verifica si hay conflicto entre los asientos seleccionados y los reservados
       const reservedSet = new Set(reservedSeats); // Convierte a Set para búsquedas rápidas
@@ -712,11 +960,9 @@ const TicketRepository = {
     }
   },
 
-  async checkReservedSeatsBySegment(tripId, selectedSeats, fareSegmentId, ticketId = null) {
+  async checkReservedSeatsBySegment(tripId, selectedSeats, fareSegmentId, ticketId = null, options = {}) {
     try {
-      const normalizedSelectedSeats = Array.isArray(selectedSeats)
-        ? selectedSeats.map((seat) => Number(seat))
-        : [];
+      const normalizedSelectedSeats = normalizeSeatNumbers(selectedSeats);
       const normalizedFareSegmentIds = Array.isArray(fareSegmentId)
         ? fareSegmentId
             .map((item) => Number(item))
@@ -734,6 +980,7 @@ const TicketRepository = {
 
       const trip = await Trip.findByPk(tripId, {
         attributes: ["id", "route_id"],
+        transaction: options.transaction || null,
         include: [
           {
             model: TripStop,
@@ -807,6 +1054,7 @@ const TicketRepository = {
           ...(ticketId ? { id: { [Op.ne]: ticketId } } : {}),
         },
         attributes: ["id", "seats", "fare_segment_id"],
+        transaction: options.transaction || null,
         include: [
           {
             model: FareSegment,
@@ -821,9 +1069,7 @@ const TicketRepository = {
       const selectedSeatSet = new Set(normalizedSelectedSeats);
 
       for (const existingTicket of existingTickets) {
-        const existingSeats = Array.isArray(existingTicket.seats)
-          ? existingTicket.seats.map((seat) => Number(seat))
-          : [];
+        const existingSeats = normalizeSeatNumbers(existingTicket.seats);
         const seatIntersection = existingSeats.filter((seat) => selectedSeatSet.has(seat));
         if (seatIntersection.length === 0) {
           continue;
@@ -1036,6 +1282,57 @@ const TicketRepository = {
       logger.error("Error al obtener los totales:", error);
       throw error;
     }
+  },
+
+  async getPassengersByTripIds(tripIds, options = {}) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const passengerRows = await Ticket.findAll({
+      attributes: [
+        "trip_id",
+        [Sequelize.fn("SUM", Sequelize.col("quantity")), "total_quantity"],
+        [Sequelize.fn("SUM", Sequelize.col("adults")), "total_adults"],
+        [Sequelize.fn("SUM", Sequelize.col("minors")), "total_minors"],
+      ],
+      where: {
+        trip_id: { [Op.in]: normalizedTripIds },
+      },
+      group: ["trip_id"],
+      raw: true,
+      transaction: options.transaction || null,
+    });
+
+    const passengersByTripId = new Map(
+      normalizedTripIds.map((tripId) => [
+        tripId,
+        {
+          total_quantity: 0,
+          total_adults: 0,
+          total_minors: 0,
+        },
+      ])
+    );
+
+    for (const row of passengerRows) {
+      const tripId = Number(row.trip_id);
+      passengersByTripId.set(tripId, {
+        total_quantity: Number(row.total_quantity || 0),
+        total_adults: Number(row.total_adults || 0),
+        total_minors: Number(row.total_minors || 0),
+      });
+    }
+
+    return passengersByTripId;
   },
 
   async getMonthlySales(month, type, branchId = null) {

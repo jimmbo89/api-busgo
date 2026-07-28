@@ -17,6 +17,7 @@ const RouteController = {
             const mappedRoutes = routes.map(route => {
                 return {
                     id: route.id,
+                    code: route.code,
                     name: route.name,
                     originId: route.origin_id,
                     origin_id: route.origin_id,
@@ -54,6 +55,7 @@ const RouteController = {
 
             const mappedRoutes = routesToReturn.map(route => ({
                 id: route.id,
+                code: route.code,
                 name: route.name,
                 originId: route.origin_id,
                 origin_id: route.origin_id,
@@ -145,6 +147,7 @@ const RouteController = {
 
             const mappedRoute = {
                 id: route.id,
+                code: route.code,
                 name: route.name,
                 originId: route.origin_id,
                 destinationId: route.destination_id,

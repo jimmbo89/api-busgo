@@ -6,34 +6,14 @@
     "auditLog": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\.c95b32de72de7932a92e29178e32300aa98123e9-audit.json",
     "files": [
         {
-            "date": 1782821580135,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-06-30.log",
-            "hash": "700db757fa5c2c48ee6279f37d1b77320096e1338a5972d2785b8ef28c122bf0"
+            "date": 1785091019323,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-26.log",
+            "hash": "ecaf33f35c39ac3bc44ffacee6f40928c501ca997fb521586cbf4adf0a2e9801"
         },
         {
-            "date": 1782908623341,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-01.log",
-            "hash": "a9863050e4bcd6996ac0afc990ef6e271db18c22257418883682794d5c22ed65"
-        },
-        {
-            "date": 1782994680079,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-02.log",
-            "hash": "5fcc3a698e37efe0ae27769f86636f0a932216d4f65835f75b6c7e0d076a06d9"
-        },
-        {
-            "date": 1783086631553,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-03.log",
-            "hash": "5eea5f12da3bf1e319ce76fd49774faf21da7050ac6c94eb2818151f5404feca"
-        },
-        {
-            "date": 1783342198161,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-06.log",
-            "hash": "18c8feb0a307867b25bc51b3ffaddfdbe94c72074e398833f3aa23e022acf2c4"
-        },
-        {
-            "date": 1783423771926,
-            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-07.log",
-            "hash": "3067764c14706dea5f92dba9e54081d6581293fa0c393a7592a0be1472b41623"
+            "date": 1785154319684,
+            "name": "D:\\Dev Klint\\Boletines\\API\\api-busgo\\logs\\combined\\combined-2026-07-27.log",
+            "hash": "3040091cc9b55219b8ec26b9548facb1e6e5dd331852c5b776dad9273c4b85a3"
         }
     ],
     "hashType": "sha256"

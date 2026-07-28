@@ -65,6 +65,11 @@ module.exports = (sequelize, DataTypes) => {
         }
       }
     },
+    code: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      unique: true,
+    },
     date: {
       type: DataTypes.DATEONLY,
       allowNull: false

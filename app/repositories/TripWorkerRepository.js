@@ -184,6 +184,72 @@ const TripWorkerRepository = {
     return worker;
   },
 
+  async workersByTripIds(tripIds, branchId) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const workersTrip = await TripWorker.findAll({
+      where: {
+        trip_id: { [Op.in]: normalizedTripIds },
+      },
+      attributes: ["id", "trip_id", "worker_id"],
+      include: [
+        {
+          model: Worker,
+          as: "worker",
+          attributes: ["id", "name", "image"],
+          include: [
+            {
+              model: BranchWorker,
+              as: "branchWorkers",
+              attributes: ["id", "branch_id", "worker_id", "role_id"],
+              where: { branch_id: branchId },
+              required: true,
+              include: [
+                {
+                  model: Role,
+                  as: "role",
+                  attributes: ["id", "name"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    const workersByTripId = new Map(
+      normalizedTripIds.map((tripId) => [tripId, []])
+    );
+
+    for (const workerTrip of workersTrip) {
+      const tripId = Number(workerTrip.trip_id);
+      const branchWorker = workerTrip.worker?.branchWorkers?.[0] || null;
+      if (!workersByTripId.has(tripId)) {
+        workersByTripId.set(tripId, []);
+      }
+
+      workersByTripId.get(tripId).push({
+        id: workerTrip.worker_id,
+        name: workerTrip.worker?.name,
+        image: workerTrip.worker?.image,
+        roleId: branchWorker ? branchWorker.role_id : null,
+        roleName: branchWorker?.role?.name || null,
+      });
+    }
+
+    return workersByTripId;
+  },
+
 };
 
 module.exports = TripWorkerRepository;

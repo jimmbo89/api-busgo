@@ -851,12 +851,14 @@ const TripController = {
 
           return {
             id: trip.id,
+            code: trip.code,
             branchId: trip.branch_id,
             branch_id: trip.branch_id,
             vehicleId: trip.vehicle_id,
             vehicle_id: trip.vehicle_id,
             routeId: trip.route_id,
             route_id: trip.route_id,
+            routeCode: trip.route?.code ?? null,
             date: trip.date,
             schedule: trip.schedule,
             arrival: trip.arrival,
@@ -904,24 +906,40 @@ const TripController = {
     }
 
     try {
-      const trips = await TripRepository.findDate(branch_id, workerId, date, null);
+      const trips = await TripRepository.findDateForBranchDateBase(branch_id, date);
 
       if (!trips.length) {
         return res.status(204).json({ msg: "TripsNotFound" });
       }
 
+      const tripIds = trips.map((trip) => trip.id);
+      const [workersByTripId, passengersByTripId, tripStopsByTripId, tripFaresByTripId] = await Promise.all([
+        TripWorkerRepository.workersByTripIds(tripIds, branch_id),
+        TicketRepository.getPassengersByTripIds(tripIds),
+        TripRepository.getTripStopsByTripIds(tripIds),
+        TripRepository.getTripFaresByTripIds(tripIds),
+      ]);
+
       const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
-          const tripStops = mapTripStops(trip.tripStops);
+          const tripStops = mapTripStops(tripStopsByTripId.get(Number(trip.id)) || []);
+          const passengers =
+            passengersByTripId.get(Number(trip.id)) || {
+              total_quantity: 0,
+              total_adults: 0,
+              total_minors: 0,
+            };
 
           return {
             id: trip.id,
+            code: trip.code,
             branchId: trip.branch_id,
             branch_id: trip.branch_id,
             vehicleId: trip.vehicle_id,
             vehicle_id: trip.vehicle_id,
             routeId: trip.route_id,
             route_id: trip.route_id,
+            routeCode: trip.route?.code ?? null,
             date: trip.date,
             schedule: trip.schedule,
             arrival: trip.arrival,
@@ -939,10 +957,10 @@ const TripController = {
             originImage: trip.route.origin.image,
             destination: trip.route.destination.address,
             destinationImage: trip.route.destination.image,
-            workers: await TripWorkerRepository.workersTrip(trip),
-            passengers: await TicketRepository.getpassengers(trip.id),
+            workers: workersByTripId.get(Number(trip.id)) || [],
+            passengers,
             tripStops: tripStops,
-            tripFares: mapTripFares(trip.tripFares),
+            tripFares: mapTripFares(tripFaresByTripId.get(Number(trip.id)) || []),
           };
         })
       );
@@ -1280,25 +1298,43 @@ const TripController = {
       let sortedTrips = [];
       let sortedTripsData = [];
       if (includeTrips) {
-        const trips = await TripRepository.findDate(branch_id, workerId, searchDate, ticket_id);
+        const trips = await TripRepository.findDateForBranchDateBase(branch_id, searchDate);
+        const tripIds = trips.map((trip) => trip.id);
+        const routeIds = trips.map((trip) => trip.route_id);
+        const [
+          tripStopsByTripId,
+          tripFaresByTripId,
+          ticketsByTripId,
+          routeStopsByRouteId,
+          fareSegmentsByRouteId,
+        ] = await Promise.all([
+          TripRepository.getTripStopsByTripIds(tripIds),
+          TripRepository.getTripFaresByTripIds(tripIds),
+          TicketRepository.getTicketsByTripIds(tripIds),
+          RouteStopRepository.findByRouteIds(routeIds),
+          FareSegmentRepository.findByRouteIds(routeIds),
+        ]);
 
         const mappedTrips = await Promise.all(
         trips.map(async (trip) => {
-          const tripStops = mapTripStops(trip.tripStops);
+          const tripId = Number(trip.id);
+          const routeId = Number(trip.route_id);
+          const tripTicketsRaw = ticketsByTripId.get(tripId) || [];
+          const tripStops = mapTripStops(tripStopsByTripId.get(tripId) || []);
           const routeStops = mapRouteStops(
-            (await RouteStopRepository.findByRoute(trip.route_id)).filter(
+            (routeStopsByRouteId.get(routeId) || []).filter(
               (routeStop) => Number(routeStop.active) === 1 || routeStop.active === true
             )
           );
           const fareSegments = mapFareSegments(
-            (await FareSegmentRepository.findByRoute(trip.route_id)).filter(
+            (fareSegmentsByRouteId.get(routeId) || []).filter(
               (fareSegment) => isFareSegmentActiveForDate(fareSegment, currentChileDate)
             )
           );
-          const tripFares = mapTripFares(trip.tripFares);
+          const tripFares = mapTripFares(tripFaresByTripId.get(tripId) || []);
 
-          const reservedSeats = trip.tickets
-          ? trip.tickets.flatMap((ticket) => {
+          const reservedSeats = tripTicketsRaw
+          ? tripTicketsRaw.flatMap((ticket) => {
               return Array.isArray(ticket.seats)
                 ? ticket.seats
                 : JSON.parse(ticket.seats);
@@ -1311,12 +1347,12 @@ const TripController = {
             : []; // Si no existe structure.seatMap, devuelves un array vacío
 
             // Calcular abordando y pendiente considerando quantity
-        const totalPasajeros = trip.tickets 
-            ? trip.tickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
+        const totalPasajeros = tripTicketsRaw 
+            ? tripTicketsRaw.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
             : 0;
             
-        const boarding = trip.tickets 
-            ? trip.tickets.reduce((sum, ticket) => 
+        const boarding = tripTicketsRaw 
+            ? tripTicketsRaw.reduce((sum, ticket) => 
                 sum + ((ticket.qr_status !== null && ticket.qr_status !== 0) ? (ticket.quantity || 1) : 0), 0)
             : 0;
             
@@ -1418,7 +1454,13 @@ const TripController = {
       logger.info(
         `TripController->getTripDateBySegment: currentChileDate=${currentChileDate} searchDate=${searchDate}`
       );
-      const trips = await TripRepository.findDate(branch_id, workerId, searchDate, null);
+      const trips = await TripRepository.findDateBySegmentBase(
+        branch_id,
+        normalizedOriginId,
+        normalizedDestinationId,
+        searchDate,
+        workerId
+      );
       logger.info(
         `TripController->getTripDateBySegment: viajes encontrados para sucursal=${branch_id} fecha=${searchDate} => ${trips.length}`
       );
@@ -1427,40 +1469,57 @@ const TripController = {
         return res.status(204).json({ msg: "TripsNotFound" });
       }
 
+      const tripIds = trips.map((trip) => trip.id);
+      const [tripStopsByTripId, matchingTripFaresByTripId, ticketsByTripId] = await Promise.all([
+        TripRepository.getTripStopsByTripIds(tripIds),
+        TripRepository.getSegmentTripFaresByTripIds(
+          tripIds,
+          normalizedOriginId,
+          normalizedDestinationId,
+          searchDate
+        ),
+        TicketRepository.getTicketsByTripIds(tripIds),
+      ]);
+
       const mappedTrips = await Promise.all(
         trips
-          .map((trip) => ({
-            trip,
-            matchingTripFares: getExactTripFareForSegment(
-              trip,
-              normalizedOriginId,
-              normalizedDestinationId,
-              currentChileDate
-            ),
-          }))
-          .map((entry) => {
+          .map((trip) => {
+            const tripId = Number(trip.id);
+            const matchingTripFares = matchingTripFaresByTripId.get(tripId) || [];
             logger.info(
-              `TripController->getTripDateBySegment: trip=${entry.trip?.id} matchingTripFares=${entry.matchingTripFares.length}`
+              `TripController->getTripDateBySegment: trip=${trip.id} matchingTripFares=${matchingTripFares.length}`
             );
-            return entry;
+            return {
+              trip,
+              matchingTripFares,
+              tripStopsRaw: tripStopsByTripId.get(tripId) || [],
+              tripTicketsRaw: ticketsByTripId.get(tripId) || [],
+            };
           })
-          .filter(({ matchingTripFares }) => matchingTripFares.length > 0)
-          .map(async (trip) => {
-            if (trip.trip.end !== null) {
+          .map(async (entry) => {
+            if (entry.trip.end !== null) {
               logger.info(
-                `TripController->getTripDateBySegment: trip=${trip.trip.id} excluded because end is not null`
+                `TripController->getTripDateBySegment: trip=${entry.trip.id} excluded because end is not null`
               );
               return null;
             }
 
-            const tripStops = mapTripStops(trip.trip.tripStops);
-            const fareSegmentMap = buildFareSegmentMap(trip.matchingTripFares);
-            const rawTripTickets = Array.isArray(trip.trip.tickets) ? trip.trip.tickets : [];
-            const tripTickets = mapTripTickets(rawTripTickets).map((ticket, index) => ({
+            const tripStops = mapTripStops(entry.tripStopsRaw);
+            const tripFares = mapTripFares(entry.matchingTripFares);
+            const fareSegmentMap = buildFareSegmentMap(entry.matchingTripFares);
+            const tripTickets = mapTripTickets(entry.tripTicketsRaw).map((ticket, index) => ({
               ...ticket,
-              fareSegments: extractTicketFareSegments(rawTripTickets[index], fareSegmentMap),
+              fareSegments: extractTicketFareSegments(entry.tripTicketsRaw[index], fareSegmentMap),
             }));
-            const tripFares = mapTripFares(trip.matchingTripFares).map((fare) => {
+            const tripModel = entry.trip;
+            const tripObject = {
+              ...toPlainObject(tripModel),
+              tripStops: entry.tripStopsRaw,
+              tripFares: entry.matchingTripFares,
+              tickets: entry.tripTicketsRaw,
+            };
+
+            const tripFaresWithAvailability = tripFares.map((fare) => {
               const fareSegment = fare?.fareSegmentTicketType?.fareSegment ?? null;
               const {
                 reservedSeats,
@@ -1468,7 +1527,7 @@ const TripController = {
                 availableSeatNumbers,
                 availableSeats,
               } = getSeatAvailabilityBySegment(
-                trip.trip,
+                tripObject,
                 tripTickets,
                 fareSegment,
                 fareSegmentMap
@@ -1482,35 +1541,36 @@ const TripController = {
                 availableSeats,
               };
             });
+
             const segmentOriginMinutes = getSegmentOriginMinutes(
-              trip.trip.tripStops,
-              trip.matchingTripFares
+              entry.tripStopsRaw,
+              entry.matchingTripFares
             );
             const segmentDestinationMinutes = getSegmentDestinationMinutes(
-              trip.trip.tripStops,
-              trip.matchingTripFares
+              entry.tripStopsRaw,
+              entry.matchingTripFares
             );
-            const baseSchedule = trip.trip.start || trip.trip.schedule;
+            const baseSchedule = entry.trip.start || entry.trip.schedule;
             const adjustedSchedule = addMinutesToTripTime(
-              trip.trip.date,
+              entry.trip.date,
               baseSchedule,
               segmentOriginMinutes
             );
             const adjustedArrival = addMinutesToTripTime(
-              trip.trip.date,
+              entry.trip.date,
               baseSchedule,
               segmentDestinationMinutes
             );
-            const segmentPrice = tripFares.length
-              ? Math.max(...tripFares.map((fare) => Number(fare.price) || 0))
-              : Number(trip.trip.price ?? 0);
+            const segmentPrice = tripFaresWithAvailability.length
+              ? Math.max(...tripFaresWithAvailability.map((fare) => Number(fare.price) || 0))
+              : Number(entry.trip.price ?? 0);
             logger.info(
-              `TripController->getTripDateBySegment: trip=${trip.trip.id} originMinutes=${segmentOriginMinutes} destinationMinutes=${segmentDestinationMinutes} baseSchedule=${baseSchedule} adjustedSchedule=${adjustedSchedule} adjustedArrival=${adjustedArrival} segmentPrice=${segmentPrice}`
+              `TripController->getTripDateBySegment: trip=${entry.trip.id} originMinutes=${segmentOriginMinutes} destinationMinutes=${segmentDestinationMinutes} baseSchedule=${baseSchedule} adjustedSchedule=${adjustedSchedule} adjustedArrival=${adjustedArrival} segmentPrice=${segmentPrice}`
             );
-            const seatMap = trip.trip.vehicle?.structure?.seatMap
-              ? Array.isArray(trip.trip.vehicle.structure.seatMap)
-                ? trip.trip.vehicle.structure.seatMap
-                : JSON.parse(trip.trip.vehicle.structure.seatMap)
+            const seatMap = entry.trip.vehicle?.structure?.seatMap
+              ? Array.isArray(entry.trip.vehicle.structure.seatMap)
+                ? entry.trip.vehicle.structure.seatMap
+                : JSON.parse(entry.trip.vehicle.structure.seatMap)
               : [];
 
             const totalPasajeros = tripTickets
@@ -1528,29 +1588,32 @@ const TripController = {
             const pending = totalPasajeros - boarding;
 
             return {
-              id: trip.trip.id,
-              trip_id: trip.trip.id,
-              date: trip.trip.date,
-              start: trip.trip.start,
-              end: trip.trip.end,
+              id: entry.trip.id,
+              trip_id: entry.trip.id,
+              code: entry.trip.code,
+              tripCode: entry.trip.code,
+              routeCode: entry.trip.route?.code ?? null,
+              date: entry.trip.date,
+              start: entry.trip.start,
+              end: entry.trip.end,
               arrival: adjustedArrival,
               price: segmentPrice,
               schedule: adjustedSchedule,
-              seats: trip.trip.vehicle.seats,
-              plate: trip.trip.vehicle.plate,
-              internal_number: trip.trip.vehicle.internal_number,
-              imageVehicle: trip.trip.vehicle.image,
-              name: trip.trip.route.name,
-              origin: trip.trip.route.origin.address,
-              originImage: trip.trip.route.origin.image,
-              destination: trip.trip.route.destination.address,
-              destinationImage: trip.trip.route.destination.image,
+              seats: entry.trip.vehicle.seats,
+              plate: entry.trip.vehicle.plate,
+              internal_number: entry.trip.vehicle.internal_number,
+              imageVehicle: entry.trip.vehicle.image,
+              name: entry.trip.route.name,
+              origin: entry.trip.route.origin.address,
+              originImage: entry.trip.route.origin.image,
+              destination: entry.trip.route.destination.address,
+              destinationImage: entry.trip.route.destination.image,
               seatMap,
               boarding,
               pending,
               tickets: tripTickets,
               tripStops,
-              tripFares,
+              tripFares: tripFaresWithAvailability,
             };
           })
       );
@@ -1595,7 +1658,7 @@ const TripController = {
       logger.info(
         `TripController->getTripDateBySegmentAll: currentChileDate=${currentChileDate} searchDate=${searchDate}`
       );
-      const trips = await TripRepository.findDate(branch_id, workerId, searchDate, null);
+      const trips = await TripRepository.findDateForBranchDateBase(branch_id, searchDate);
       logger.info(
         `TripController->getTripDateBySegmentAll: viajes encontrados para sucursal=${branch_id} fecha=${searchDate} => ${trips.length}`
       );
@@ -1604,11 +1667,18 @@ const TripController = {
         return res.status(204).json({ msg: "TripsNotFound" });
       }
 
+      const tripIds = trips.map((trip) => trip.id);
+      const [tripStopsByTripId, tripFaresByTripId, ticketsByTripId] = await Promise.all([
+        TripRepository.getTripStopsByTripIds(tripIds),
+        TripRepository.getTripFaresByTripIds(tripIds),
+        TicketRepository.getTicketsByTripIds(tripIds),
+      ]);
+
       const mappedTrips = await Promise.all(
         trips
-          .map((trip) => ({
-            trip,
-            matchingTripFares: (Array.isArray(trip.tripFares) ? trip.tripFares : []).filter(
+          .map((trip) => {
+            const tripId = Number(trip.id);
+            const matchingTripFares = (tripFaresByTripId.get(tripId) || []).filter(
               (tripFare) => {
                 const fareSegmentTicketType = tripFare?.fareSegmentTicketType || {};
                 const fareSegment = fareSegmentTicketType?.fareSegment || {};
@@ -1619,8 +1689,15 @@ const TripController = {
 
                 return isFareSegmentActiveForDate(fareSegment, currentChileDate);
               }
-            ),
-          }))
+            );
+
+            return {
+              trip,
+              matchingTripFares,
+              tripStopsRaw: tripStopsByTripId.get(tripId) || [],
+              tripTicketsRaw: ticketsByTripId.get(tripId) || [],
+            };
+          })
           .map((entry) => {
             logger.info(
               `TripController->getTripDateBySegmentAll: trip=${entry.trip?.id} matchingTripFares=${entry.matchingTripFares.length}`
@@ -1629,13 +1706,19 @@ const TripController = {
           })
           .filter(({ matchingTripFares }) => matchingTripFares.length > 0)
           .map(async (trip) => {
-            const tripStops = mapTripStops(trip.trip.tripStops);
+            const tripStops = mapTripStops(trip.tripStopsRaw);
             const fareSegmentMap = buildFareSegmentMap(trip.matchingTripFares);
-            const rawTripTickets = Array.isArray(trip.trip.tickets) ? trip.trip.tickets : [];
+            const rawTripTickets = Array.isArray(trip.tripTicketsRaw) ? trip.tripTicketsRaw : [];
             const tripTickets = mapTripTickets(rawTripTickets).map((ticket, index) => ({
               ...ticket,
               fareSegments: extractTicketFareSegments(rawTripTickets[index], fareSegmentMap),
             }));
+            const tripObject = {
+              ...toPlainObject(trip.trip),
+              tripStops: trip.tripStopsRaw,
+              tripFares: trip.matchingTripFares,
+              tickets: trip.tripTicketsRaw,
+            };
             const tripFares = mapTripFares(trip.matchingTripFares).map((fare) => {
               const fareSegment = fare?.fareSegmentTicketType?.fareSegment ?? null;
               const {
@@ -1644,7 +1727,7 @@ const TripController = {
                 availableSeatNumbers,
                 availableSeats,
               } = getSeatAvailabilityBySegment(
-                trip.trip,
+                tripObject,
                 tripTickets,
                 fareSegment,
                 fareSegmentMap
@@ -1659,11 +1742,11 @@ const TripController = {
               };
             });
             const segmentOriginMinutes = getSegmentOriginMinutes(
-              trip.trip.tripStops,
+              trip.tripStopsRaw,
               trip.matchingTripFares
             );
             const segmentDestinationMinutes = getSegmentDestinationMinutes(
-              trip.trip.tripStops,
+              trip.tripStopsRaw,
               trip.matchingTripFares
             );
             const baseSchedule = trip.trip.start || trip.trip.schedule;
@@ -1706,6 +1789,9 @@ const TripController = {
             return {
               id: trip.trip.id,
               trip_id: trip.trip.id,
+              code: trip.trip.code,
+              tripCode: trip.trip.code,
+              routeCode: trip.trip.route?.code ?? null,
               date: trip.trip.date,
               start: trip.trip.start,
               end: trip.trip.end,
@@ -1969,7 +2055,10 @@ const TripController = {
       }
 
       trip = await sequelize.transaction(async (transaction) => {
-        const createdTrip = await TripRepository.create(req.body, { transaction });
+        const createdTrip = await TripRepository.create(
+          { ...req.body, route_code: route?.code ?? null },
+          { transaction }
+        );
 
         if (hasOwn(req.body, "tripStops")) {
           await TripController.syncTripStops(
@@ -2818,6 +2907,8 @@ const TripController = {
         const route = branchRoute.route;
         return {
           id: route.id,
+          code: route.code,
+          routeCode: route.code ?? null,
           name: route.name,
           originId: route.origin_id,
           origin_id: route.origin_id,
@@ -2981,6 +3072,7 @@ const TripController = {
 
         // Formatear la información del trip
         return {
+          code: trip.code,
           nombre: tripName,
           origin: tripOrigin,
           destination: tripDestination,
@@ -3112,6 +3204,8 @@ const TripController = {
 
         // Formatear la información del trip
         return {
+          code: trip.code,
+          routeCode: trip.route?.code ?? null,
           nombre: tripName,
           totalPasajes: tripPasajesVendidos,
           totalTramo: tripTotal,
@@ -3244,6 +3338,8 @@ const TripController = {
 
         return {
           id: trip.id,
+          code: trip.code,
+          routeCode: route.code ?? null,
           date: trip.date,
           schedule: trip.schedule,
           arrival: trip.arrival,
@@ -3362,6 +3458,7 @@ const TripController = {
 
         return {
           id: trip.id,
+          code: trip.code,
           date: trip.date,
           schedule: trip.schedule,
           arrival: trip.arrival,

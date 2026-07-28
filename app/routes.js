@@ -166,7 +166,8 @@ const {
   storeTicketWebSchema,
   qrEncryptedSchema,
   ticketSoldDateWorkerSchema,
-  ticketReportSchema
+  ticketReportSchema,
+  checkReservedSeatsSchema
 } = require("./middlewares/validations/ticketValidation");
 const { paymentSchema, paymentDataSchema, } = require("./middlewares/validations/tuuValidation");
 const { storeStructureSchema, updateStructureSchema, idStructureSchema, } = require("./middlewares/validations/structureValidation");
@@ -601,8 +602,8 @@ router.post(
 
 //Rutas Trip
 router.get("/trip", TripController.index);
-router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );
-router.post("/get-trip-date-segment", validateSchema(branchOriginDestinationTripSchema), TripController.getTripDateBySegment);
+router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );// endpoint movil ver viajes
+router.post("/get-trip-date-segment", validateSchema(branchOriginDestinationTripSchema), TripController.getTripDateBySegment); //endpoint movil y web ver viajes por origen y destino
 router.post("/get-trip-date-segment-all", validateSchema(branchTripDateSegmentAllSchema), TripController.getTripDateBySegmentAll);
 router.post("/get-trip-vehicle", validateSchema(branch_idTripSchema), TripController.getTripVehicle );
 router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
@@ -673,6 +674,11 @@ router.post(
   "/get-tickets-date",
   validateSchema(branchTicketTripSchema),
   TicketController.getTicketsDate
+);
+router.post(
+  "/check-reserved-seats",
+  validateSchema(checkReservedSeatsSchema),
+  TicketController.checkReservedSeats
 );
 router.post(
   "/monthly-sales",

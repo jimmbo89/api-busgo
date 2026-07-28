@@ -1,4 +1,5 @@
 const logger = require('../../config/logger');
+const { Op } = require('sequelize');
 const { RouteStop, Company, Route, Location } = require('../models');
 
 const RouteStopRepository = {
@@ -57,6 +58,53 @@ const RouteStopRepository = {
       ],
       order: [['stop_order', 'ASC']],
     });
+  },
+
+  async findByRouteIds(routeIds) {
+    const normalizedRouteIds = Array.from(
+      new Set(
+        (Array.isArray(routeIds) ? routeIds : [])
+          .map((routeId) => Number(routeId))
+          .filter((routeId) => Number.isFinite(routeId) && routeId > 0)
+      )
+    );
+
+    if (normalizedRouteIds.length === 0) {
+      return new Map();
+    }
+
+    const routeStops = await RouteStop.findAll({
+      where: { route_id: { [Op.in]: normalizedRouteIds } },
+      include: [
+        { model: Company, as: 'company', attributes: ['id', 'name', 'rut'] },
+        {
+          model: Route,
+          as: 'route',
+          attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+        },
+        {
+          model: Location,
+          as: 'location',
+          attributes: ['id', 'address', 'country', 'city', 'image', 'active'],
+        },
+      ],
+      order: [['route_id', 'ASC'], ['stop_order', 'ASC']],
+    });
+
+    const routeStopsByRouteId = new Map(
+      normalizedRouteIds.map((routeId) => [routeId, []])
+    );
+
+    for (const routeStop of routeStops) {
+      const routeId = Number(routeStop.route_id);
+      if (!routeStopsByRouteId.has(routeId)) {
+        routeStopsByRouteId.set(routeId, []);
+      }
+
+      routeStopsByRouteId.get(routeId).push(routeStop);
+    }
+
+    return routeStopsByRouteId;
   },
 
   async findByCompany(companyId) {

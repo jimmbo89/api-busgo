@@ -44,6 +44,11 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    code: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+      unique: true,
+    },
     origin_id: {
       type: DataTypes.INTEGER,
       allowNull: false,

@@ -1,4 +1,5 @@
 const { Ticket, sequelize } = require("../models");
+const { Transaction } = require("sequelize");
 const logger = require("../../config/logger"); // Logger para seguimiento
 const {
   TicketRepository,
@@ -30,6 +31,11 @@ const parseArrayValue = (value) => {
 
   return [];
 };
+
+const normalizeSeatNumbers = (seats) =>
+  parseArrayValue(seats)
+    .map((seat) => Number(seat))
+    .filter((seat) => Number.isFinite(seat));
 
 const mapTicketItems = (ticketItems = []) =>
   parseArrayValue(ticketItems).map((ticketItem) => ({
@@ -408,6 +414,8 @@ const TicketController = {
 
       const mappedTickets = tickets.map((ticket) => ({
         id: ticket.id,
+        code: ticket.trip?.code ?? null,
+        tripCode: ticket.trip?.code ?? null,
         branchId: ticket.branch_id,
         branch_id: ticket.branch_id,
         userId: ticket.user_id,
@@ -433,6 +441,7 @@ const TicketController = {
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
         userName: ticket.user.name, // Incluir los datos del usuario asociado
         tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+        routeCode: ticket.trip.route?.code ?? null,
         originImage: ticket.trip.route.origin.image, // Incluir los detalles del viaje asociadoc
         tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociadoc
         destinationImage: ticket.trip.route.destination.image, // Incluir los detalles del viaje asociado
@@ -485,7 +494,7 @@ const TicketController = {
     }
 
     try {
-      const tickets = await TicketRepository.findAllDate(
+      const tickets = await TicketRepository.findAllDateBase(
         branch_id,
         date,
         endDate,
@@ -499,6 +508,9 @@ const TicketController = {
         return res.status(204).json({ msg: "TicketsNotFound" });
       }
 
+      const ticketIds = tickets.map((ticket) => ticket.id);
+      const ticketItemsByTicketId = await TicketRepository.getTicketItemsByTicketIds(ticketIds);
+
       const mappedTickets = tickets.map((ticket) => ({
         id: ticket.id,
         branchId: ticket.branch_id,
@@ -507,6 +519,8 @@ const TicketController = {
         user_id: ticket.user_id,
         tripId: ticket.trip_id,
         trip_id: ticket.trip_id,
+        code: ticket.trip?.code ?? null,
+        tripCode: ticket.trip?.code ?? null,
         fare_segment_id: ticket.fare_segment_id,
         fareSegmentId: ticket.fare_segment_id,
         method: ticket.method,
@@ -517,7 +531,7 @@ const TicketController = {
         seats: parseArrayValue(ticket.seats),
         promotions: parseArrayValue(ticket.promotions),
         tickettypes: parseArrayValue(ticket.tickettypes),
-        ticketItems: mapTicketItems(ticket.ticketItems),
+        ticketItems: mapTicketItems(ticketItemsByTicketId.get(Number(ticket.id)) || []),
         adults: ticket.adults ? ticket.adults : 0,
         minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
@@ -526,6 +540,7 @@ const TicketController = {
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
         userName: ticket.user.name, // Incluir los datos del usuario asociado
         tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+        routeCode: ticket.trip.route?.code ?? null,
         originImage: ticket.trip.route.origin.image, // Incluir los detalles del viaje asociadoc
         tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociadoc
         destinationImage: ticket.trip.route.destination.image, // Incluir los detalles del viaje asociado
@@ -558,6 +573,71 @@ const TicketController = {
     } catch (error) {
       logger.error("TicketController->getTicketDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
+  async checkReservedSeats(req, res) {
+    logger.info(`${req.user.name} - Verifica asientos reservados`);
+    logger.info("Datos recibidos al verificar asientos reservados");
+    logger.info(JSON.stringify(req.body));
+
+    const { trip_id, seats, fare_segment_id } = req.body;
+
+    try {
+      const trip = await TripRepository.findByIdWithTickets(trip_id);
+      if (!trip) {
+        logger.error(
+          `TicketController->checkReservedSeats: Viaje no encontrado con ID ${trip_id}`
+        );
+        return res.status(400).json({ msg: "TripNotFound" });
+      }
+
+      const normalizedSeats = normalizeSeatNumbers(seats);
+      const hasFareSegment =
+        fare_segment_id !== undefined &&
+        fare_segment_id !== null &&
+        fare_segment_id !== "";
+
+      if (hasFareSegment) {
+        const fareSegment = await FareSegmentRepository.findById(fare_segment_id);
+        if (!fareSegment) {
+          logger.error(
+            `TicketController->checkReservedSeats: Tramo no encontrado con ID ${fare_segment_id}`
+          );
+          return res.status(400).json({ msg: "FareSegmentNotFound" });
+        }
+
+        if (Number(fareSegment.route_id) !== Number(trip.route_id)) {
+          logger.error(
+            `TicketController->checkReservedSeats: El tramo ${fare_segment_id} no pertenece a la ruta ${trip.route_id}`
+          );
+          return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
+        }
+      }
+
+      const reservedSeats = hasFareSegment
+        ? await TicketRepository.checkReservedSeatsBySegment(
+            trip_id,
+            normalizedSeats,
+            fare_segment_id
+          )
+        : await TicketRepository.checkReservedSeats(trip_id, normalizedSeats);
+
+      const reservedSeatSet = new Set(reservedSeats);
+      const availableSeats = normalizedSeats.filter(
+        (seat) => !reservedSeatSet.has(seat)
+      );
+
+      return res.status(200).json({
+        reserved: reservedSeats.length > 0,
+        reservedSeats,
+        availableSeats,
+      });
+    } catch (error) {
+      logger.error(
+        `TicketController->checkReservedSeats: ${error.message}`
+      );
+      return res.status(500).json({ error: "ServerError", details: error.message });
     }
   },
 
@@ -603,7 +683,9 @@ const TicketController = {
       return res.status(400).json({ msg: "BranchNotFound" });
     }
 
-    const t = await sequelize.transaction(); // Inicia la transacción
+    const t = await sequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+    }); // Inicia la transacción con aislamiento fuerte
     try {
       const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
       if (normalizedTicketItems !== null) {
@@ -615,14 +697,19 @@ const TicketController = {
         normalizedTicketItems ?? []
       );
 
+      /*
       // Verifica los asientos reservados
       const conflictingSeats = fareSegmentIdsForValidation.length > 0
         ? await TicketRepository.checkReservedSeatsBySegment(
             trip_id,
             seats,
-            fareSegmentIdsForValidation
+            fareSegmentIdsForValidation,
+            null,
+            { transaction: t }
           )
-        : await TicketRepository.checkReservedSeats(trip_id, seats);
+        : await TicketRepository.checkReservedSeats(trip_id, seats, null, {
+            transaction: t,
+          });
 
       if (conflictingSeats.length > 0) {
         logger.error(
@@ -630,10 +717,14 @@ const TicketController = {
             ", "
           )}`
         );
+        if (!t.finished) {
+          await t.rollback();
+        }
         return res
           .status(400)
           .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
+      */
 
       for (const fareSegmentId of fareSegmentIdsForValidation) {
         const fareSegmentValidation = await validateFareSegmentForTrip(
@@ -795,7 +886,9 @@ const TicketController = {
     } = req.body;
     let ticket = {};
 
-    const t = await sequelize.transaction(); // Inicia la transacción
+    const t = await sequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+    }); // Inicia la transacción con aislamiento fuerte
     try {
       const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
       if (normalizedTicketItems !== null) {
@@ -807,14 +900,19 @@ const TicketController = {
         normalizedTicketItems ?? []
       );
 
+      /*
       // Verifica los asientos reservados
       const conflictingSeats = fareSegmentIdsForValidation.length > 0
         ? await TicketRepository.checkReservedSeatsBySegment(
             trip_id,
             seats,
-            fareSegmentIdsForValidation
+            fareSegmentIdsForValidation,
+            null,
+            { transaction: t }
           )
-        : await TicketRepository.checkReservedSeats(trip_id, seats);
+        : await TicketRepository.checkReservedSeats(trip_id, seats, null, {
+            transaction: t,
+          });
 
       if (conflictingSeats.length > 0) {
         logger.error(
@@ -822,10 +920,14 @@ const TicketController = {
             ", "
           )}`
         );
+        if (!t.finished) {
+          await t.rollback();
+        }
         return res
           .status(400)
           .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
+      */
 
       for (const fareSegmentId of fareSegmentIdsForValidation) {
         const fareSegmentValidation = await validateFareSegmentForTrip(
@@ -1801,6 +1903,10 @@ async verifyEncryptedQR(req, res) {
         });
 
         return {
+          code: trip.code,
+          tripCode: trip.code,
+          routeCode: trip.route?.code ?? null,
+          routeName: trip.route?.name ?? null,
           nombre: tripName,
           origin: tripOrigin,
           destination: tripDestination,

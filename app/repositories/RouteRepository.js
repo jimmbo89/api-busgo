@@ -1,13 +1,15 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Route, Location, Sequelize, Branch, BranchRoute, RouteStop } = require('../models');
+const { Route, Location, Sequelize, Branch, BranchRoute, RouteStop, sequelize } = require('../models');
 const logger = require('../../config/logger');
+
+const formatRouteCode = (routeId) => `R${String(routeId).padStart(3, '0')}`;
 
 const RouteRepository = {
   async findAll() {
     return await Route.findAll({
-      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
       order: [['createdAt', 'ASC']],
       include: [
         {
@@ -49,7 +51,7 @@ const RouteRepository = {
 
   async findById(id) {
     return await Route.findByPk(id, {
-      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
       include: [
         {
           model: Location,
@@ -115,19 +117,37 @@ const RouteRepository = {
     return await Route.findOne({ where: whereCondition });
   },
 
-  async create(body) {
+  async create(body, options = {}) {
     const { name, origin_id, destination_id, distance, estimated, status } = body;
 
-    const route = await Route.create({
-      name,
-      origin_id,
-      destination_id,
-      distance,
-      estimated,
-      status,
-    });
+    const transaction = options.transaction || await sequelize.transaction();
+    const ownsTransaction = !options.transaction;
 
-    return route;
+    try {
+      const route = await Route.create({
+        name,
+        origin_id,
+        destination_id,
+        distance,
+        estimated,
+        status,
+      }, { transaction });
+
+      const routeCode = formatRouteCode(route.id);
+      await route.update({ code: routeCode }, { transaction });
+
+      if (ownsTransaction) {
+        await transaction.commit();
+      }
+
+      return route;
+    } catch (error) {
+      if (ownsTransaction && transaction && !transaction.finished) {
+        await transaction.rollback();
+      }
+      logger.error(`Error creando ruta: ${error.message}`);
+      throw error;
+    }
   },
 
   async update(route, body) {
@@ -182,7 +202,7 @@ const RouteRepository = {
 
     return await Route.findAll({
       where: whereClause,
-      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
       order: [['createdAt', 'ASC']],
       include: [
         {
@@ -227,7 +247,7 @@ const RouteRepository = {
 
     return await Route.findAll({
       where: { origin_id: originIds },
-      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
       order: [['createdAt', 'ASC']],
       include: [
         {
@@ -295,7 +315,7 @@ const RouteRepository = {
 
     return await Route.findAll({
       where: whereClause,
-      attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
+      attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
       order: [['createdAt', 'ASC']],
       include: [
         {

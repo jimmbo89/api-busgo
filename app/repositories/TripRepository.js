@@ -2032,6 +2032,8 @@ async existsByUpdatedFields(trip, updatedFields) {
 
     // Si se proporciona endDate, filtramos también por rango de fechas
     // Esto limita la búsqueda a un rango específico de dates
+    delete whereClause[Op.or];
+
     if (endDate && endDate.trim() !== "") {
       // Agregamos la condición de fecha al filtro con AND
       whereClause[Op.and] = whereClause[Op.and] || [];

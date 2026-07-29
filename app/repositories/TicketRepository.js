@@ -361,7 +361,7 @@ const TicketRepository = {
         {
           model: Trip,
           as: "trip",
-          attributes: ["id", "date", "schedule", "start", "end"],
+          attributes: ["id", "code", "date", "schedule", "start", "end"],
           required: true, // Excluir tickets sin trip asociado
           include: [
             {
@@ -1816,7 +1816,7 @@ async findBySequenceNumberWithTrip(sequenceNumber) {
         {
           model: Trip,
           as: "trip",
-          attributes: ["id", "date", "schedule", "start", "end"],
+          attributes: ["id", "code", "date", "schedule", "start", "end"],
           include: [
             {
               model: Vehicle,

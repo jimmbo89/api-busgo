@@ -1159,7 +1159,7 @@ const TicketController = {
       let mappedTicket = [];
       //if (ticket.print < 2) {
         // Incrementar el contador de impresiones
-        const ticketIdentifier = ticket.sequenceNumber || ticket.id;
+        const ticketIdentifier = ticket.sequenceNumber ?? null;
         mappedTicket = {
           id: ticket.id,
           branchId: ticket.branch_id,
@@ -1198,16 +1198,15 @@ const TicketController = {
         branch_id: ticket.branch_id, // ID de la sucursal
         user_id: req.user.id, // ID del usuario que realiza la acción
         title: "Reimpresión de ticket",
-        description: `${req.user.name} imprime ticket: ${ticketIdentifier} por ${ticket.print} ocasión`,
+        description: `${req.user.name} realizo una reimpresion de ticket por ${ticket.print} ocasion`,
         details: {
           print: ticket.print,
-          ticket_id: ticket.id,
           sequenceNumber: ticketIdentifier,
           method: ticket.method,
           quantity: ticket.quantity,
           price: ticket.price,
           total: ticket.total,
-          trip_id: ticket.trip_id,
+          trip_code: ticket.trip?.code ?? null,
 
           transactionNumber: ticketIdentifier,
     
@@ -1369,12 +1368,10 @@ async verifyEncryptedQR(req, res) {
           const incidentBody = {
             branch_id: ticket.branch_id,
             user_id: req.user.id,
-            title: `Re-escaneo Ticket - Viaje ${trip_id}`,
-            description: `${req.user.name} re-escaneó ticket ${ticket.id}`,
+            title: `Re-escaneo Ticket - Viaje ${ticket.trip?.code ?? "Sin codigo"}`,
+            description: `${req.user.name} realizo un re-escaneo de ticket`,
             details: {
-              ticket_id: ticket.id,
-              trip_id: trip_id,
-              actual_trip_id: ticket.trip_id,
+              trip_code: ticket.trip?.code ?? null,
               scan_count: ticket.qr_status,
               sequenceNumber: ticket.sequenceNumber,
               timestamp: new Date()

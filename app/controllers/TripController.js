@@ -2439,8 +2439,9 @@ const TripController = {
             branch_id: trip.branch_id, // ID de la sucursal
             user_id: req.user.id, // ID del usuario que realiza la acción
             title: "Retraso en la salida del viaje",
-            description: `Realizó la salida del viaje ${trip.id} con un retraso de (${humanReadable}).`,
+            description: `Realizo la salida del viaje con un retraso de (${humanReadable}).`,
             details: {
+              trip_code: trip.code ?? null,
               actualStart: await TripController.formatToMySQLDateTime(
                 actualStart
               ),
@@ -2475,8 +2476,9 @@ const TripController = {
             branch_id: trip.branch_id, // ID de la sucursal
             user_id: req.user.id, // ID del usuario que realiza la acción
             title: "Retraso en la llegada del viaje",
-            description: `Hizo la llegada del viaje ${trip.id} (${humanReadable}).`,
+            description: `Hizo la llegada del viaje con un retraso de (${humanReadable}).`,
             details: {
+              trip_code: trip.code ?? null,
               actualEnd: await TripController.formatToMySQLDateTime(actualEnd),
               arrival: trip.arrival,
               difference: humanReadable,
@@ -2761,7 +2763,7 @@ const TripController = {
 
         seatCursor += currentSeatCount;
         reassignedSeatsByTicket.push({
-          ticket_id: ticket.id,
+          sequenceNumber: ticket.sequenceNumber ?? null,
           seats: reassignedSeats,
         });
 
@@ -2815,19 +2817,15 @@ const TripController = {
             branch_id: trip.branch_id,
             user_id: req.user.id,
             title: "Cambio de vehiculo del viaje",
-            description: `Se cambio el vehiculo ${oldVehicleLabel} por el vehiculo ${newVehicleLabel} en el viaje ${trip.id}.`,
+            description: `Se cambio el vehiculo ${oldVehicleLabel} por el vehiculo ${newVehicleLabel}.`,
             details: JSON.stringify({
-              trip_id: trip.id,
               trip_code: trip.code ?? null,
               date: trip.date,
               schedule: trip.schedule,
-              route_id: trip.route_id,
               route_name: trip.route?.name ?? null,
               origin: trip.route?.origin?.address ?? null,
               destination: trip.route?.destination?.address ?? null,
-              old_vehicle_id: trip.vehicle_id,
               old_vehicle: oldVehicleLabel,
-              new_vehicle_id: newVehicle.id,
               new_vehicle: newVehicleLabel,
               reassignedSeats: reassignedSeatsByTicket,
             }),

@@ -17,7 +17,7 @@ const storeRouteSchema = Joi.object({
     code: routeCodeSchema.required().messages({
         'any.required': 'El campo code es obligatorio',
     }),
-    name: Joi.string().max(255).required(),
+    name: Joi.string().max(255).allow(null).empty('').optional(),
     origin_id: Joi.number().required(),
     destination_id: Joi.number().required(),
     distance: Joi.number().precision(2).positive().allow(null).empty('').optional(),

@@ -138,7 +138,7 @@ const RouteRepository = {
     try {
       const route = await Route.create({
         code: normalizeRouteCode(code),
-        name,
+        name: name ?? null,
         origin_id,
         destination_id,
         distance,

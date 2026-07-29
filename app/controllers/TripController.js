@@ -2787,6 +2787,8 @@ const TripController = {
       const tripOrigin = trip.route?.origin?.address || "origen";
       const tripDestination = trip.route?.destination?.address || "destino";
       const tripSchedule = trip.schedule;
+      const tripCode = trip.code ?? null;
+      const routeCode = trip.route?.code ?? null;
 
       await sequelize.transaction(async (transaction) => {
         logger.info(`TripController->changeTrip: eliminando choferes actuales del viaje ${trip.id}`);
@@ -2819,10 +2821,10 @@ const TripController = {
             title: "Cambio de vehiculo del viaje",
             description: `Se cambio el vehiculo ${oldVehicleLabel} por el vehiculo ${newVehicleLabel}.`,
             details: JSON.stringify({
-              trip_code: trip.code ?? null,
+              trip_code: tripCode,
+              route_code: routeCode,
               date: trip.date,
               schedule: trip.schedule,
-              route_name: trip.route?.name ?? null,
               origin: trip.route?.origin?.address ?? null,
               destination: trip.route?.destination?.address ?? null,
               old_vehicle: oldVehicleLabel,

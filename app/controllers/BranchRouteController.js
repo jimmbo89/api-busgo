@@ -35,6 +35,8 @@ const BranchRouteController = {
                 branchId: branchRoute.branch.id,
                 branchName: branchRoute.branch.name,
                 routeId: branchRoute.route.id,
+                routeCode: branchRoute.route.code,
+                route_code: branchRoute.route.code,
                 routeName: branchRoute.route.name,
                 price: branchRoute.price
             }));
@@ -80,6 +82,9 @@ const BranchRouteController = {
                         price: branchRoute.price,
                         routeId: branchRoute.route_id,
                         route_id: branchRoute.route_id,
+                        code: route.code,
+                        routeCode: route.code,
+                        route_code: route.code,
                         name: route.name,
                         originName: route.origin.address,
                         origin_id: route.origin_id,
@@ -110,6 +115,9 @@ const BranchRouteController = {
                         price: branchRoute ? branchRoute.price : null,
                         routeId: route.id,
                         route_id: route.id,
+                        code: route.code,
+                        routeCode: route.code,
+                        route_code: route.code,
                         name: route.name,
                         originName: route.origin.address,
                         origin_id: route.origin_id,
@@ -173,7 +181,7 @@ const BranchRouteController = {
             const branchRoute = await BranchRoute.findByPk(req.body.id, {
                 include: [
                     { model: Branch, as: 'branch', attributes: ['id', 'name'] },
-                    { model: Route, as: 'route', attributes: ['id', 'name'] }
+                    { model: Route, as: 'route', attributes: ['id', 'code', 'name'] }
                 ]
             });
             if (!branchRoute) {
@@ -186,6 +194,8 @@ const BranchRouteController = {
                 branchId: branchRoute.branch.id,
                 branchName: branchRoute.branch.name,
                 routeId: branchRoute.route.id,
+                routeCode: branchRoute.route.code,
+                route_code: branchRoute.route.code,
                 routeName: branchRoute.route.name,
                 price: branchRoute.price
             };

@@ -1191,14 +1191,15 @@ const TicketController = {
           tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
         };
       //}
-
+      const printCount = Number(ticket.print || 0);
+      const printOccasionText = `${printCount} ${printCount === 1 ? 'ocasión' : 'ocasiones'}`;
 
       logger.info(`Agregando incidencia de reimpresión`);
       const incidentBody = {
         branch_id: ticket.branch_id, // ID de la sucursal
         user_id: req.user.id, // ID del usuario que realiza la acción
         title: "Reimpresión de ticket",
-        description: `${req.user.name} realizo una reimpresion de ticket por ${ticket.print} ocasion`,
+        description: `${req.user.name} realizo una reimpresion de ticket por ${printOccasionText}`,
         details: {
           print: ticket.print,
           sequenceNumber: ticketIdentifier,
@@ -2087,7 +2088,7 @@ async verifyEncryptedQR(req, res) {
         // DEFINICIÓN DE ESTADO
         const isIncident = printCount > 1;
         const statusLabel = isIncident 
-          ? `Incidencia (${reprintCount} reimpresione${reprintCount === 1 ? 's' : 's'})` 
+          ? `Incidencia (${reprintCount} ${reprintCount === 1 ? 'reimpresión' : 'reimpresiones'})` 
           : 'Impresión Normal';
         
         // Tipo de incidente para facilitar filtrado en frontend si se requiere

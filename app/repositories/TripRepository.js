@@ -22,7 +22,6 @@ const {
 } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 
-const formatRouteCode = (routeId, routeCode = null) => routeCode || `R${String(routeId).padStart(3, '0')}`;
 const formatTripDateCode = (tripDate) => {
   if (!tripDate) {
     return null;
@@ -34,17 +33,16 @@ const formatTripDateCode = (tripDate) => {
 
   return normalizedDate.replace(/-/g, "");
 };
-const formatTripCode = (routeCode, tripDate, sequence) =>
-  `${routeCode}-${formatTripDateCode(tripDate)}-${String(sequence).padStart(3, "0")}`;
-const reserveTripSequence = async (routeId, tripDate, transaction) => {
+const formatTripCode = (tripDate, sequence) =>
+  `${formatTripDateCode(tripDate)}-${String(sequence).padStart(3, "0")}`;
+const reserveTripSequence = async (tripDate, transaction) => {
   await sequelize.query(
     `
-      INSERT IGNORE INTO trip_code_sequences (route_id, trip_date, last_sequence, createdAt, updatedAt)
-      VALUES (:route_id, :trip_date, 0, NOW(), NOW())
+      INSERT IGNORE INTO trip_code_sequences (trip_date, last_sequence, createdAt, updatedAt)
+      VALUES (:trip_date, 0, NOW(), NOW())
     `,
     {
       replacements: {
-        route_id: routeId,
         trip_date: tripDate,
       },
       transaction,
@@ -53,7 +51,6 @@ const reserveTripSequence = async (routeId, tripDate, transaction) => {
 
   const sequenceRow = await TripCodeSequence.findOne({
     where: {
-      route_id: routeId,
       trip_date: tripDate,
     },
     transaction,
@@ -1596,8 +1593,6 @@ const TripRepository = {
       branch_id,
       vehicle_id,
       route_id,
-      route_code: providedRouteCode,
-      routeCode: providedRouteCodeCamel,
       price,
     } = body;
 
@@ -1617,16 +1612,8 @@ const TripRepository = {
         price: price ?? null,
       }, { ...options, transaction });
 
-      const routeRow = providedRouteCode || providedRouteCodeCamel
-        ? { code: providedRouteCode || providedRouteCodeCamel }
-        : await Route.findByPk(route_id, {
-            attributes: ["id", "code"],
-            transaction,
-          });
-
-      const routeCode = formatRouteCode(route_id, routeRow?.code ?? null);
-      const sequence = await reserveTripSequence(route_id, date, transaction);
-      const tripCode = formatTripCode(routeCode, date, sequence);
+      const sequence = await reserveTripSequence(date, transaction);
+      const tripCode = formatTripCode(date, sequence);
 
       await trip.update({ code: tripCode }, { transaction });
 

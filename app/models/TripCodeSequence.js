@@ -22,7 +22,7 @@ module.exports = (sequelize, DataTypes) => {
     },
     route_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     trip_date: {
       type: DataTypes.DATEONLY,
@@ -41,8 +41,8 @@ module.exports = (sequelize, DataTypes) => {
     indexes: [
       {
         unique: true,
-        fields: ['route_id', 'trip_date'],
-        name: 'trip_code_sequences_route_date_unique',
+        fields: ['trip_date'],
+        name: 'trip_code_sequences_date_unique',
       },
     ],
   });

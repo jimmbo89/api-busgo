@@ -6,7 +6,7 @@ const session = require('express-session');
 const { sequelize } = require('./models/index');
 const cors = require('cors');
 const logger = require('../config/logger');
-require('../config/scheduler'); 
+const scheduler = require('../config/scheduler'); 
 
 // Configuración de sesión
 app.use(session({
@@ -53,8 +53,9 @@ app.use('/api', require('./routes'));
 // Inicia el servidor y la conexión a la base de datos
 const server = app.listen(PORT, () => {
   logger.info(`Servidor escuchando en http://localhost:${PORT}`);
-  sequelize.authenticate().then(() => {
+  sequelize.authenticate().then(async () => {
     logger.info('Conexión a la base de datos exitosa');
+    await scheduler.runStartupRecovery();
   }).catch((error) => {
     logger.error('Error al conectar a la base de datos:', error);
     process.exit(1); // Sale si no puede conectar con la DB

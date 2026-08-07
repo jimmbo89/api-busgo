@@ -3509,7 +3509,7 @@ const TripController = {
           internal_number: vehicle.internal_number ?? null,
           seats: vehicle.seats ?? 0,
           vehicleImage: vehicle.image ?? null,
-          name: route.name ?? null,
+          name: route.code ?? null,
           origin: route.origin?.address ?? null,
           originImage: route.origin?.image ?? null,
           destination: route.destination?.address ?? null,

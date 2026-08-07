@@ -6,17 +6,21 @@ const logger = require('./logger');
 
 let isRunning = false;
 
-async function runScheduledJob() {
+async function runScheduledJob(options = {}) {
+  const { reason = 'cron', allowPastTime = false } = options;
+
   if (isRunning) {
-    //logger.info('scheduler->runScheduledJob: omitido porque ya hay una ejecucion en curso');
+    logger.info(`scheduler->runScheduledJob: omitido porque ya hay una ejecucion en curso | reason=${reason}`);
     return;
   }
 
   isRunning = true;
-  //logger.info(`scheduler->runScheduledJob: inicio | ${new Date().toISOString()}`);
+  logger.info(`scheduler->runScheduledJob: inicio | reason=${reason} | allowPastTime=${allowPastTime} | ${new Date().toISOString()}`);
 
   const mockReq = {
-    body: {}
+    body: {
+      allowPastTime
+    }
   };
   const mockRes = {
     status: () => ({
@@ -27,11 +31,18 @@ async function runScheduledJob() {
   try {
     await TripTemplateController.generateTripsForDate(mockReq, mockRes);
   } catch (error) {
-    logger.error(`scheduler->runScheduledJob: error | ${error.message}`);
+    logger.error(`scheduler->runScheduledJob: error | reason=${reason} | ${error.message}`);
   } finally {
     isRunning = false;
-    //logger.info(`scheduler->runScheduledJob: fin | ${new Date().toISOString()}`);
+    logger.info(`scheduler->runScheduledJob: fin | reason=${reason} | ${new Date().toISOString()}`);
   }
+}
+
+async function runStartupRecovery() {
+  await runScheduledJob({
+    reason: 'startup-recovery',
+    allowPastTime: true
+  });
 }
 
 // Ejecutar inmediatamente al iniciar (opcional)
@@ -44,3 +55,8 @@ cron.schedule('0 3 * * *', runScheduledJob, {
 });
 
 logger.info('Programador de generación de viajes iniciado');
+
+module.exports = {
+  runScheduledJob,
+  runStartupRecovery
+};

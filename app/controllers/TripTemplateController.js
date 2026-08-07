@@ -78,7 +78,8 @@ const buildGeneratedTripFarePayload = (trip, companyId, item, fareSegmentTicketT
   };
 };
 
-const processTemplateGeneration = async (template, formattedToday) => {
+const processTemplateGeneration = async (template, formattedToday, options = {}) => {
+  const { allowPastTime = false } = options;
   let transaction = null;
 
   try {
@@ -110,7 +111,7 @@ const processTemplateGeneration = async (template, formattedToday) => {
       0
     );
 
-    if (tripDateTime < now) {
+    if (!allowPastTime && tripDateTime < now) {
       return { created: false, reason: "past_time" };
     }
 
@@ -622,22 +623,50 @@ const TripTemplateController = {
 
   async generateTripsForDate(req, res) {
     try {
+      const allowPastTime = req.body?.allowPastTime === true;
       const templates = await TripTemplateRepository.findAll({
         active: true,
       });
 
       const today = new Date();
       const formattedToday = await TripTemplateController.formatDateToYYYYMMDD(today);
+      let createdCount = 0;
+      const skipped = {};
+      const failed = [];
 
       for (const template of templates) {
         try {
-          await processTemplateGeneration(template, formattedToday);
+          const result = await processTemplateGeneration(template, formattedToday, {
+            allowPastTime,
+          });
+          if (result?.created) {
+            createdCount += 1;
+          } else if (result?.reason) {
+            skipped[result.reason] = (skipped[result.reason] || 0) + 1;
+          }
         } catch (templateError) {
+          failed.push({
+            template_id: template?.id ?? null,
+            error: templateError.message,
+          });
+          logger.error(
+            `TripTemplateController->generateTripsForDate: error en template=${template?.id ?? "unknown"} | ${templateError.message}`
+          );
           continue;
         }
       }
 
-      return res.status(201).json({ msg: "TemplatesGenerated" });
+      logger.info(
+        `TripTemplateController->generateTripsForDate: fin | fecha=${formattedToday} | allowPastTime=${allowPastTime} | creados=${createdCount} | omitidos=${JSON.stringify(skipped)} | fallidos=${failed.length}`
+      );
+
+      return res.status(201).json({
+        msg: "TemplatesGenerated",
+        date: formattedToday,
+        created: createdCount,
+        skipped,
+        failed,
+      });
       //logger.info(`TripTemplateController->generateTripsForDate: inicio | fecha=${formattedToday} | plantillas=${templates.length}`);
 
       //logger.info(`Iniciando generación de viajes para ${formattedToday}`);

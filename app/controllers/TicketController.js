@@ -10,6 +10,11 @@ const {
   IncidentRepository,
   TuuRepository,
   FareSegmentRepository,
+  TripTemplateRepository,
+  RouteStopRepository,
+  TripStopRepository,
+  FareSegmentTicketTypeRepository,
+  TripFareRepository,
   } = require("../repositories");
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -110,7 +115,12 @@ const resolveTripFareById = (trip, tripFareId) => {
 
   const normalizedTripFareId = Number(tripFareId);
   return (
-    tripFares.find((tripFare) => Number(tripFare.id) === normalizedTripFareId) ||
+    tripFares.find(
+      (tripFare) =>
+        Number(tripFare.id) === normalizedTripFareId ||
+        Number(tripFare.fare_segment_ticket_type_id) === normalizedTripFareId ||
+        Number(tripFare.fareSegmentTicketType?.id) === normalizedTripFareId
+    ) ||
     null
   );
 };
@@ -367,6 +377,101 @@ function getPreviousChileDate(date = new Date()) {
   return getChileDateParts(previous).date;
 }
 
+const normalizeSaleMode = (value) =>
+  value === undefined || value === null || value === ""
+    ? "normal"
+    : String(value).trim().toLowerCase();
+
+const calculateArrivalTime = (date, schedule, duration) => {
+  if (!date || !schedule || duration === undefined || duration === null) {
+    return null;
+  }
+
+  const [hours, minutes] = String(schedule).split(":").map(Number);
+  const durationMinutes = Number(duration);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(durationMinutes)
+  ) {
+    return null;
+  }
+
+  const departure = new Date(`${date}T00:00:00Z`);
+  departure.setUTCHours(hours, minutes, 0, 0);
+  departure.setUTCMinutes(departure.getUTCMinutes() + durationMinutes);
+
+  const arrivalDate = departure.toISOString().slice(0, 10);
+  const arrivalTime = departure.toISOString().slice(11, 16);
+  return `${arrivalDate} ${arrivalTime}`;
+};
+
+const buildTripStopPayloadFromTemplate = (trip, company_id, item, routeStop) => ({
+  company_id,
+  trip_id: trip.id,
+  route_stop_id: routeStop.id,
+  stop_order: item.stop_order ?? routeStop.stop_order,
+  arrival_time: item.arrival_time ?? null,
+  departure_time: item.departure_time ?? null,
+  can_board: item.can_board ?? routeStop.allows_boarding ?? true,
+  can_alight: item.can_alight ?? routeStop.allows_alighting ?? true,
+  active: item.active ?? true,
+  source_type: item.source_type ?? "auto",
+});
+
+const buildTripFarePayloadFromTemplate = (trip, company_id, item, fareSegmentTicketType) => {
+  const basePrice = Number(fareSegmentTicketType.base_price ?? 0);
+  const hasPrice = item.price !== undefined && item.price !== null && item.price !== "";
+
+  return {
+    company_id,
+    trip_id: trip.id,
+    fare_segment_ticket_type_id: fareSegmentTicketType.id,
+    base_price: basePrice,
+    price: hasPrice ? Number(item.price) : basePrice,
+    active: item.active ?? true,
+    source_type: item.source_type ?? "auto",
+  };
+};
+
+const getSoldQuantityForTrip = (trip) =>
+  parseArrayValue(trip?.tickets).reduce(
+    (sum, ticket) => sum + Number(ticket?.quantity || 0),
+    0
+  );
+const isTruthyFlag = (value) =>
+  value === true || value === 1 || String(value).trim().toLowerCase() === "true";
+
+const mapTicketResponse = (ticket) => ({
+  id: ticket.id,
+  branchId: ticket.branch_id,
+  branch_id: ticket.branch_id,
+  tripId: ticket.trip_id,
+  trip_id: ticket.trip_id,
+  fare_segment_id: ticket.fare_segment_id,
+  fareSegmentId: ticket.fare_segment_id,
+  method: ticket.method,
+  quantity: ticket.quantity,
+  price: Number(ticket.price),
+  total: Number(ticket.total),
+  date: ticket.date,
+  schedule: ticket.trip?.schedule,
+  vehiclePlate: ticket.trip?.vehicle?.plate,
+  internal_number: ticket.trip?.vehicle?.internal_number,
+  internalNumber: ticket.trip?.vehicle?.internal_number,
+  print: ticket.print,
+  qr: ticket.qr,
+  barcode: ticket.barcode,
+  ticketItems: mapTicketItems(ticket.ticketItems),
+  branchName: ticket.branch?.name,
+  rut: ticket.branch?.company?.rut,
+  address: ticket.branch?.address,
+  phone: ticket.branch?.phone,
+  tripName: ticket.trip?.route?.name,
+  tripOrigin: ticket.trip?.route?.origin?.address,
+  tripDestination: ticket.trip?.route?.destination?.address,
+});
+
 function buildComparison(currentValue, previousValue) {
   const current = Number(currentValue) || 0;
   const previous = Number(previousValue) || 0;
@@ -407,6 +512,233 @@ async function validateFareSegmentForTrip(fareSegmentId, trip, branch) {
   }
 
   return fareSegment;
+}
+
+async function findOrCreateExpressTripFromTemplate(body, branch, transaction) {
+  const {
+    trip_id,
+    template_id,
+    templateId,
+    date,
+  } = body;
+  const normalizedTripId = Number(trip_id);
+
+  if (Number.isFinite(normalizedTripId) && normalizedTripId > 0) {
+    const trip = await TripRepository.findByIdWithTickets(normalizedTripId);
+    if (!trip) {
+      return {
+        error: "TripNotFound",
+        message: "El trip_id enviado no existe.",
+        details: { trip_id: normalizedTripId },
+      };
+    }
+
+    if (Number(trip.branch_id) !== Number(body.branch_id)) {
+      return {
+        error: "TripBranchMismatch",
+        message: "El trip_id enviado no pertenece a la sucursal indicada.",
+        details: {
+          trip_id: normalizedTripId,
+          branch_id: body.branch_id,
+          trip_branch_id: trip.branch_id,
+        },
+      };
+    }
+
+    const tripSaleMode = normalizeSaleMode(trip.saleMode ?? trip.sale_mode);
+    if (tripSaleMode !== "express") {
+      return {
+        error: "TripSaleModeMismatch",
+        message: "El trip_id enviado corresponde a un viaje de venta normal, no a una salida Express.",
+        details: {
+          trip_id: normalizedTripId,
+          saleMode: tripSaleMode,
+          expectedSaleMode: "express",
+          hint: "Si la salida seleccionada viene de una plantilla, envia template_id en lugar de trip_id.",
+        },
+      };
+    }
+
+    return { trip };
+  }
+
+  const normalizedTemplateId = Number(template_id ?? templateId);
+  if (!Number.isFinite(normalizedTemplateId) || normalizedTemplateId <= 0) {
+    return {
+      error: "TripOrTemplateRequired",
+      message: "Debes enviar trip_id si la salida ya es un viaje, o template_id si viene de una plantilla.",
+    };
+  }
+
+  const template = await TripTemplateRepository.findById(normalizedTemplateId);
+  if (!template) {
+    return {
+      error: "TripTemplateNotFound",
+      message: "El template_id enviado no existe.",
+      details: { template_id: normalizedTemplateId },
+    };
+  }
+
+  if (!template.active) {
+    return {
+      error: "TripTemplateInactive",
+      message: "La plantilla enviada esta inactiva y no puede generar venta Express.",
+      details: { template_id: normalizedTemplateId },
+    };
+  }
+
+  if (normalizeSaleMode(template.saleMode ?? template.sale_mode) !== "express") {
+    return {
+      error: "TripTemplateSaleModeMismatch",
+      message: "La plantilla enviada no pertenece a Venta Express.",
+      details: {
+        template_id: normalizedTemplateId,
+        saleMode: normalizeSaleMode(template.saleMode ?? template.sale_mode),
+        expectedSaleMode: "express",
+      },
+    };
+  }
+
+  if (Number(template.branch_id) !== Number(body.branch_id)) {
+    return {
+      error: "TripTemplateBranchMismatch",
+      message: "La plantilla enviada no pertenece a la sucursal indicada.",
+      details: {
+        template_id: normalizedTemplateId,
+        branch_id: body.branch_id,
+        template_branch_id: template.branch_id,
+      },
+    };
+  }
+
+  if (Number(branch.company_id) !== Number(template.branch?.company_id)) {
+    return {
+      error: "TripTemplateCompanyMismatch",
+      message: "La plantilla enviada no pertenece a la empresa de la sucursal.",
+      details: {
+        template_id: normalizedTemplateId,
+        branch_company_id: branch.company_id,
+        template_company_id: template.branch?.company_id,
+      },
+    };
+  }
+
+  const searchDate = String(date).slice(0, 10);
+  const schedule = template.schedule;
+  let existingTrip = await TripRepository.findDateForBranchDateBase(
+    template.branch_id,
+    searchDate
+  ).then((trips) =>
+    trips.find(
+      (trip) =>
+        Number(trip.trip_template_id) === Number(template.id) &&
+        String(trip.schedule) === String(schedule)
+    )
+  );
+
+  if (existingTrip) {
+    return { trip: await TripRepository.findByIdWithTickets(existingTrip.id) };
+  }
+
+  const arrival = calculateArrivalTime(searchDate, schedule, template.duration);
+  if (!arrival) {
+    return {
+      error: "TripArrivalNotGenerated",
+      message: "No se pudo calcular la hora de llegada del viaje desde la plantilla.",
+      details: {
+        template_id: normalizedTemplateId,
+        date: searchDate,
+        schedule,
+        duration: template.duration,
+      },
+    };
+  }
+
+  try {
+    const trip = await TripRepository.create({
+      date: searchDate,
+      schedule,
+      arrival,
+      branch_id: template.branch_id,
+      vehicle_id: template.vehicle_id,
+      route_id: template.route_id,
+      price: template.price,
+      saleMode: "express",
+      trip_template_id: template.id,
+    }, { transaction });
+
+    const templateTripStops = parseArrayValue(template.trip_stops);
+    for (const item of templateTripStops) {
+      const routeStopId = Number(item.route_stop_id);
+      const routeStop = await RouteStopRepository.findById(routeStopId);
+      if (!routeStop) {
+        throw new Error(`RouteStopNotFound:${routeStopId}`);
+      }
+
+      if (Number(routeStop.company_id) !== Number(branch.company_id)) {
+        throw new Error("RouteStopCompanyMismatch");
+      }
+
+      if (Number(routeStop.route_id) !== Number(template.route_id)) {
+        throw new Error("RouteStopRouteMismatch");
+      }
+
+      await TripStopRepository.create(
+        buildTripStopPayloadFromTemplate(trip, branch.company_id, item, routeStop),
+        { transaction }
+      );
+    }
+
+    const templateTripFares = parseArrayValue(template.trip_fares);
+    for (const item of templateTripFares) {
+      const fareSegmentTicketTypeId = Number(item.fare_segment_ticket_type_id);
+      const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+        fareSegmentTicketTypeId
+      );
+      if (!fareSegmentTicketType) {
+        throw new Error(`FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`);
+      }
+
+      const fareSegment = fareSegmentTicketType.fareSegment;
+      if (!fareSegment || Number(fareSegment.company_id) !== Number(branch.company_id)) {
+        throw new Error("FareSegmentTicketTypeCompanyMismatch");
+      }
+
+      if (Number(fareSegment.route_id) !== Number(template.route_id)) {
+        throw new Error("FareSegmentTicketTypeRouteMismatch");
+      }
+
+      await TripFareRepository.create(
+        buildTripFarePayloadFromTemplate(trip, branch.company_id, item, fareSegmentTicketType),
+        { transaction }
+      );
+    }
+
+    return { trip: await TripRepository.findByIdWithTickets(trip.id, { transaction }) };
+  } catch (error) {
+    if (
+      error?.name === "SequelizeUniqueConstraintError" ||
+      String(error?.message || "").includes("already exists") ||
+      String(error?.message || "").includes("Error creando el viaje")
+    ) {
+      existingTrip = await TripRepository.findDateForBranchDateBase(
+        template.branch_id,
+        searchDate
+      ).then((trips) =>
+        trips.find(
+          (trip) =>
+            Number(trip.trip_template_id) === Number(template.id) &&
+            String(trip.schedule) === String(schedule)
+        )
+      );
+
+      if (existingTrip) {
+        return { trip: await TripRepository.findByIdWithTickets(existingTrip.id, { transaction }) };
+      }
+    }
+
+    throw error;
+  }
 }
 
 const TicketController = {
@@ -528,6 +860,8 @@ const TicketController = {
         user_id: ticket.user_id,
         tripId: ticket.trip_id,
         trip_id: ticket.trip_id,
+        saleMode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
+        sale_mode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
         code: ticket.trip?.code ?? null,
         tripCode: ticket.trip?.code ?? null,
         fare_segment_id: ticket.fare_segment_id,
@@ -1139,6 +1473,148 @@ const TicketController = {
         : error.message || "Error desconocido";
 
       logger.error("TicketController->store_web:" + errorMsg);
+      return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
+  async store_express(req, res) {
+    logger.info(`${req.user.name} - Crea un nuevo ticket express`);
+    logger.info("Datos recibidos al crear un ticket express");
+    logger.info(JSON.stringify(req.body));
+
+    req.body.user_id = req.user.id;
+    req.body.seats = [];
+
+    const branch = await BranchRepository.findById(req.body.branch_id);
+    if (!branch) {
+      logger.error(
+        `TicketController->store_express: Sucursal no encontrada con ID ${req.body.branch_id}`
+      );
+      return res.status(400).json({ msg: "BranchNotFound" });
+    }
+
+    const t = await sequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+    });
+
+    try {
+      const tripResolution = await findOrCreateExpressTripFromTemplate(
+        req.body,
+        branch,
+        t
+      );
+
+      if (tripResolution.error) {
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({
+          msg: tripResolution.error,
+          message: tripResolution.message ?? tripResolution.error,
+          details: tripResolution.details ?? null,
+        });
+      }
+
+      let trip = tripResolution.trip;
+      req.body.trip_id = trip.id;
+      req.body.date = String(req.body.date || trip.date).slice(0, 10);
+      const shouldValidateCapacity = isTruthyFlag(
+        req.body.validateCapacity ?? req.body.validate_capacity
+      );
+
+      const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
+      if (normalizedTicketItems !== null) {
+        req.body.ticketItems = normalizedTicketItems;
+      }
+
+      const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
+        trip,
+        normalizedTicketItems ?? []
+      );
+
+      for (const fareSegmentId of fareSegmentIdsForValidation) {
+        const fareSegmentValidation = await validateFareSegmentForTrip(
+          fareSegmentId,
+          trip,
+          branch
+        );
+        if (fareSegmentValidation?.error) {
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({ msg: fareSegmentValidation.error });
+        }
+      }
+
+      if (shouldValidateCapacity) {
+        const soldQuantity = getSoldQuantityForTrip(trip);
+        const vehicleCapacity = Number(trip.vehicle?.seats ?? 0);
+        const requestedQuantity = Number(req.body.quantity ?? 0);
+        const availableCapacity = Math.max(vehicleCapacity - soldQuantity, 0);
+        if (vehicleCapacity > 0 && requestedQuantity > availableCapacity) {
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res.status(400).json({
+            msg: "InsufficientCapacity",
+            details: {
+              availableCapacity,
+              requestedQuantity,
+            },
+          });
+        }
+      }
+
+      if (req.body.id) {
+        req.body.qr = req.body.id;
+        req.body.barcode = req.body.id;
+        req.body.sequenceNumber = req.body.id;
+      }
+
+      const ticket = await TicketRepository.create(req.body, {
+        transaction: t,
+      });
+
+      if (normalizedTicketItems !== null) {
+        await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
+          transaction: t,
+        });
+      }
+
+      const mappedTicketForCodes = {
+        id: ticket.id,
+        method: ticket.method,
+        quantity: ticket.quantity,
+        price: ticket.price,
+        total: ticket.total,
+        adults: ticket.adults,
+        minors: ticket.minors,
+        date: ticket.date,
+        sequenceNumber: ticket.sequenceNumber,
+        trip_id: ticket.trip_id,
+        seats: [],
+        ticketItems: normalizedTicketItems ?? [],
+      };
+
+      await TicketRepository.generateTicketCodes(mappedTicketForCodes, ticket, {
+        transaction: t,
+      });
+
+      await t.commit();
+
+      const refreshedTicket = await TicketRepository.findById(ticket.id);
+      return res.status(201).json({
+        ticket: mapTicketResponse(refreshedTicket),
+      });
+    } catch (error) {
+      if (!t.finished) {
+        await t.rollback();
+      }
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+
+      logger.error("TicketController->store_express:" + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },

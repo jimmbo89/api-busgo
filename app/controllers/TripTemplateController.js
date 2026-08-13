@@ -49,6 +49,25 @@ const mapTripFares = (template) =>
   }));
 const normalizeNullablePrice = (value) =>
   value !== undefined && value !== null ? Number(value) : null;
+const normalizeSaleMode = (value) =>
+  value === undefined || value === null || value === ""
+    ? "normal"
+    : String(value).trim().toLowerCase();
+const getTemplateSaleMode = (template) => normalizeSaleMode(template.saleMode ?? template.sale_mode);
+const validateExpressTemplateMinimum = (payload = {}) => {
+  const saleMode = normalizeSaleMode(payload.saleMode ?? payload.sale_mode);
+  if (saleMode !== "express") {
+    return null;
+  }
+
+  const requiredFields = ["branch_id", "vehicle_id", "route_id", "schedule", "duration"];
+  const missingFields = requiredFields.filter((field) => {
+    const value = payload[field];
+    return value === undefined || value === null || value === "";
+  });
+
+  return missingFields.length ? missingFields : null;
+};
 
 const buildGeneratedTripStopPayload = (trip, companyId, item, routeStop) => ({
   company_id: companyId,
@@ -151,6 +170,8 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
       route_id: template.route_id,
       route_code: template.route?.code ?? null,
       price: template.price,
+      saleMode: getTemplateSaleMode(template),
+      trip_template_id: template.id,
     };
 
     const trip = await TripRepository.create(tripData, { transaction });
@@ -281,6 +302,7 @@ const TripTemplateController = {
         schedule: template.schedule,
         duration: template.duration,
         price: normalizeNullablePrice(template.price),
+        saleMode: getTemplateSaleMode(template),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week,
         active: template.active,
@@ -328,6 +350,7 @@ const TripTemplateController = {
       const templates = await TripTemplateRepository.findAll({
         branch_id,
         active: true,
+        saleMode: req.body.saleMode ?? req.body.sale_mode,
       });
 
       if (!templates.length) {
@@ -343,6 +366,7 @@ const TripTemplateController = {
         schedule: template.schedule,
         duration: template.duration,
         price: normalizeNullablePrice(template.price),
+        saleMode: getTemplateSaleMode(template),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week
           ? template.days_of_week.split(",").map(Number)
@@ -420,6 +444,14 @@ const TripTemplateController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
+      const missingExpressFields = validateExpressTemplateMinimum(req.body);
+      if (missingExpressFields) {
+        return res.status(400).json({
+          msg: "ExpressTemplateMissingData",
+          details: `Faltan datos minimos para plantilla express: ${missingExpressFields.join(", ")}`,
+        });
+      }
+
       // Crear la plantilla
       const template = await TripTemplateRepository.create(req.body);
       const refreshedTemplate = await TripTemplateRepository.findById(template.id);
@@ -439,6 +471,7 @@ const TripTemplateController = {
       res.status(201).json({
         template: {
           ...refreshedTemplate.toJSON(),
+          saleMode: getTemplateSaleMode(refreshedTemplate),
           tripStops: mapTripStops(refreshedTemplate),
           trip_stops: mapTripStops(refreshedTemplate),
           tripFares: mapTripFares(refreshedTemplate),
@@ -476,6 +509,7 @@ const TripTemplateController = {
         schedule: template.schedule,
         duration: template.duration,
         price: normalizeNullablePrice(template.price),
+        saleMode: getTemplateSaleMode(template),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week
           ? template.days_of_week.split(",").map(Number)
@@ -519,6 +553,19 @@ const TripTemplateController = {
       }
 
       // Validar vehicle si se está actualizando
+      const candidateTemplate = {
+        ...existingTemplate.toJSON(),
+        ...req.body,
+        saleMode: req.body.saleMode ?? req.body.sale_mode ?? existingTemplate.saleMode,
+      };
+      const missingExpressFields = validateExpressTemplateMinimum(candidateTemplate);
+      if (missingExpressFields) {
+        return res.status(400).json({
+          msg: "ExpressTemplateMissingData",
+          details: `Faltan datos minimos para plantilla express: ${missingExpressFields.join(", ")}`,
+        });
+      }
+
       if (req.body.vehicle_id) {
         const vehicle = await VehicleRepository.findById(req.body.vehicle_id);
         if (!vehicle) {
@@ -563,6 +610,7 @@ const TripTemplateController = {
         schedule: template.schedule,
         duration: template.duration,
         price: normalizeNullablePrice(template.price),
+        saleMode: getTemplateSaleMode(template),
         recurrence_pattern: template.recurrence_pattern,
         days_of_week: template.days_of_week
           ? template.days_of_week.split(",").map(Number)
@@ -755,6 +803,8 @@ const TripTemplateController = {
               route_id: template.route_id,
               route_code: template.route?.code ?? null,
               price: template.price,
+              saleMode: getTemplateSaleMode(template),
+              trip_template_id: template.id,
             };
 
             const trip = await TripRepository.create(tripData, { transaction });

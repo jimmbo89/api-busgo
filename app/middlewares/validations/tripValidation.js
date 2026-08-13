@@ -1,5 +1,14 @@
 const Joi = require("joi");
 
+const saleModeSchema = Joi.string()
+  .valid("normal", "express")
+  .allow(null)
+  .optional()
+  .messages({
+    "any.only": "El campo saleMode debe ser normal o express",
+    "string.base": "El campo saleMode debe ser un texto",
+  });
+
 const storeTripSchema = Joi.object({
   branch_id: Joi.number().required().messages({
     "number.base": "El campo branch_id debe ser un numero entero",
@@ -60,6 +69,11 @@ const storeTripSchema = Joi.object({
       "number.precision": "El precio no puede tener mas de dos decimales",
       "number.positive": "El precio debe ser un numero positivo",
     }),
+  saleMode: saleModeSchema,
+  sale_mode: saleModeSchema,
+  trip_template_id: Joi.number().integer().allow(null).optional().messages({
+    "number.base": "El campo trip_template_id debe ser un numero entero",
+  }),
   workers: Joi.array()
     .items(
       Joi.object({
@@ -129,22 +143,8 @@ const updateTripSchema = Joi.object({
     .messages({
       "string.pattern.base": "El campo arrival debe tener el formato YYYY-MM-DD HH:MM:SS",
     }),
-  start: Joi.string()
-    .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/)
-    .allow(null)
-    .empty("")
-    .optional()
-    .messages({
-      "string.pattern.base": "El campo start debe tener el formato YYYY-MM-DD HH:mm:ss",
-    }),
-  end: Joi.string()
-    .pattern(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/)
-    .allow(null)
-    .empty("")
-    .optional()
-    .messages({
-      "string.pattern.base": "El campo end debe tener el formato YYYY-MM-DD HH:mm:ss",
-    }),
+  start: Joi.any().allow(null).optional(),
+  end: Joi.any().allow(null).optional(),
   price: Joi.number()
     .precision(2)
     .positive()
@@ -156,6 +156,11 @@ const updateTripSchema = Joi.object({
       "number.precision": "El precio no puede tener mas de dos decimales",
       "number.positive": "El precio debe ser un numero positivo",
     }),
+  saleMode: saleModeSchema,
+  sale_mode: saleModeSchema,
+  trip_template_id: Joi.number().integer().allow(null).optional().messages({
+    "number.base": "El campo trip_template_id debe ser un numero entero",
+  }),
   workers: Joi.array()
     .items(
       Joi.object({
@@ -311,6 +316,72 @@ const tripWorkerReportSchema = Joi.object({
   }),
 });
 
+const expressSalesDestinationsSchema = Joi.object({
+  branch_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+    "number.integer": "El campo branch_id debe ser un numero entero",
+    "number.positive": "El campo branch_id debe ser un numero positivo",
+    "any.required": "El campo branch_id es obligatorio",
+  }),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
+    "string.pattern.base": "El campo date debe tener formato YYYY-MM-DD",
+    "any.required": "El campo date es obligatorio",
+  }),
+  origin_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo origin_id debe ser un numero entero",
+    "number.integer": "El campo origin_id debe ser un numero entero",
+    "number.positive": "El campo origin_id debe ser un numero positivo",
+    "any.required": "El campo origin_id es obligatorio",
+  }),
+});
+
+const expressSalesDeparturesSchema = Joi.object({
+  branch_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+    "number.integer": "El campo branch_id debe ser un numero entero",
+    "number.positive": "El campo branch_id debe ser un numero positivo",
+    "any.required": "El campo branch_id es obligatorio",
+  }),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
+    "string.pattern.base": "El campo date debe tener formato YYYY-MM-DD",
+    "any.required": "El campo date es obligatorio",
+  }),
+  origin_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo origin_id debe ser un numero entero",
+    "number.integer": "El campo origin_id debe ser un numero entero",
+    "number.positive": "El campo origin_id debe ser un numero positivo",
+    "any.required": "El campo origin_id es obligatorio",
+  }),
+  destination_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo destination_id debe ser un numero entero",
+    "number.integer": "El campo destination_id debe ser un numero entero",
+    "number.positive": "El campo destination_id debe ser un numero positivo",
+    "any.required": "El campo destination_id es obligatorio",
+  }),
+});
+
+const expressSalesDepartureAvailabilitySchema = Joi.object({
+  source: Joi.string().valid("trip", "template").required().messages({
+    "any.only": "El campo source debe ser trip o template",
+    "any.required": "El campo source es obligatorio",
+    "string.base": "El campo source debe ser un texto",
+  }),
+  sourceId: Joi.number().integer().positive().optional().messages({
+    "number.base": "El campo sourceId debe ser un numero entero",
+    "number.integer": "El campo sourceId debe ser un numero entero",
+    "number.positive": "El campo sourceId debe ser un numero positivo",
+  }),
+  source_id: Joi.number().integer().positive().optional().messages({
+    "number.base": "El campo source_id debe ser un numero entero",
+    "number.integer": "El campo source_id debe ser un numero entero",
+    "number.positive": "El campo source_id debe ser un numero positivo",
+  }),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
+    "string.pattern.base": "El campo date debe tener formato YYYY-MM-DD",
+    "any.required": "El campo date es obligatorio",
+  }),
+}).or("sourceId", "source_id");
+
 module.exports = {
   storeTripSchema,
   updateTripSchema,
@@ -320,5 +391,8 @@ module.exports = {
   branchOriginDestinationTripSchema,
   branchTripDateSegmentAllSchema,
   tripWorkerDateSchema,
-  tripWorkerReportSchema
+  tripWorkerReportSchema,
+  expressSalesDestinationsSchema,
+  expressSalesDeparturesSchema,
+  expressSalesDepartureAvailabilitySchema
 };

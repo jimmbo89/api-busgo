@@ -121,22 +121,7 @@ const storeTicketSchema = Joi.object({
       "number.min": "El vuelto no puede ser negativo.",
     }),
   ticketItems: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        ticket_type_id: Joi.number().integer().allow(null).optional(),
-        trip_fare_id: Joi.number().integer().allow(null).optional(),
-        ticket_type_name: Joi.string().allow(null).optional(),
-        ticket_type_description: Joi.string().allow(null).optional(),
-        quantity: Joi.number().integer().min(1).required(),
-        base_price: Joi.number().precision(2).allow(null).optional(),
-        unit_price: Joi.number().precision(2).allow(null).optional(),
-        subtotal: Joi.number().precision(2).allow(null).optional(),
-        currency: Joi.string().allow(null).optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(Joi.object().unknown(true))
     .allow(null)
     .optional()
     .messages({
@@ -225,22 +210,7 @@ const storeTicketWebSchema = Joi.object({
     "any.required": "El campo method es obligatorio",
   }),
   ticketItems: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        ticket_type_id: Joi.number().integer().allow(null).optional(),
-        trip_fare_id: Joi.number().integer().allow(null).optional(),
-        ticket_type_name: Joi.string().allow(null).optional(),
-        ticket_type_description: Joi.string().allow(null).optional(),
-        quantity: Joi.number().integer().min(1).required(),
-        base_price: Joi.number().precision(2).allow(null).optional(),
-        unit_price: Joi.number().precision(2).allow(null).optional(),
-        subtotal: Joi.number().precision(2).allow(null).optional(),
-        currency: Joi.string().allow(null).optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(Joi.object().unknown(true))
     .allow(null)
     .optional()
     .messages({
@@ -260,6 +230,133 @@ const storeTicketWebSchema = Joi.object({
     'array.base': 'Los tipos de ticket deben ser un array',
   }),
 });
+
+const storeExpressTicketSchema = Joi.object({
+  id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo id debe ser un numero entero",
+  }),
+  branch_id: Joi.number().integer().required().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+    "any.required": "El campo branch_id es obligatorio",
+  }),
+  trip_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo trip_id debe ser un numero entero",
+  }),
+  template_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo template_id debe ser un numero entero",
+  }),
+  templateId: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo templateId debe ser un numero entero",
+  }),
+  fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo fare_segment_id debe ser un numero entero",
+  }),
+  date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required().messages({
+    "string.pattern.base": "El campo date debe tener formato YYYY-MM-DD",
+    "any.required": "El campo date es obligatorio",
+  }),
+  method: Joi.string().required().messages({
+    "string.base": "El campo method debe ser un texto",
+    "any.required": "El campo method es obligatorio",
+  }),
+  status: Joi.number().integer().default(0).optional().messages({
+    "number.base": "El campo status debe ser un numero entero",
+  }),
+  quantity: Joi.number().integer().min(1).required().messages({
+    "number.base": "El campo quantity debe ser un numero entero",
+    "any.required": "El campo quantity es obligatorio",
+    "number.min": "El campo quantity debe ser al menos 1",
+  }),
+  price: Joi.number().precision(2).required().messages({
+    "number.base": "El campo price debe ser un numero",
+    "any.required": "El campo price es obligatorio",
+  }),
+  total: Joi.number().precision(2).optional().messages({
+    "number.base": "El campo total debe ser un numero",
+  }),
+  adults: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo adults debe ser un numero entero",
+  }),
+  minors: Joi.number().integer().allow(null).optional().empty("").messages({
+    "number.base": "El campo minors debe ser un numero entero",
+  }),
+  pay: Joi.number().precision(2).allow(null).empty("").optional().messages({
+    "number.base": "El campo pay debe ser un numero",
+  }),
+  seats: Joi.array().items(Joi.number().integer()).allow(null).optional().messages({
+    "array.base": "El campo seats debe ser un arreglo",
+  }),
+  transactionStatus: Joi.boolean()
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "boolean.base": "El estado de la transaccion debe ser un valor booleano",
+    }),
+  sequenceNumber: Joi.string()
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "string.base": "El numero de secuencia debe ser una cadena de texto",
+    }),
+  extraData: Joi.object()
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "object.base": "El campo extraData debe ser un objeto JSON",
+    }),
+  transactionTip: Joi.number()
+    .precision(2)
+    .min(0)
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "number.base": "La propina debe ser un numero",
+      "number.min": "La propina no puede ser negativa",
+    }),
+  transactionCashback: Joi.number()
+    .precision(2)
+    .min(0)
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "number.base": "El vuelto debe ser un numero",
+      "number.min": "El vuelto no puede ser negativo",
+    }),
+  device: Joi.string().allow(null, "").optional().messages({
+    "string.base": "El campo device debe ser un texto",
+  }),
+  validateCapacity: Joi.boolean().optional().messages({
+    "boolean.base": "El campo validateCapacity debe ser booleano",
+  }),
+  validate_capacity: Joi.boolean().optional().messages({
+    "boolean.base": "El campo validate_capacity debe ser booleano",
+  }),
+  ticketItems: Joi.array()
+    .items(Joi.object().unknown(true))
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "Los ticketItems deben ser un array",
+    }),
+  promotions: Joi.array()
+    .items(Joi.object().unknown(true))
+    .optional()
+    .messages({
+      "array.base": "Las promociones deben ser un array",
+    }),
+  tickettypes: Joi.array()
+    .items(Joi.object().unknown(true))
+    .allow(null)
+    .optional()
+    .messages({
+      "array.base": "Los tipos de ticket deben ser un array",
+    }),
+}).or("trip_id", "template_id", "templateId");
 
 // Esquema para actualizar un Ticket
 const updateTicketSchema = Joi.object({
@@ -371,22 +468,7 @@ const updateTicketSchema = Joi.object({
       "number.min": "El vuelto no puede ser negativo.",
     }),
   ticketItems: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        ticket_type_id: Joi.number().integer().allow(null).optional(),
-        trip_fare_id: Joi.number().integer().allow(null).optional(),
-        ticket_type_name: Joi.string().allow(null).optional(),
-        ticket_type_description: Joi.string().allow(null).optional(),
-        quantity: Joi.number().integer().min(1).required(),
-        base_price: Joi.number().precision(2).allow(null).optional(),
-        unit_price: Joi.number().precision(2).allow(null).optional(),
-        subtotal: Joi.number().precision(2).allow(null).optional(),
-        currency: Joi.string().allow(null).optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(Joi.object().unknown(true))
     .allow(null)
     .optional()
     .messages({
@@ -571,6 +653,7 @@ module.exports = {
   monthlySalesSchema,
   ticketSoldDateSchema,
   storeTicketWebSchema,
+  storeExpressTicketSchema,
   qrEncryptedSchema,
   ticketSoldDateWorkerSchema,
   ticketReportSchema,

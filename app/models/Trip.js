@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.belongsTo(models.Branch, { foreignKey: 'branch_id', as: 'branch' });
       Trip.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
       Trip.belongsTo(models.Route, { foreignKey: 'route_id', as: 'route' });
+      Trip.belongsTo(models.TripTemplate, { foreignKey: 'trip_template_id', as: 'tripTemplate' });
 
       // Relación de muchos a muchos con workers
       Trip.belongsToMany(models.Worker, {
@@ -96,6 +97,22 @@ module.exports = (sequelize, DataTypes) => {
       validate: {
         isDecimal: true, // Valida que el valor sea un decimal
       },
+    },
+    saleMode: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "normal",
+      field: "sale_mode",
+      validate: {
+        isIn: {
+          args: [["normal", "express"]],
+          msg: "La modalidad de venta no es valida",
+        },
+      },
+    },
+    trip_template_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   }, {
     sequelize,

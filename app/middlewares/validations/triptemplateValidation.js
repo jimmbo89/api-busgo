@@ -1,5 +1,14 @@
 const Joi = require("joi");
 
+const saleModeSchema = Joi.string()
+  .valid("normal", "express")
+  .allow(null)
+  .optional()
+  .messages({
+    "any.only": "El campo saleMode debe ser normal o express",
+    "string.base": "El campo saleMode debe ser un texto",
+  });
+
 // Esquema para crear un nuevo TripTemplate
 const storeTripTemplateSchema = Joi.object({
 
@@ -24,6 +33,8 @@ const storeTripTemplateSchema = Joi.object({
   price: Joi.number().precision(2).allow(null).optional().messages({
     "number.base": "El campo price debe ser un número",
   }),
+  saleMode: saleModeSchema,
+  sale_mode: saleModeSchema,
   recurrence_pattern: Joi.string().allow(null).optional().messages({
     "string.base": "El campo recurrence_pattern debe ser un texto",
   }),
@@ -75,6 +86,8 @@ const storeTripTemplateSchema = Joi.object({
 
 // Esquema para actualizar un TripTemplate
 const updateTripTemplateSchema = Joi.object({
+  saleMode: saleModeSchema,
+  sale_mode: saleModeSchema,
   branch_id: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo branch_id debe ser un número entero",
   }),
@@ -159,7 +172,9 @@ const branchTripTemplateSchema = Joi.object({
   branch_id: Joi.number().integer().required().messages({
     "number.base": "El campo branch_id debe ser un número entero",
     "any.required": "El campo branch_id es obligatorio",
-  })
+  }),
+  saleMode: saleModeSchema,
+  sale_mode: saleModeSchema,
 });
 
 module.exports = {

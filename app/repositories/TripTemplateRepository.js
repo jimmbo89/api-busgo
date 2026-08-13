@@ -35,9 +35,20 @@ const normalizeJsonArray = (value) => {
   return [];
 };
 
+const normalizeSaleMode = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return "normal";
+  }
+
+  return String(value).trim().toLowerCase();
+};
+
 const normalizeTemplatePayload = (templateData = {}, options = {}) => {
   const payload = { ...templateData };
   const hasWorkers = Object.prototype.hasOwnProperty.call(templateData, "workers");
+  const hasSaleMode =
+    Object.prototype.hasOwnProperty.call(templateData, "saleMode") ||
+    Object.prototype.hasOwnProperty.call(templateData, "sale_mode");
   const hasTripStops =
     Object.prototype.hasOwnProperty.call(templateData, "trip_stops") ||
     Object.prototype.hasOwnProperty.call(templateData, "tripStops");
@@ -47,6 +58,13 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
 
   if (hasWorkers) {
     payload.workers = normalizeJsonArray(templateData.workers) ?? [];
+  }
+
+  if (hasSaleMode) {
+    payload.saleMode = normalizeSaleMode(
+      templateData.saleMode ?? templateData.sale_mode
+    );
+    delete payload.sale_mode;
   }
 
   if (hasTripStops) {
@@ -64,6 +82,10 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
   if (options.forceDefaults) {
     if (!hasWorkers) {
       payload.workers = [];
+    }
+
+    if (!hasSaleMode) {
+      payload.saleMode = "normal";
     }
 
     if (!hasTripStops) {
@@ -99,6 +121,9 @@ const TripTemplateRepository = {
     if (filters.active !== undefined) whereClause.active = filters.active;
     if (filters.route_id) whereClause.route_id = filters.route_id;
     if (filters.vehicle_id) whereClause.vehicle_id = filters.vehicle_id;
+    if (filters.saleMode || filters.sale_mode) {
+      whereClause.saleMode = normalizeSaleMode(filters.saleMode ?? filters.sale_mode);
+    }
 
     return await TripTemplate.findAll({
       attributes: [
@@ -110,6 +135,7 @@ const TripTemplateRepository = {
         "schedule",
         "duration",
         "price",
+        "saleMode",
         "recurrence_pattern",
         "days_of_week",
         "active",
@@ -162,6 +188,7 @@ const TripTemplateRepository = {
         "schedule",
         "duration",
         "price",
+        "saleMode",
         "recurrence_pattern",
         "days_of_week",
         "active",
@@ -236,6 +263,7 @@ const TripTemplateRepository = {
         "schedule",
         "duration",
         "price",
+        "saleMode",
         "recurrence_pattern",
         "days_of_week",
         "active",

@@ -149,6 +149,9 @@ const {
   branchTripDateSegmentAllSchema,
   tripWorkerDateSchema,
   tripWorkerReportSchema,
+  expressSalesDestinationsSchema,
+  expressSalesDeparturesSchema,
+  expressSalesDepartureAvailabilitySchema,
 } = require("./middlewares/validations/tripValidation");
 const {
   storeTripWorkerSchema,
@@ -164,6 +167,7 @@ const {
   monthlySalesSchema,
   ticketSoldDateSchema,
   storeTicketWebSchema,
+  storeExpressTicketSchema,
   qrEncryptedSchema,
   ticketSoldDateWorkerSchema,
   ticketReportSchema,
@@ -614,6 +618,9 @@ router.post("/trip-update", validateSchema(updateTripSchema), TripController.upd
 router.post("/trip-change-trip", validateSchema(changeTripSchema), TripController.changeTrip);
 router.post("/trip-destroy", validateSchema(idTripSchema), TripController.destroy );
 router.post("/get-routes-vehicle-workers", validateSchema(branch_idTripSchema), TripController.getRouteVehicleBranch );
+router.post("/express-sales-destinations", validateSchema(expressSalesDestinationsSchema), TripController.getExpressSalesDestinations); //rutas de ventas express
+router.post("/express-sales-departures", validateSchema(expressSalesDeparturesSchema), TripController.getExpressSalesDepartures); //rutas de ventas express
+router.post("/express-sales-departure-availability", validateSchema(expressSalesDepartureAvailabilitySchema), TripController.getExpressSalesDepartureAvailability); //rutas de ventas express
 router.post("/trips-tickets-date", validateSchema(ticketSoldDateSchema), TripController.getTripsTicketsDate);
 router.post("/trips-tickets-date-worker", validateSchema(ticketSoldDateWorkerSchema), TripController.getTripsTicketsDateWorker);
 
@@ -650,6 +657,7 @@ router.post("/trips-worker-report", validateSchema(tripWorkerReportSchema), Trip
 //Rutas Ticket
 router.get("/ticket", TicketController.index);
 router.post("/ticket-web", validateSchema(storeTicketWebSchema),TicketController.store_web);
+router.post("/express-sales-ticket", validateSchema(storeExpressTicketSchema), TicketController.store_express); //ventas express de tickets
 router.post(
   "/ticket",
   validateSchema(storeTicketSchema),
@@ -752,7 +760,7 @@ router.post("/trip-template", validateSchema(storeTripTemplateSchema), TripTempl
 router.post("/trip-template-show", validateSchema(idTripTemplateSchema), TripTemplateController.show);
 router.put("/trip-template", validateSchema(updateTripTemplateSchema), TripTemplateController.update);
 router.post("/trip-template-destroy", validateSchema(idTripTemplateSchema),TripTemplateController.destroy);
-router.post("/get-trip-template-avtive", validateSchema(branchIdDeviceSchema), TripTemplateController.getActiveByBranch);
+router.post("/get-trip-template-avtive", validateSchema(branchTripTemplateSchema), TripTemplateController.getActiveByBranch);
 
 //Rutas Incidents
 router.post("/incident-date", validateSchema(incidentDateSchema),IncidentController.getIncidents);

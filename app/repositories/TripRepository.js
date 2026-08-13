@@ -35,6 +35,13 @@ const formatTripDateCode = (tripDate) => {
 };
 const formatTripCode = (tripDate, sequence) =>
   `${formatTripDateCode(tripDate)}-${String(sequence).padStart(3, "0")}`;
+const normalizeSaleMode = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return "normal";
+  }
+
+  return String(value).trim().toLowerCase();
+};
 const reserveTripSequence = async (tripDate, transaction) => {
   await sequelize.query(
     `
@@ -219,6 +226,110 @@ const tripFareDetailInclude = [
     ],
   },
 ];
+
+const segmentTicketInclude = {
+  model: Ticket,
+  as: "tickets",
+  attributes: [
+    "id",
+    "branch_id",
+    "user_id",
+    "trip_id",
+    "fare_segment_id",
+    "method",
+    "status",
+    "quantity",
+    "price",
+    "total",
+    "seats",
+    "date",
+    "adults",
+    "minors",
+    "qr",
+    "barcode",
+    "qr_status",
+    "sequenceNumber",
+    "promotions",
+    "tickettypes",
+  ],
+  required: false,
+  include: [
+    {
+      model: FareSegment,
+      as: "fareSegment",
+      attributes: [
+        "id",
+        "company_id",
+        "route_id",
+        "origin_route_stop_id",
+        "destination_route_stop_id",
+        "service_class",
+        "base_price",
+        "currency",
+        "valid_from",
+        "valid_to",
+        "priority",
+        "active",
+      ],
+      include: [
+        {
+          model: RouteStop,
+          as: "originRouteStop",
+          include: [
+            {
+              model: Location,
+              as: "location",
+              attributes: ["id", "address", "country", "city", "image", "active"],
+            },
+          ],
+        },
+        {
+          model: RouteStop,
+          as: "destinationRouteStop",
+          include: [
+            {
+              model: Location,
+              as: "location",
+              attributes: ["id", "address", "country", "city", "image", "active"],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      model: TicketItem,
+      as: "ticketItems",
+      attributes: [
+        "id",
+        "ticket_id",
+        "ticket_type_id",
+        "trip_fare_id",
+        "ticket_type_name",
+        "ticket_type_description",
+        "quantity",
+        "base_price",
+        "unit_price",
+        "subtotal",
+        "currency",
+        "active",
+        "source_type",
+      ],
+      include: [
+        {
+          model: TicketType,
+          as: "ticketType",
+          attributes: ["id", "name", "description", "active"],
+        },
+        {
+          model: TripFare,
+          as: "tripFare",
+          attributes: ["id", "company_id", "trip_id", "fare_segment_ticket_type_id", "base_price", "price", "active", "source_type"],
+          include: tripFareDetailInclude,
+        },
+      ],
+    },
+  ],
+};
 
 const buildSegmentTripFareFilterInclude = (originLocationId, destinationLocationId, currentDate) => [
   {
@@ -417,6 +528,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       include: [
         {
@@ -507,6 +620,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       where: whereClause, // Usar el objeto `where` construido dinámicamente
        order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -736,6 +851,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       where: whereClause,
       order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -905,6 +1022,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       where: {
         branch_id: branchId,
@@ -1015,6 +1134,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       where: {
         branch_id: branchId,
@@ -1163,7 +1284,7 @@ const TripRepository = {
     return tripFaresByTripId;
   },
 
-  async findDateBySegmentBase(branchId, originLocationId, destinationLocationId, currentDate, workerId = null) {
+  async findDateBySegmentBase(branchId, originLocationId, destinationLocationId, currentDate, workerId = null, options = {}) {
     const today = new Date();
     const formattedToday = today.toLocaleDateString('es-CL', {
       timeZone: 'America/Santiago',
@@ -1195,6 +1316,47 @@ const TripRepository = {
       delete whereClause.date;
     }
 
+    const include = [
+      {
+        model: Branch,
+        as: "branch",
+        attributes: ["id", "name"],
+      },
+      {
+        model: Vehicle,
+        as: "vehicle",
+        attributes: ["id", "plate", "internal_number", "seats", "image"],
+        include: [
+          {
+            model: Structure,
+            as: "structure",
+          },
+        ],
+      },
+      {
+        model: Route,
+        as: "route",
+        attributes: ["id", "code", "name"],
+        include: [
+          {
+            model: Location,
+            as: "origin",
+            attributes: ["id", "address", "image"],
+          },
+          {
+            model: Location,
+            as: "destination",
+            attributes: ["id", "address", "image"],
+          },
+        ],
+      },
+      ...buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate),
+    ];
+
+    if (options.includeTickets) {
+      include.push(segmentTicketInclude);
+    }
+
     return await Trip.findAll({
       attributes: [
         "id",
@@ -1208,45 +1370,12 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       where: whereClause,
       order: [['date', 'ASC'], ['schedule', 'ASC']],
-      include: [
-        {
-          model: Branch,
-          as: "branch",
-          attributes: ["id", "name"],
-        },
-        {
-          model: Vehicle,
-          as: "vehicle",
-          attributes: ["id", "plate", "internal_number", "seats", "image"],
-          include: [
-            {
-              model: Structure,
-              as: "structure",
-            },
-          ],
-        },
-        {
-          model: Route,
-          as: "route",
-          attributes: ["id", "code", "name"],
-          include: [
-            {
-              model: Location,
-              as: "origin",
-              attributes: ["id", "address", "image"],
-            },
-            {
-              model: Location,
-              as: "destination",
-              attributes: ["id", "address", "image"],
-            },
-          ],
-        },
-        ...buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate),
-      ],
+      include,
     });
   },
 
@@ -1375,6 +1504,8 @@ const TripRepository = {
       "vehicle_id",
       "route_id",
       "price",
+      "saleMode",
+      "trip_template_id",
     ],
     where: whereClause,
     order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -1441,6 +1572,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       include: [
         {
@@ -1480,7 +1613,7 @@ const TripRepository = {
     });
   },
 
-  async findByIdWithTickets(id) {
+  async findByIdWithTickets(id, options = {}) {
     return await Trip.findByPk(id, {
       attributes: [
         "id",
@@ -1494,6 +1627,8 @@ const TripRepository = {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       include: [
         {
@@ -1578,6 +1713,7 @@ const TripRepository = {
         },
         ...tripFareInclude,
       ],
+      ...options,
     });
   },
 
@@ -1594,7 +1730,9 @@ const TripRepository = {
       vehicle_id,
       route_id,
       price,
+      trip_template_id,
     } = body;
+    const saleMode = normalizeSaleMode(body.saleMode ?? body.sale_mode);
 
     const transaction = options.transaction || await sequelize.transaction();
     const ownsTransaction = !options.transaction;
@@ -1610,6 +1748,8 @@ const TripRepository = {
         vehicle_id,
         route_id,
         price: price ?? null,
+        saleMode,
+        trip_template_id: trip_template_id ?? null,
       }, { ...options, transaction });
 
       const sequence = await reserveTripSequence(date, transaction);
@@ -1642,12 +1782,22 @@ const TripRepository = {
       "vehicle_id",
       "route_id",
       "price",
+      "saleMode",
+      "trip_template_id",
     ];
 
-    const updatedData = Object.keys(body)
-      .filter((key) => fieldsToUpdate.includes(key) && body[key] !== undefined)
+    const normalizedBody = { ...body };
+    if (Object.prototype.hasOwnProperty.call(body, "sale_mode")) {
+      normalizedBody.saleMode = normalizeSaleMode(body.saleMode ?? body.sale_mode);
+      delete normalizedBody.sale_mode;
+    } else if (Object.prototype.hasOwnProperty.call(body, "saleMode")) {
+      normalizedBody.saleMode = normalizeSaleMode(body.saleMode);
+    }
+
+    const updatedData = Object.keys(normalizedBody)
+      .filter((key) => fieldsToUpdate.includes(key) && normalizedBody[key] !== undefined)
       .reduce((obj, key) => {
-        obj[key] = body[key];
+        obj[key] = normalizedBody[key];
         return obj;
       }, {});
 
@@ -1835,6 +1985,8 @@ async existsByUpdatedFields(trip, updatedFields) {
           "vehicle_id",
           "route_id",
           "price",
+          "saleMode",
+          "trip_template_id",
         ],
         where: whereClause,
         include: [
@@ -1933,6 +2085,8 @@ async existsByUpdatedFields(trip, updatedFields) {
           "vehicle_id",
           "route_id",
           "price",
+          "saleMode",
+          "trip_template_id",
         ],
         where: whereClause,
         include: [
@@ -2048,6 +2202,8 @@ async existsByUpdatedFields(trip, updatedFields) {
         "vehicle_id",
         "route_id",
         "price",
+        "saleMode",
+        "trip_template_id",
       ],
       include: [
         {
@@ -2131,6 +2287,8 @@ async existsByUpdatedFields(trip, updatedFields) {
           "vehicle_id",
           "route_id",
           "price",
+          "saleMode",
+          "trip_template_id",
         ],
         where: whereClause,
         order: [["date", "ASC"], ["schedule", "ASC"], ["id", "ASC"]],
@@ -2186,3 +2344,5 @@ async existsByUpdatedFields(trip, updatedFields) {
 };
 
 module.exports = TripRepository;
+
+

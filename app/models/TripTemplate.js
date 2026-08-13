@@ -14,6 +14,7 @@ module.exports = (sequelize, DataTypes) => {
       TripTemplate.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
       TripTemplate.belongsTo(models.Route, { foreignKey: 'route_id', as: 'route' });
       TripTemplate.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      TripTemplate.hasMany(models.Trip, { foreignKey: 'trip_template_id', as: 'trips' });
     }
   }
   TripTemplate.init(
@@ -84,6 +85,18 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
         validate: {
           isDecimal: true, // Valida que el valor sea un decimal
+        },
+      },
+      saleMode: {
+        type: DataTypes.STRING,
+        allowNull: false,
+        defaultValue: "normal",
+        field: "sale_mode",
+        validate: {
+          isIn: {
+            args: [["normal", "express"]],
+            msg: "La modalidad de venta no es valida",
+          },
         },
       },
       recurrence_pattern: DataTypes.STRING,

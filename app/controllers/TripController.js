@@ -22,6 +22,7 @@ const {
   TicketTypeRepository,
   FareSegmentRepository,
   FareSegmentTicketTypeRepository,
+  TripTemplateRepository,
 } = require("../repositories");
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
@@ -50,6 +51,7 @@ const extractTimePart = (value) => {
   const match = value.match(/(\d{2}:\d{2})(?::\d{2})?$/);
   return match ? match[1] : null;
 };
+const formatDepartureTime = (value) => extractTimePart(String(value ?? "")) ?? null;
 
 const addMinutesToTripTime = (datePart, timePart, minutes = 0) => {
   if (typeof timePart !== "string") {
@@ -169,6 +171,84 @@ const isFareSegmentActiveForDate = (fareSegment, currentDate) => {
 
   return true;
 };
+const parseJsonArray = (value) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+  return [];
+};
+const shouldTemplateApplyForDate = (template, dateString) => {
+  if (!template || !dateString) {
+    return false;
+  }
+
+  const pattern = String(template.recurrence_pattern || "").toLowerCase();
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  const dayOfWeek = date.getDay();
+
+  if (Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  switch (pattern) {
+    case "daily":
+      return true;
+    case "weekdays":
+      return dayOfWeek >= 1 && dayOfWeek <= 5;
+    case "weekends":
+      return dayOfWeek === 0 || dayOfWeek === 6;
+    case "weekly":
+      return String(template.days_of_week || "")
+        .split(",")
+        .map((item) => Number(item))
+        .includes(dayOfWeek);
+    default:
+      return false;
+  }
+};
+const addDestinationFromFareSegment = (destinations, fareSegment, origin_id, date) => {
+  if (!fareSegment || !isFareSegmentActiveForDate(fareSegment, date)) {
+    return;
+  }
+
+  const originLocationId = Number(
+    fareSegment.originRouteStop?.location_id ??
+      fareSegment.originRouteStop?.location?.id ??
+      null
+  );
+
+  if (originLocationId !== Number(origin_id)) {
+    return;
+  }
+
+  const destinationLocation =
+    fareSegment.destinationRouteStop?.location ?? null;
+  const destinationId = Number(
+    fareSegment.destinationRouteStop?.location_id ??
+      destinationLocation?.id ??
+      null
+  );
+
+  if (!destinationId || destinations.has(destinationId)) {
+    return;
+  }
+
+  destinations.set(destinationId, {
+    destination_id: destinationId,
+    destinationName: destinationLocation?.address ?? null,
+  });
+};
+const saleModes = [
+  { id: "normal", name: "Venta Normal" },
+  { id: "express", name: "Venta Express" },
+];
 const tripHasOriginDestinationSegment = (
   trip,
   originRouteStopId,
@@ -353,42 +433,61 @@ const mapRouteStops = (routeStops = []) =>
           city: routeStop.location.city,
           image: routeStop.location.image,
           active: routeStop.location.active,
-        }
-      : null,
+      }
+    : null,
   }));
+const isStandardTicketFare = (tripFare) =>
+  String(tripFare?.fareSegmentTicketType?.ticketTypeName ?? "")
+    .trim()
+    .toUpperCase() === "STANDARD";
+const sortTripFaresByTicketType = (tripFares = []) =>
+  (Array.isArray(tripFares) ? tripFares : [])
+    .map((tripFare, index) => ({ tripFare, index }))
+    .sort((a, b) => {
+      const aIsStandard = isStandardTicketFare(a.tripFare);
+      const bIsStandard = isStandardTicketFare(b.tripFare);
+
+      if (aIsStandard && !bIsStandard) return -1;
+      if (!aIsStandard && bIsStandard) return 1;
+      return a.index - b.index;
+    })
+    .map(({ tripFare }) => tripFare);
 const mapTripFares = (tripFares = []) =>
-  (Array.isArray(tripFares) ? tripFares : []).map((tripFare) => ({
-    id: tripFare.id,
-    company_id: tripFare.company_id,
-    trip_id: tripFare.trip_id,
-    fare_segment_ticket_type_id: tripFare.fare_segment_ticket_type_id,
-    base_price: Number(tripFare.base_price ?? 0),
-    price: Number(tripFare.price ?? 0),
-    active: tripFare.active,
-    source_type: tripFare.source_type,
-    fareSegmentTicketType: tripFare.fareSegmentTicketType
-      ? {
-          id: tripFare.fareSegmentTicketType.id,
-          fare_segment_id: tripFare.fareSegmentTicketType.fare_segment_id,
-          ticket_type_id: tripFare.fareSegmentTicketType.ticket_type_id,
-          base_price: Number(tripFare.fareSegmentTicketType.base_price ?? 0),
-          active: tripFare.fareSegmentTicketType.active,
-          ticketTypeName: tripFare.fareSegmentTicketType.ticketType?.name,
-          ticketTypeDescription: tripFare.fareSegmentTicketType.ticketType?.description,
-          ticketTypeActive: tripFare.fareSegmentTicketType.ticketType?.active,
-          fareSegment: tripFare.fareSegmentTicketType.fareSegment
-            ? {
-                id: tripFare.fareSegmentTicketType.fareSegment.id,
-                route_id: tripFare.fareSegmentTicketType.fareSegment.route_id,
-                origin_route_stop_id: tripFare.fareSegmentTicketType.fareSegment.origin_route_stop_id,
-                destination_route_stop_id: tripFare.fareSegmentTicketType.fareSegment.destination_route_stop_id,
-                originRouteStop: tripFare.fareSegmentTicketType.fareSegment.originRouteStop?.location?.address ?? null,
-                destinationRouteStop: tripFare.fareSegmentTicketType.fareSegment.destinationRouteStop?.location?.address ?? null,
-              }
-            : null,
-        }
-      : null,
-  }));
+  sortTripFaresByTicketType(
+    (Array.isArray(tripFares) ? tripFares : []).map((tripFare) => ({
+      id: tripFare.id,
+      trip_fare_id: tripFare.id,
+      company_id: tripFare.company_id,
+      trip_id: tripFare.trip_id,
+      fare_segment_ticket_type_id: tripFare.fare_segment_ticket_type_id,
+      base_price: Number(tripFare.base_price ?? 0),
+      price: Number(tripFare.price ?? 0),
+      active: tripFare.active,
+      source_type: tripFare.source_type,
+      fareSegmentTicketType: tripFare.fareSegmentTicketType
+        ? {
+            id: tripFare.fareSegmentTicketType.id,
+            fare_segment_id: tripFare.fareSegmentTicketType.fare_segment_id,
+            ticket_type_id: tripFare.fareSegmentTicketType.ticket_type_id,
+            base_price: Number(tripFare.fareSegmentTicketType.base_price ?? 0),
+            active: tripFare.fareSegmentTicketType.active,
+            ticketTypeName: tripFare.fareSegmentTicketType.ticketType?.name,
+            ticketTypeDescription: tripFare.fareSegmentTicketType.ticketType?.description,
+            ticketTypeActive: tripFare.fareSegmentTicketType.ticketType?.active,
+            fareSegment: tripFare.fareSegmentTicketType.fareSegment
+              ? {
+                  id: tripFare.fareSegmentTicketType.fareSegment.id,
+                  route_id: tripFare.fareSegmentTicketType.fareSegment.route_id,
+                  origin_route_stop_id: tripFare.fareSegmentTicketType.fareSegment.origin_route_stop_id,
+                  destination_route_stop_id: tripFare.fareSegmentTicketType.fareSegment.destination_route_stop_id,
+                  originRouteStop: tripFare.fareSegmentTicketType.fareSegment.originRouteStop?.location?.address ?? null,
+                  destinationRouteStop: tripFare.fareSegmentTicketType.fareSegment.destinationRouteStop?.location?.address ?? null,
+                }
+              : null,
+          }
+        : null,
+    }))
+  );
 const mapTripTickets = (tickets = []) =>
   (Array.isArray(tickets) ? tickets : []).map((ticket) => ({
     id: ticket.id,
@@ -586,6 +685,48 @@ const getSeatAvailabilityBySegment = (trip, tripTickets = [], fareSegment = null
     availableSeatNumbers,
     availableSeats: availableSeatNumbers.length,
   };
+};
+const getSoldQuantityBySegment = (trip, tripTickets = [], fareSegment = null, fareSegmentMap = new Map()) => {
+  const tripStopOrderMap = buildTripStopOrderMap(trip?.tripStops ?? []);
+  const targetOriginOrder = tripStopOrderMap.get(Number(fareSegment?.origin_route_stop_id));
+  const targetDestinationOrder = tripStopOrderMap.get(Number(fareSegment?.destination_route_stop_id));
+
+  if (!targetOriginOrder || !targetDestinationOrder) {
+    return (Array.isArray(tripTickets) ? tripTickets : []).reduce(
+      (sum, ticket) => sum + Number(ticket?.quantity || 0),
+      0
+    );
+  }
+
+  return (Array.isArray(tripTickets) ? tripTickets : []).reduce((sum, ticket) => {
+    const existingFareSegments = Array.isArray(ticket?.fareSegments) && ticket.fareSegments.length
+      ? ticket.fareSegments
+      : extractTicketFareSegments(ticket, fareSegmentMap);
+
+    if (!existingFareSegments.length) {
+      return sum + Number(ticket?.quantity || 0);
+    }
+
+    const overlaps = existingFareSegments.some((existingFareSegment) => {
+      const existingOriginOrder = tripStopOrderMap.get(
+        Number(existingFareSegment.origin_route_stop_id)
+      );
+      const existingDestinationOrder = tripStopOrderMap.get(
+        Number(existingFareSegment.destination_route_stop_id)
+      );
+
+      if (!existingOriginOrder || !existingDestinationOrder) {
+        return false;
+      }
+
+      return (
+        existingOriginOrder < targetDestinationOrder &&
+        existingDestinationOrder > targetOriginOrder
+      );
+    });
+
+    return overlaps ? sum + Number(ticket?.quantity || 0) : sum;
+  }, 0);
 };
 const mapFareSegments = (fareSegments = []) =>
   (Array.isArray(fareSegments) ? fareSegments : []).map((fareSegment) => ({
@@ -859,6 +1000,8 @@ const TripController = {
             routeId: trip.route_id,
             route_id: trip.route_id,
             routeCode: trip.route?.code ?? null,
+            saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+            trip_template_id: trip.trip_template_id ?? null,
             date: trip.date,
             schedule: trip.schedule,
             arrival: trip.arrival,
@@ -940,6 +1083,8 @@ const TripController = {
             routeId: trip.route_id,
             route_id: trip.route_id,
             routeCode: trip.route?.code ?? null,
+            saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+            trip_template_id: trip.trip_template_id ?? null,
             date: trip.date,
             schedule: trip.schedule,
             arrival: trip.arrival,
@@ -1361,6 +1506,8 @@ const TripController = {
           return {
             id: trip.id,
             trip_id: trip.id,
+            saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+            trip_template_id: trip.trip_template_id ?? null,
             date: trip.date,
             schedule: trip.schedule,
             arrival: trip.arrival,
@@ -1456,12 +1603,16 @@ const TripController = {
       logger.info(
         `TripController->getTripDateBySegment: currentChileDate=${currentChileDate} searchDate=${searchDate}`
       );
-      const trips = await TripRepository.findDateBySegmentBase(
+      const tripsBySegment = await TripRepository.findDateBySegmentBase(
         branch_id,
         normalizedOriginId,
         normalizedDestinationId,
         searchDate,
         workerId
+      );
+      const trips = tripsBySegment.filter(
+        (trip) =>
+          String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "normal"
       );
       logger.info(
         `TripController->getTripDateBySegment: viajes encontrados para sucursal=${branch_id} fecha=${searchDate} => ${trips.length}`
@@ -1594,6 +1745,8 @@ const TripController = {
               trip_id: entry.trip.id,
               code: entry.trip.code,
               tripCode: entry.trip.code,
+              saleMode: entry.trip.saleMode ?? entry.trip.sale_mode ?? "normal",
+              trip_template_id: entry.trip.trip_template_id ?? null,
               routeCode: entry.trip.route?.code ?? null,
               route_code: entry.trip.route?.code ?? null,
               date: entry.trip.date,
@@ -1794,6 +1947,8 @@ const TripController = {
               trip_id: trip.trip.id,
               code: trip.trip.code,
               tripCode: trip.trip.code,
+              saleMode: trip.trip.saleMode ?? trip.trip.sale_mode ?? "normal",
+              trip_template_id: trip.trip.trip_template_id ?? null,
               routeCode: trip.trip.route?.code ?? null,
               route_code: trip.trip.route?.code ?? null,
               date: trip.trip.date,
@@ -1832,6 +1987,565 @@ const TripController = {
       });
     } catch (error) {
       logger.error("TripController->getTripDateBySegmentAll: " + error.message);
+      return res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
+  async getExpressSalesDestinations(req, res) {
+    const { branch_id, date, origin_id } = req.body;
+    logger.info(
+      `${req.user.name} - Busca destinos disponibles para venta express`
+    );
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        return res.status(404).json({ msg: "BranchNotFound" });
+      }
+
+      const company_id = branch.company_id;
+
+      const destinations = new Map();
+      const trips = await TripRepository.findDateForBranchDateBase(branch_id, date);
+      const expressTrips = trips.filter(
+        (trip) =>
+          String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "express" &&
+          trip.end === null
+      );
+      const tripIds = expressTrips.map((trip) => trip.id);
+      const tripFaresByTripId = await TripRepository.getTripFaresByTripIds(tripIds);
+
+      for (const trip of expressTrips) {
+        const tripFares = tripFaresByTripId.get(Number(trip.id)) || [];
+        for (const tripFare of tripFares) {
+          if (
+            tripFare?.active === false ||
+            tripFare?.fareSegmentTicketType?.active === false
+          ) {
+            continue;
+          }
+
+          const fareSegment = tripFare?.fareSegmentTicketType?.fareSegment ?? null;
+          addDestinationFromFareSegment(destinations, fareSegment, origin_id, date);
+        }
+      }
+
+      const allTripsForDate = await TripRepository.findDateForBranchDateBase(branch_id, date);
+      const activeExpressTripsForDate = allTripsForDate.filter(
+        (trip) =>
+          String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "express" &&
+          trip.end === null
+      );
+      const existingTripTemplateIds = new Set(
+        activeExpressTripsForDate
+          .map((trip) => Number(trip.trip_template_id))
+          .filter((templateId) => Number.isFinite(templateId) && templateId > 0)
+      );
+      const templates = await TripTemplateRepository.findAll({
+        branch_id,
+        active: true,
+        saleMode: "express",
+      });
+
+      for (const template of templates) {
+        if (existingTripTemplateIds.has(Number(template.id))) {
+          continue;
+        }
+
+        if (!shouldTemplateApplyForDate(template, date)) {
+          continue;
+        }
+
+        const templateTripFares = parseJsonArray(template.trip_fares);
+        for (const item of templateTripFares) {
+          if (item?.active === false) {
+            continue;
+          }
+
+          const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+            item.fare_segment_ticket_type_id
+          );
+          if (fareSegmentTicketType?.active === false) {
+            continue;
+          }
+
+          const fareSegment = fareSegmentTicketType?.fareSegment ?? null;
+
+          if (
+            !fareSegment ||
+            Number(fareSegment.company_id) !== Number(company_id) ||
+            Number(fareSegment.route_id) !== Number(template.route_id)
+          ) {
+            continue;
+          }
+
+          addDestinationFromFareSegment(destinations, fareSegment, origin_id, date);
+        }
+      }
+
+      const sortedDestinations = Array.from(destinations.values()).sort((a, b) =>
+        String(a.destinationName ?? "").localeCompare(
+          String(b.destinationName ?? ""),
+          "es",
+          { sensitivity: "base" }
+        )
+      );
+
+      return res.status(200).json(sortedDestinations);
+    } catch (error) {
+      logger.error("TripController->getExpressSalesDestinations: " + error.message);
+      return res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
+  async getExpressSalesDepartures(req, res) {
+    const { branch_id, date, origin_id, destination_id } = req.body;
+    logger.info(
+      `${req.user.name} - Busca salidas disponibles para venta express`
+    );
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      const branch = await BranchRepository.findById(branch_id);
+      if (!branch) {
+        return res.status(404).json({ msg: "BranchNotFound" });
+      }
+
+      const company_id = branch.company_id;
+
+      const departures = [];
+      const trips = await TripRepository.findDateBySegmentBase(
+        branch_id,
+        origin_id,
+        destination_id,
+        date,
+        null,
+        { includeTickets: true }
+      );
+      const expressTrips = trips.filter(
+        (trip) =>
+          String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "express" &&
+          trip.end === null
+      );
+      const tripIds = expressTrips.map((trip) => trip.id);
+      const [tripStopsByTripId, matchingTripFaresByTripId] = await Promise.all([
+        TripRepository.getTripStopsByTripIds(tripIds),
+        TripRepository.getSegmentTripFaresByTripIds(
+          tripIds,
+          origin_id,
+          destination_id,
+          date
+        ),
+      ]);
+
+      for (const trip of expressTrips) {
+        const tripId = Number(trip.id);
+        const matchingTripFares = matchingTripFaresByTripId.get(tripId) || [];
+        if (!matchingTripFares.length) {
+          continue;
+        }
+
+        const tripStopsRaw = tripStopsByTripId.get(tripId) || [];
+        const fareSegmentMap = buildFareSegmentMap(matchingTripFares);
+        const rawTickets = Array.isArray(trip.tickets) ? trip.tickets : [];
+        const tripTickets = mapTripTickets(rawTickets).map((ticket, index) => ({
+          ...ticket,
+          fareSegments: extractTicketFareSegments(rawTickets[index], fareSegmentMap),
+        }));
+        const soldQuantity = (Array.isArray(rawTickets) ? rawTickets : []).reduce(
+          (sum, ticket) => sum + Number(ticket?.quantity ?? 0),
+          0
+        );
+        const availableCapacity = Math.max(
+          Number(trip.vehicle?.seats ?? 0) - soldQuantity,
+          0
+        );
+        const segmentOriginMinutes = getSegmentOriginMinutes(
+          tripStopsRaw,
+          matchingTripFares
+        );
+        const adjustedSchedule = addMinutesToTripTime(
+          trip.date,
+          trip.start || trip.schedule,
+          segmentOriginMinutes
+        );
+
+        const tripStops = mapTripStops(tripStopsRaw);
+        const tripFares = mapTripFares(matchingTripFares);
+        const segmentDestinationMinutes = getSegmentDestinationMinutes(
+          tripStopsRaw,
+          matchingTripFares
+        );
+        const adjustedArrival = addMinutesToTripTime(
+          trip.date,
+          trip.start || trip.schedule,
+          segmentDestinationMinutes
+        );
+        const segmentPrice = tripFares.length
+          ? Math.max(...tripFares.map((fare) => Number(fare.price) || 0))
+          : Number(trip.price ?? 0);
+        const totalPasajeros = tripTickets
+          ? tripTickets.reduce((sum, ticket) => sum + (ticket.quantity || 1), 0)
+          : 0;
+        const boarding = tripTickets
+          ? tripTickets.reduce(
+              (sum, ticket) =>
+                sum + ((ticket.qr_status !== null && ticket.qr_status !== 0) ? (ticket.quantity || 1) : 0),
+              0
+            )
+          : 0;
+
+        departures.push({
+          source: "trip",
+          sourceId: tripId,
+          tripId,
+          trip_id: tripId,
+          templateId: trip.trip_template_id ?? null,
+          template_id: trip.trip_template_id ?? null,
+          id: trip.id,
+          code: trip.code,
+          tripCode: trip.code,
+          saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+          trip_template_id: trip.trip_template_id ?? null,
+          routeCode: trip.route?.code ?? null,
+          route_code: trip.route?.code ?? null,
+          date: trip.date,
+          start: trip.start,
+          end: trip.end,
+          arrival: adjustedArrival,
+          price: segmentPrice,
+          schedule: adjustedSchedule,
+          departureTime: formatDepartureTime(adjustedSchedule),
+          seats: Number(trip.vehicle?.seats ?? 0),
+          availableCapacity,
+          plate: trip.vehicle?.plate ?? null,
+          internal_number: trip.vehicle?.internal_number ?? null,
+          imageVehicle: trip.vehicle?.image ?? null,
+          name: trip.route?.code ?? trip.route?.name ?? null,
+          origin: trip.route?.origin?.address ?? null,
+          originImage: trip.route?.origin?.image ?? null,
+          destination: trip.route?.destination?.address ?? null,
+          destinationImage: trip.route?.destination?.image ?? null,
+          boarding,
+          pending: totalPasajeros - boarding,
+          tripStops,
+          tripFares,
+        });
+      }
+
+      const existingTripTemplateIds = new Set(
+        expressTrips
+          .map((trip) => Number(trip.trip_template_id))
+          .filter((templateId) => Number.isFinite(templateId) && templateId > 0)
+      );
+      const templates = await TripTemplateRepository.findAll({
+        branch_id,
+        active: true,
+        saleMode: "express",
+      });
+
+      for (const template of templates) {
+        if (existingTripTemplateIds.has(Number(template.id))) {
+          continue;
+        }
+
+        if (!shouldTemplateApplyForDate(template, date)) {
+          continue;
+        }
+
+        const templateTripFares = parseJsonArray(template.trip_fares);
+        const matchingTemplateFares = [];
+        for (const item of templateTripFares) {
+          if (item?.active === false) {
+            continue;
+          }
+
+          const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+            item.fare_segment_ticket_type_id
+          );
+          if (fareSegmentTicketType?.active === false) {
+            continue;
+          }
+
+          const fareSegment = fareSegmentTicketType?.fareSegment ?? null;
+          const basePrice = Number(fareSegmentTicketType?.base_price ?? 0);
+          const templateTripFare = {
+            id: item.id ?? fareSegmentTicketType.id,
+            company_id,
+            trip_id: null,
+            fare_segment_ticket_type_id: fareSegmentTicketType.id,
+            base_price: basePrice,
+            price: item.price != null ? Number(item.price) : basePrice,
+            active: item.active ?? true,
+            source_type: item.source_type ?? "auto",
+            fareSegmentTicketType,
+          };
+          const templateAsTrip = {
+            tripFares: [templateTripFare],
+          };
+
+          if (
+            !fareSegment ||
+            Number(fareSegment.company_id) !== Number(company_id) ||
+            Number(fareSegment.route_id) !== Number(template.route_id) ||
+            !getExactTripFareForSegment(
+              templateAsTrip,
+              origin_id,
+              destination_id,
+              date
+            ).length
+          ) {
+            continue;
+          }
+
+          matchingTemplateFares.push(templateTripFare);
+        }
+
+        if (!matchingTemplateFares.length) {
+          continue;
+        }
+
+        const routeStops = await RouteStopRepository.findByRoute(template.route_id);
+        const templateTripStops = parseJsonArray(template.trip_stops);
+        const tripStopsForSchedule = routeStops.map((routeStop) => {
+          const templateStop = templateTripStops.find(
+            (item) => Number(item.route_stop_id) === Number(routeStop.id)
+          ) || {};
+
+          return {
+            id: templateStop.id ?? null,
+            company_id,
+            trip_id: null,
+            route_stop_id: routeStop.id,
+            stop_order: templateStop.stop_order ?? routeStop.stop_order,
+            arrival_time: templateStop.arrival_time ?? null,
+            departure_time: templateStop.departure_time ?? null,
+            can_board: templateStop.can_board ?? routeStop.allows_boarding ?? true,
+            can_alight: templateStop.can_alight ?? routeStop.allows_alighting ?? true,
+            active: templateStop.active ?? routeStop.active,
+            source_type: templateStop.source_type ?? "auto",
+            routeStop,
+          };
+        });
+        const segmentOriginMinutes = getSegmentOriginMinutes(
+          tripStopsForSchedule,
+          matchingTemplateFares
+        );
+        const adjustedSchedule = addMinutesToTripTime(
+          date,
+          template.schedule,
+          segmentOriginMinutes
+        );
+        const segmentDestinationMinutes = getSegmentDestinationMinutes(
+          tripStopsForSchedule,
+          matchingTemplateFares
+        );
+        const adjustedArrival = addMinutesToTripTime(
+          date,
+          template.schedule,
+          segmentDestinationMinutes
+        );
+        const tripFares = mapTripFares(matchingTemplateFares);
+        const segmentPrice = tripFares.length
+          ? Math.max(...tripFares.map((fare) => Number(fare.price) || 0))
+          : Number(template.price ?? 0);
+
+        departures.push({
+          source: "template",
+          sourceId: template.id,
+          tripId: null,
+          trip_id: null,
+          templateId: template.id,
+          template_id: template.id,
+          id: null,
+          code: null,
+          tripCode: null,
+          saleMode: template.saleMode ?? template.sale_mode ?? "express",
+          trip_template_id: template.id,
+          routeCode: template.route?.code ?? null,
+          route_code: template.route?.code ?? null,
+          date,
+          start: null,
+          end: null,
+          arrival: adjustedArrival,
+          price: segmentPrice,
+          schedule: adjustedSchedule,
+          departureTime: formatDepartureTime(adjustedSchedule),
+          seats: Number(template.vehicle?.seats ?? 0),
+          availableCapacity: Number(template.vehicle?.seats ?? 0),
+          plate: template.vehicle?.plate ?? null,
+          internal_number: template.vehicle?.internal_number ?? null,
+          imageVehicle: template.vehicle?.image ?? null,
+          name: template.route?.code ?? template.route?.name ?? null,
+          origin: template.route?.origin?.address ?? null,
+          originImage: template.route?.origin?.image ?? null,
+          destination: template.route?.destination?.address ?? null,
+          destinationImage: template.route?.destination?.image ?? null,
+          boarding: 0,
+          pending: 0,
+          tripStops: mapTripStops(tripStopsForSchedule),
+          tripFares,
+        });
+      }
+
+      const sortedDepartures = departures
+        .filter((departure) => departure.departureTime)
+        .sort((a, b) =>
+          String(a.departureTime ?? "").localeCompare(String(b.departureTime ?? ""))
+        );
+
+      return res.status(200).json({
+        trips: sortedDepartures,
+      });
+    } catch (error) {
+      logger.error("TripController->getExpressSalesDepartures: " + error.message);
+      return res.status(500).json({ error: "ServerError", details: error.message });
+    }
+  },
+
+  async getExpressSalesDepartureAvailability(req, res) {
+    const source = String(req.body.source || "").toLowerCase();
+    const sourceId = Number(req.body.sourceId ?? req.body.source_id);
+    const { date } = req.body;
+    logger.info(
+      `${req.user.name} - Busca disponibilidad de salida para venta express`
+    );
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      if (source === "trip") {
+        const trip = await TripRepository.findByIdWithTickets(sourceId);
+        if (!trip) {
+          return res.status(404).json({ msg: "TripNotFound" });
+        }
+
+        if (String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() !== "express") {
+          return res.status(400).json({ msg: "TripSaleModeMismatch" });
+        }
+
+        if (trip.end !== null) {
+          return res.status(400).json({ msg: "TripFinished" });
+        }
+
+        if (String(trip.date).slice(0, 10) !== date) {
+          return res.status(400).json({ msg: "TripDateMismatch" });
+        }
+
+        const tickets = Array.isArray(trip.tickets) ? trip.tickets : [];
+        const soldQuantity = tickets.reduce(
+          (sum, ticket) => sum + Number(ticket?.quantity ?? 0),
+          0
+        );
+        const seats = Number(trip.vehicle?.seats ?? 0);
+
+        return res.status(200).json({
+          source: "trip",
+          sourceId: trip.id,
+          tripId: trip.id,
+          trip_id: trip.id,
+          templateId: trip.trip_template_id ?? null,
+          template_id: trip.trip_template_id ?? null,
+          availableCapacity: Math.max(seats - soldQuantity, 0),
+          tripStops: mapTripStops(trip.tripStops),
+          tripFares: mapTripFares(trip.tripFares),
+        });
+      }
+
+      if (source === "template") {
+        const template = await TripTemplateRepository.findById(sourceId);
+        if (!template) {
+          return res.status(404).json({ msg: "TemplateNotFound" });
+        }
+
+        if (String(template.saleMode ?? template.sale_mode ?? "normal").toLowerCase() !== "express") {
+          return res.status(400).json({ msg: "TemplateSaleModeMismatch" });
+        }
+
+        if (!template.active) {
+          return res.status(400).json({ msg: "TemplateInactive" });
+        }
+
+        if (!shouldTemplateApplyForDate(template, date)) {
+          return res.status(400).json({ msg: "TemplateNotAvailableForDate" });
+        }
+
+        const company_id = template.branch?.company_id ?? null;
+        const routeStops = await RouteStopRepository.findByRoute(template.route_id);
+        const templateTripStops = parseJsonArray(template.trip_stops);
+        const tripStopsForSchedule = routeStops.map((routeStop) => {
+          const templateStop = templateTripStops.find(
+            (item) => Number(item.route_stop_id) === Number(routeStop.id)
+          ) || {};
+
+          return {
+            id: templateStop.id ?? null,
+            company_id,
+            trip_id: null,
+            route_stop_id: routeStop.id,
+            stop_order: templateStop.stop_order ?? routeStop.stop_order,
+            arrival_time: templateStop.arrival_time ?? null,
+            departure_time: templateStop.departure_time ?? null,
+            can_board: templateStop.can_board ?? routeStop.allows_boarding ?? true,
+            can_alight: templateStop.can_alight ?? routeStop.allows_alighting ?? true,
+            active: templateStop.active ?? routeStop.active,
+            source_type: templateStop.source_type ?? "auto",
+            routeStop,
+          };
+        });
+
+        const matchingTemplateFares = [];
+        for (const item of parseJsonArray(template.trip_fares)) {
+          if (item?.active === false) {
+            continue;
+          }
+
+          const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
+            item.fare_segment_ticket_type_id
+          );
+          if (!fareSegmentTicketType || fareSegmentTicketType.active === false) {
+            continue;
+          }
+
+          const fareSegment = fareSegmentTicketType.fareSegment;
+          if (
+            !fareSegment ||
+            Number(fareSegment.company_id) !== Number(company_id) ||
+            Number(fareSegment.route_id) !== Number(template.route_id)
+          ) {
+            continue;
+          }
+
+          const basePrice = Number(fareSegmentTicketType.base_price ?? 0);
+          matchingTemplateFares.push({
+            id: item.id ?? fareSegmentTicketType.id,
+            company_id,
+            trip_id: null,
+            fare_segment_ticket_type_id: fareSegmentTicketType.id,
+            base_price: basePrice,
+            price: item.price != null ? Number(item.price) : basePrice,
+            active: item.active ?? true,
+            source_type: item.source_type ?? "auto",
+            fareSegmentTicketType,
+          });
+        }
+
+        return res.status(200).json({
+          source: "template",
+          sourceId: template.id,
+          tripId: null,
+          trip_id: null,
+          templateId: template.id,
+          template_id: template.id,
+          availableCapacity: Number(template.vehicle?.seats ?? 0),
+          tripStops: mapTripStops(tripStopsForSchedule),
+          tripFares: mapTripFares(matchingTemplateFares),
+        });
+      }
+
+      return res.status(400).json({ msg: "InvalidSource" });
+    } catch (error) {
+      logger.error("TripController->getExpressSalesDepartureAvailability: " + error.message);
       return res.status(500).json({ error: "ServerError", details: error.message });
     }
   },
@@ -1940,6 +2654,8 @@ const TripController = {
           return {
             id: trip.id,
             trip_id: trip.id,
+            saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+            trip_template_id: trip.trip_template_id ?? null,
             date: trip.date,
             schedule: trip.schedule,
             arrival: trip.arrival,
@@ -2158,6 +2874,8 @@ const TripController = {
         vehicle_id: trip.vehicle_id,
         routeId: trip.route_id,
         route_id: trip.route_id,
+        saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+        trip_template_id: trip.trip_template_id ?? null,
         date: trip.date,
         schedule: trip.schedule,
         arrival: trip.arrival,
@@ -2401,13 +3119,32 @@ const TripController = {
         schedule !== undefined &&
         schedule !== null &&
         String(schedule).trim() !== "";
+      const startTriggered =
+        hasOwn(req.body, "start") &&
+        start !== undefined &&
+        start !== null &&
+        start !== false &&
+        String(start).trim() !== "";
+      const endTriggered =
+        hasOwn(req.body, "end") &&
+        end !== undefined &&
+        end !== null &&
+        end !== false &&
+        String(end).trim() !== "";
+      let actualStart = null;
+      let formattedStart = null;
+      const scheduledTripDate = trip.date;
+      const scheduledTripSchedule = trip.schedule;
 
-      if (start && !scheduleWasProvided) {
-        const today = new Date().toISOString().split("T")[0];
-        const actualStart = await TripController.createDateTime(today, start);
-        const formattedStart = await TripController.formatToMySQLDateTime(
+      if (startTriggered) {
+        actualStart = new Date();
+        formattedStart = await TripController.formatToMySQLDateTime(
           actualStart
         );
+      }
+
+      if (startTriggered && !scheduleWasProvided) {
+        const today = formattedStart.slice(0, 10);
         const routeEstimatedMinutes = Number(routeForTiming?.estimated);
 
         req.body.start = formattedStart;
@@ -2427,17 +3164,17 @@ const TripController = {
         }
       }
 
-      if (start) {
-        const today = new Date().toISOString().split("T")[0]; // Fecha actual en YYYY-MM-DD
-        const actualStart = await TripController.createDateTime(today, start);
-        const scheduledStart = await TripController.createDateTime(
-          trip.date,
-          trip.schedule
-        );
-        // Comparar fechas
-        const { difference, humanReadable, isDelayed } =
-          await TripController.compareDates(scheduledStart, actualStart);
-        if (isDelayed) {
+      if (startTriggered) {
+        req.body.start = formattedStart;
+        if (scheduledTripDate && scheduledTripSchedule) {
+          const scheduledStart = await TripController.createDateTime(
+            scheduledTripDate,
+            scheduledTripSchedule
+          );
+          // Comparar fechas
+          const { difference, humanReadable, isDelayed } =
+            await TripController.compareDates(scheduledStart, actualStart);
+          if (isDelayed) {
           logger.info(`Start es mayor que Schedule por ${humanReadable}.`);
           const incidentBody = {
             branch_id: trip.branch_id, // ID de la sucursal
@@ -2446,9 +3183,7 @@ const TripController = {
             description: `Realizo la salida del viaje con un retraso de (${humanReadable}).`,
             details: {
               trip_code: trip.code ?? null,
-              actualStart: await TripController.formatToMySQLDateTime(
-                actualStart
-              ),
+              actualStart: formattedStart,
               scheduledStart: await TripController.formatToMySQLDateTime(
                 scheduledStart
               ),
@@ -2457,45 +3192,40 @@ const TripController = {
             date: await TripController.formatToMySQLDateTime(new Date()), // Fecha actual
           };
           logger.info(`actualStart ${actualStart}`);
-          const formattedStart = await TripController.formatToMySQLDateTime(
-            actualStart
-          ); // Cortar los milisegundos
-
-          // 4. Asignar al cuerpo de la petición
-          req.body.start = formattedStart; // "2025-04-14 15:00:00"
           await IncidentRepository.create(incidentBody);
+          }
         }
       }
-      if (end) {
-        const today = new Date().toISOString().split("T")[0];
-        const actualEnd = await TripController.createDateTime(today, end);
-        const scheduledArrival = trip.arrival; // Asumiendo que trip.arrival es 'YYYY-MM-DD HH:mm:ss'
+      if (endTriggered) {
+        const actualEnd = new Date();
+        const formattedEnd = await TripController.formatToMySQLDateTime(actualEnd);
+        req.body.end = formattedEnd;
+        const scheduledArrival = trip.arrival;
 
-        const { difference, humanReadable, isDelayed } =
-          await TripController.compareDates(scheduledArrival, actualEnd);
+        if (scheduledArrival) {
+          const { difference, humanReadable, isDelayed } =
+            await TripController.compareDates(scheduledArrival, actualEnd);
 
-        if (isDelayed) {
-          logger.info(`End es mayor que Arrival por ${humanReadable}.`);
-          const incidentBody = {
-            branch_id: trip.branch_id, // ID de la sucursal
-            user_id: req.user.id, // ID del usuario que realiza la acción
-            title: "Retraso en la llegada del viaje",
-            description: `Hizo la llegada del viaje con un retraso de (${humanReadable}).`,
-            details: {
-              trip_code: trip.code ?? null,
-              actualEnd: await TripController.formatToMySQLDateTime(actualEnd),
-              arrival: trip.arrival,
-              difference: humanReadable,
-            },
-            date: await TripController.formatToMySQLDateTime(new Date()), // Fecha actual
-          };
-          const formattedEnd = await TripController.formatToMySQLDateTime(actualEnd); // Cortar los milisegundos
-
-          // 4. Asignar al cuerpo de la petición
-          req.body.end = formattedEnd; // "2025-04-14 15:00:00"
-          await IncidentRepository.create(incidentBody);
+          if (isDelayed) {
+            logger.info(`End es mayor que Arrival por ${humanReadable}.`);
+            const incidentBody = {
+              branch_id: trip.branch_id,
+              user_id: req.user.id,
+              title: "Retraso en la llegada del viaje",
+              description: `Hizo la llegada del viaje con un retraso de (${humanReadable}).`,
+              details: {
+                trip_code: trip.code ?? null,
+                actualEnd: formattedEnd,
+                arrival: trip.arrival,
+                difference: humanReadable,
+              },
+              date: await TripController.formatToMySQLDateTime(new Date()),
+            };
+            await IncidentRepository.create(incidentBody);
+          }
         }
       }
+
       const updatedTrip = await sequelize.transaction(async (transaction) => {
         const tripUpdated = await TripRepository.update(trip, req.body, {
           transaction,
@@ -3003,6 +3733,7 @@ const TripController = {
         triproutes: mappedRoutes,
         tripvehicles: mappedBranchVehicles,
         tripworkers: mappedBranchWorkers,
+        saleModes,
       });
     } catch (error) {
       const errorMsg = error.details
@@ -3372,6 +4103,8 @@ const TripController = {
           id: trip.id,
           code: trip.code,
           routeCode: route.code ?? null,
+          saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+          trip_template_id: trip.trip_template_id ?? null,
           date: trip.date,
           schedule: trip.schedule,
           arrival: trip.arrival,
@@ -3500,6 +4233,8 @@ const TripController = {
         return {
           id: trip.id,
           code: trip.code,
+          saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+          trip_template_id: trip.trip_template_id ?? null,
           date: trip.date,
           schedule: trip.schedule,
           arrival: trip.arrival,
@@ -3537,3 +4272,4 @@ const TripController = {
 };
 
 module.exports = TripController;
+

@@ -141,6 +141,54 @@ const BranchWorkerRepository = {
     });
   },
 
+    async findAllBranchesWithWorkers() {
+    const allBranches = await BranchRepository.findAll();
+
+    if (!allBranches.length) {
+      return [];
+    }
+
+    const branchIds = allBranches.map(b => b.id);
+
+    const branchWorkers = await BranchWorker.findAll({
+      where: {
+        branch_id: branchIds
+      },
+      include: [
+        {
+          model: Worker,
+          as: 'worker',
+          attributes: ['id', 'user_id', 'name', 'image']
+        },
+        {
+          model: Role,
+          as: 'role',
+          attributes: ['id', 'name']
+        }
+      ]
+    });
+
+    return allBranches.map(branch => {
+      const relationsForBranch = branchWorkers.filter(bw => bw.branch_id === branch.id);
+
+      const workers = relationsForBranch.map(bw => ({
+        id: bw.worker.id,
+        user_id: bw.worker.user_id,
+        name: bw.worker.name,
+        image: bw.worker.image,
+        role_id: bw.role_id,
+        role: bw.role ? { id: bw.role.id, name: bw.role.name } : null
+      }));
+
+      return {
+        id: branch.id,
+        name: branch.name,
+        image: branch.image,
+        workers
+      };
+    });
+  },
+
     async findWorkersWithoutBranch() {
     return await Worker.findAll({
         attributes: [

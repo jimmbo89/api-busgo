@@ -1,6 +1,25 @@
 const logger = require("../../config/logger"); // Logger para seguimiento
 const { IncidentRepository, BranchRepository, CompanyRepository } = require("../repositories");
 
+const padDatePart = (value) => String(value).padStart(2, "0");
+
+const formatIncidentDateWithCreatedTime = (incident) => {
+  const incidentDate =
+    typeof incident.date === "string"
+      ? incident.date
+      : incident.date?.toISOString().slice(0, 10);
+
+  const createdAt = incident.createdAt ? new Date(incident.createdAt) : null;
+
+  if (!incidentDate || !createdAt || Number.isNaN(createdAt.getTime())) {
+    return incident.date;
+  }
+
+  return `${incidentDate} ${padDatePart(createdAt.getHours())}:${padDatePart(
+    createdAt.getMinutes()
+  )}`;
+};
+
 const IncidentController = {
   /**
    * Crear una incidencia
@@ -81,7 +100,7 @@ const IncidentController = {
           id: incident.id,
           title: incident.title,
           description: incident.description,
-          date: incident.date,
+          date: formatIncidentDateWithCreatedTime(incident),
           details: incident.details,
           workerName: incident.user.worker.name,
           image: incident.user.worker.image,

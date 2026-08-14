@@ -1,6 +1,6 @@
 const { BranchWorker, Branch, Worker, Role, sequelize } = require('../models');
 const logger = require('../../config/logger');
-const { BranchWorkerRepository, BranchRepository, WorkerRepository, RoleRepository } = require('../repositories');
+const { BranchWorkerRepository, BranchRepository, WorkerRepository, RoleRepository, TicketTypeRepository } = require('../repositories');
 
 const BranchWorkerController = {
     // Obtener todas las relaciones Branch-Worker
@@ -122,6 +122,35 @@ const BranchWorkerController = {
         if (errorMsg === 'Target worker not found') {
         return res.status(404).json({ msg: 'WorkerNotFound' });
         }
+
+        res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
+    },
+
+    async worker_branches_ticket_types(req, res) {
+    logger.info(`${req.user.name} - Busca sucursales con workers y tipos de pasaje`);
+    try {
+        const branches = await BranchWorkerRepository.findAllBranchesWithWorkers();
+
+        if (!branches || branches.length === 0) {
+        return res.status(404).json({ msg: 'NoBranchesFound' });
+        }
+
+        const ticketTypes = await TicketTypeRepository.findByActiveStatus(1);
+        const mappedTicketTypes = ticketTypes.map((ticketType) => ({
+        ...ticketType.toJSON(),
+        adjustmentType: ticketType.adjustment_type,
+        valueType: ticketType.value_type,
+        adjustmentValue: ticketType.adjustment_value,
+        }));
+
+        res.status(200).json({
+        branches,
+        ticketTypes: mappedTicketTypes,
+        });
+    } catch (error) {
+        const errorMsg = error.message || 'Error desconocido';
+        logger.error('BranchWorkerController->worker_branches_ticket_types: ' + errorMsg);
 
         res.status(500).json({ error: 'ServerError', details: errorMsg });
     }

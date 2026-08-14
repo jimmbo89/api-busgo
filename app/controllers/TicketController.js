@@ -7,9 +7,12 @@ const {
   TripRepository,
   BranchRepository,
   CompanyRepository,
+  RouteRepository,
+  WorkerRepository,
   IncidentRepository,
   TuuRepository,
   FareSegmentRepository,
+  TicketTypeRepository,
   TripTemplateRepository,
   RouteStopRepository,
   TripStopRepository,
@@ -66,6 +69,67 @@ const extractTimePart = (value) => {
   const match = value.match(/(\d{2}:\d{2})(?::\d{2})?$/);
   return match ? match[1] : null;
 };
+
+const padDatePart = (value) => String(value).padStart(2, "0");
+
+const formatDateOnlyPart = (value) => {
+  if (typeof value === "string") {
+    return value.slice(0, 10);
+  }
+
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? date.toISOString().slice(0, 10)
+    : null;
+};
+
+const formatTimePart = (value) => {
+  const stringTime = extractTimePart(value);
+  if (stringTime) {
+    return stringTime;
+  }
+
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
+    : null;
+};
+
+const formatIncidentDateWithCreatedTime = (incident) => {
+  const incidentDate = formatDateOnlyPart(incident?.date);
+  const createdTime = formatTimePart(incident?.createdAt);
+
+  return incidentDate && createdTime
+    ? `${incidentDate} ${createdTime}`
+    : incident?.date;
+};
+
+const toNumber = (value) => {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? number : 0;
+};
+
+const roundMoney = (value) => Number(toNumber(value).toFixed(2));
+
+const createPassengerTypeTotal = ({
+  ticketTypeId = null,
+  ticketTypeName = "Sin tipo",
+  ticketTypeDescription = null,
+} = {}) => ({
+  ticket_type_id: ticketTypeId,
+  ticketTypeId,
+  categoria: ticketTypeName || "Sin tipo",
+  ticketTypeName: ticketTypeName || "Sin tipo",
+  description: ticketTypeDescription,
+  pasajesEmitidos: 0,
+  asientosVendidos: 0,
+  tarifaBase: 0,
+  tarifaBasePromedio: 0,
+  descuentoAplicado: 0,
+  recargoAplicado: 0,
+  ajusteAplicado: 0,
+  montoRecaudado: 0,
+});
 
 const getTicketSaleTime = (ticket) =>
   (typeof ticket?.get === "function" ? ticket.get("saleTime") : null) ||
@@ -281,6 +345,8 @@ const mapMonthlyTrip = (trip) => {
   return {
     id: trip.id,
     date: trip.date,
+    saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+    sale_mode: trip.saleMode ?? trip.sale_mode ?? "normal",
     vehicleImage: vehicle.image,
     vehiclePlate: vehicle.plate,
     internal_number: vehicle.internal_number,
@@ -299,7 +365,7 @@ const mapMonthlyIncident = (incident) => ({
   id: incident.id,
   title: incident.title,
   description: incident.description,
-  date: incident.date,
+  date: formatIncidentDateWithCreatedTime(incident),
   details: incident.details,
   workerName: incident.user?.worker?.name,
   image: incident.user?.worker?.image,
@@ -441,6 +507,14 @@ const getSoldQuantityForTrip = (trip) =>
   );
 const isTruthyFlag = (value) =>
   value === true || value === 1 || String(value).trim().toLowerCase() === "true";
+const formatTripScheduledDeparture = (trip) => {
+  const date = trip?.date ? String(trip.date).slice(0, 10) : null;
+  const schedule = typeof trip?.schedule === "string"
+    ? trip.schedule.slice(0, 5)
+    : null;
+
+  return date && schedule ? `${date} ${schedule}` : null;
+};
 
 const mapTicketResponse = (ticket) => ({
   id: ticket.id,
@@ -1671,11 +1745,12 @@ const TicketController = {
       const printOccasionText = `${printCount} ${printCount === 1 ? 'ocasión' : 'ocasiones'}`;
 
       logger.info(`Agregando incidencia de reimpresión`);
+      const tripCode = ticket.trip?.code ?? "Sin código";
       const incidentBody = {
         branch_id: ticket.branch_id, // ID de la sucursal
         user_id: req.user.id, // ID del usuario que realiza la acción
-        title: "Reimpresión de ticket",
-        description: `${req.user.name} realizo una reimpresion de ticket por ${printOccasionText}`,
+        title: `Reimpresión de ticket - Viaje ${tripCode}`,
+        description: `${req.user.name} realizó una reimpresión de ticket por ${printOccasionText} en el viaje ${tripCode}`,
         details: {
           print: ticket.print,
           sequenceNumber: ticketIdentifier,
@@ -1845,8 +1920,8 @@ async verifyEncryptedQR(req, res) {
           const incidentBody = {
             branch_id: ticket.branch_id,
             user_id: req.user.id,
-            title: `Re-escaneo Ticket - Viaje ${ticket.trip?.code ?? "Sin codigo"}`,
-            description: `${req.user.name} realizo un re-escaneo de ticket`,
+            title: `Re-escaneo de ticket - Viaje ${ticket.trip?.code ?? "Sin código"}`,
+            description: `${req.user.name} realizó un re-escaneo de ticket en el viaje ${ticket.trip?.code ?? "Sin código"}`,
             details: {
               trip_code: ticket.trip?.code ?? null,
               scan_count: ticket.qr_status,
@@ -2287,6 +2362,214 @@ async verifyEncryptedQR(req, res) {
     return date.toTimeString().slice(0, 5); // Devolver la hora en formato HH:mm
   },
 
+  async getPassengerTypeSalesReport(req, res) {
+    logger.info(`${req.user.name} - Obtiene reporte por tipo de pasaje`);
+    logger.info("Datos recibidos al obtener reporte por tipo de pasaje");
+    logger.info(JSON.stringify(req.body));
+
+    try {
+      const {
+        company_id,
+        branch_id,
+        route_id,
+        trip_id,
+        worker_id,
+        user_id,
+        ticket_type_id,
+        date,
+        endDate,
+      } = req.body;
+      let resolvedUserId = user_id || null;
+
+      if (company_id && !(await CompanyRepository.findById(company_id))) {
+        return res.status(404).json({ msg: "CompanyNotFound" });
+      }
+
+      if (branch_id && !(await BranchRepository.findById(branch_id))) {
+        return res.status(404).json({ msg: "BranchNotFound" });
+      }
+
+      if (route_id && !(await RouteRepository.findById(route_id))) {
+        return res.status(404).json({ msg: "RouteNotFound" });
+      }
+
+      if (trip_id && !(await TripRepository.findById(trip_id))) {
+        return res.status(404).json({ msg: "TripNotFound" });
+      }
+
+      if (worker_id) {
+        const worker = await WorkerRepository.findById(worker_id);
+        if (!worker) {
+          return res.status(404).json({ msg: "WorkerNotFound" });
+        }
+        if (!resolvedUserId) {
+          resolvedUserId = worker.user_id;
+        }
+      }
+
+      if (
+        ticket_type_id &&
+        !(await TicketTypeRepository.findById(ticket_type_id))
+      ) {
+        return res.status(404).json({ msg: "TicketTypeNotFound" });
+      }
+
+      const tickets = await TicketRepository.getPassengerTypeSalesReport({
+        company_id,
+        branch_id,
+        route_id,
+        trip_id,
+        worker_id,
+        user_id: resolvedUserId,
+        ticket_type_id,
+        date,
+        endDate,
+      });
+
+      const totalsByCategory = new Map();
+      const seenTicketIds = new Set();
+      const details = [];
+      const summary = createPassengerTypeTotal({
+        ticketTypeName: "Total general",
+      });
+      summary.cantidadTickets = 0;
+
+      for (const ticket of tickets) {
+        const ticketId = Number(ticket.id);
+        if (!seenTicketIds.has(ticketId)) {
+          seenTicketIds.add(ticketId);
+          summary.cantidadTickets += 1;
+        }
+
+        const route = ticket.trip?.route || {};
+
+        for (const item of ticket.ticketItems || []) {
+          const quantity = toNumber(item.quantity);
+          const basePrice = toNumber(item.base_price);
+          const unitPrice = toNumber(item.unit_price);
+          const subtotal = toNumber(item.subtotal);
+          const baseTotal = basePrice * quantity;
+          const adjustment = subtotal - baseTotal;
+          const discount = adjustment < 0 ? Math.abs(adjustment) : 0;
+          const surcharge = adjustment > 0 ? adjustment : 0;
+          const ticketTypeId = item.ticket_type_id ?? item.ticketType?.id ?? null;
+          const ticketTypeName =
+            item.ticket_type_name ?? item.ticketType?.name ?? "Sin tipo";
+          const ticketTypeDescription =
+            item.ticket_type_description ?? item.ticketType?.description ?? null;
+          const categoryKey = `${ticketTypeId ?? "none"}:${ticketTypeName}`;
+
+          if (!totalsByCategory.has(categoryKey)) {
+            totalsByCategory.set(
+              categoryKey,
+              createPassengerTypeTotal({
+                ticketTypeId,
+                ticketTypeName,
+                ticketTypeDescription,
+              })
+            );
+          }
+
+          const category = totalsByCategory.get(categoryKey);
+          for (const total of [summary, category]) {
+            total.pasajesEmitidos += quantity;
+            total.asientosVendidos += quantity;
+            total.tarifaBase += baseTotal;
+            total.descuentoAplicado += discount;
+            total.recargoAplicado += surcharge;
+            total.ajusteAplicado += adjustment;
+            total.montoRecaudado += subtotal;
+          }
+
+          details.push({
+            ticket_id: ticket.id,
+            ticketId: ticket.id,
+            user_id: ticket.user_id,
+            userId: ticket.user_id,
+            sequenceNumber: ticket.sequenceNumber,
+            date: ticket.date,
+            method: ticket.method,
+            branch_id: ticket.branch_id,
+            branchName: ticket.branch?.name ?? null,
+            company_id: ticket.branch?.company_id ?? null,
+            companyName: ticket.branch?.company?.name ?? null,
+            trip_id: ticket.trip_id,
+            tripId: ticket.trip_id,
+            tripCode: ticket.trip?.code ?? null,
+            route_id: ticket.trip?.route_id ?? null,
+            routeCode: route.code ?? null,
+            routeName: route.name ?? null,
+            origin: route.origin?.address ?? null,
+            destination: route.destination?.address ?? null,
+            ticket_type_id: ticketTypeId,
+            ticketTypeId,
+            ticketTypeName,
+            ticketTypeDescription,
+            quantity,
+            asientosVendidos: quantity,
+            base_price: basePrice,
+            basePrice,
+            unit_price: unitPrice,
+            unitPrice,
+            ticket_price: toNumber(ticket.price),
+            ticketPrice: toNumber(ticket.price),
+            tarifaBaseUnitaria: roundMoney(basePrice),
+            tarifaBaseTotal: roundMoney(baseTotal),
+            precioUnitarioAplicado: roundMoney(unitPrice),
+            tarifaBase: roundMoney(basePrice),
+            descuentoAplicado: roundMoney(discount),
+            recargoAplicado: roundMoney(surcharge),
+            ajusteAplicado: roundMoney(adjustment),
+            montoRecaudado: roundMoney(subtotal),
+          });
+        }
+      }
+
+      const formatTotal = (total) => ({
+        ...total,
+        pasajesEmitidos: roundMoney(total.pasajesEmitidos),
+        asientosVendidos: roundMoney(total.asientosVendidos),
+        tarifaBase: roundMoney(total.tarifaBase),
+        tarifaBasePromedio:
+          total.asientosVendidos > 0
+            ? Math.round(total.tarifaBase / total.asientosVendidos)
+            : 0,
+        descuentoAplicado: roundMoney(total.descuentoAplicado),
+        recargoAplicado: roundMoney(total.recargoAplicado),
+        ajusteAplicado: roundMoney(total.ajusteAplicado),
+        montoRecaudado: roundMoney(total.montoRecaudado),
+      });
+
+      const totalesPorCategoria = Array.from(totalsByCategory.values()).map(
+        formatTotal
+      );
+
+      return res.status(200).json({
+        filters: {
+          company_id: company_id ?? null,
+          branch_id: branch_id ?? null,
+          route_id: route_id ?? null,
+          trip_id: trip_id ?? null,
+          worker_id: worker_id ?? null,
+          user_id: resolvedUserId ?? null,
+          ticket_type_id: ticket_type_id ?? null,
+          date,
+          endDate: endDate || null,
+        },
+        resumen: formatTotal(summary),
+        totalesPorCategoria,
+        detalles: details,
+      });
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+
+      logger.error("TicketController->getPassengerTypeSalesReport:" + errorMsg);
+      return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
   async getTicketsSoldDate(req, res) {
     logger.info(
       `${req.user.name} - Entra a buscar los datos de los pasajes de una fecha dada`
@@ -2402,6 +2685,8 @@ async verifyEncryptedQR(req, res) {
           tripCode: trip.code,
           routeCode: trip.route?.code ?? null,
           routeName: trip.route?.name ?? null,
+          scheduledDeparture: formatTripScheduledDeparture(trip),
+          scheduled_departure: formatTripScheduledDeparture(trip),
           nombre: tripName,
           origin: tripOrigin,
           destination: tripDestination,

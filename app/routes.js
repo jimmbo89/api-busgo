@@ -166,6 +166,7 @@ const {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
+  passengerTypeSalesReportSchema,
   storeTicketWebSchema,
   storeExpressTicketSchema,
   qrEncryptedSchema,
@@ -347,6 +348,7 @@ router.post(
   BranchWorkerController.branch_workers
 );
 router.post("/worker-branches", validateSchema(worker_idBranchWorkerSchema), BranchWorkerController.worker_branches);
+router.post("/worker-branches-ticket-types", BranchWorkerController.worker_branches_ticket_types);
 router.post(
   "/branch-worker",
   validateSchema(storeBranchWorkerSchema),
@@ -697,6 +699,11 @@ router.post(
   "/ticket-sold-date",
   validateSchema(ticketSoldDateSchema),
   TicketController.getTicketsSoldDate
+);
+router.post(
+  "/ticket-passenger-type-report",
+  validateSchema(passengerTypeSalesReportSchema),
+  TicketController.getPassengerTypeSalesReport
 );
 
 router.post("/ticket-sold-date-worker", validateSchema(ticketSoldDateWorkerSchema), TicketController.getTicketsSoldDateWorker);

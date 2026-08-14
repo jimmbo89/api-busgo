@@ -598,6 +598,44 @@ const ticketSoldDateWorkerSchema = Joi.object({
     }),
 });
 
+const passengerTypeSalesReportSchema = Joi.object({
+  company_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo company_id debe ser un numero entero",
+  }),
+  branch_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo branch_id debe ser un numero entero",
+  }),
+  route_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo route_id debe ser un numero entero",
+  }),
+  trip_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo trip_id debe ser un numero entero",
+  }),
+  worker_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo worker_id debe ser un numero entero",
+  }),
+  user_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo user_id debe ser un numero entero",
+  }),
+  ticket_type_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo ticket_type_id debe ser un numero entero",
+  }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
+      "any.required": "El campo date es requerido",
+    }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
+});
+
 const qrEncryptedSchema = Joi.object({
   qr: Joi.alternatives()
     .try(
@@ -652,6 +690,7 @@ module.exports = {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
+  passengerTypeSalesReportSchema,
   storeTicketWebSchema,
   storeExpressTicketSchema,
   qrEncryptedSchema,

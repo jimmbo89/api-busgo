@@ -1779,6 +1779,181 @@ const TicketRepository = {
   return tickets;
 },
 
+  async getPassengerTypeSalesReport({
+    company_id = null,
+    branch_id = null,
+    route_id = null,
+    trip_id = null,
+    worker_id = null,
+    user_id = null,
+    ticket_type_id = null,
+    date,
+    endDate = null,
+  } = {}) {
+    const tripWhereClause = {};
+    const branchWhereClause = {};
+    const ticketWhereClause = {};
+    const ticketItemWhereClause = {};
+
+    if (endDate && String(endDate).trim() !== "") {
+      tripWhereClause.date = { [Op.between]: [date, endDate] };
+    } else if (date) {
+      tripWhereClause.date = date;
+    }
+
+    if (trip_id) {
+      tripWhereClause.id = trip_id;
+    }
+
+    if (route_id) {
+      tripWhereClause.route_id = route_id;
+    }
+
+    if (branch_id) {
+      branchWhereClause.id = branch_id;
+    }
+
+    if (company_id) {
+      branchWhereClause.company_id = company_id;
+    }
+
+    if (ticket_type_id) {
+      ticketItemWhereClause.ticket_type_id = ticket_type_id;
+    }
+
+    if (user_id) {
+      ticketWhereClause.user_id = user_id;
+    }
+
+    const ticketItemsInclude = {
+      model: TicketItem,
+      as: "ticketItems",
+      attributes: [
+        "id",
+        "ticket_id",
+        "ticket_type_id",
+        "trip_fare_id",
+        "ticket_type_name",
+        "ticket_type_description",
+        "quantity",
+        "base_price",
+        "unit_price",
+        "subtotal",
+        "currency",
+        "active",
+        "source_type",
+      ],
+      where:
+        Object.keys(ticketItemWhereClause).length > 0
+          ? ticketItemWhereClause
+          : undefined,
+      required: true,
+      include: [
+        {
+          model: TicketType,
+          as: "ticketType",
+          attributes: ["id", "name", "description", "active"],
+        },
+      ],
+    };
+
+    return await Ticket.findAll({
+      where: ticketWhereClause,
+      attributes: [
+        "id",
+        "branch_id",
+        "user_id",
+        "trip_id",
+        "fare_segment_id",
+        "date",
+        "method",
+        "quantity",
+        "price",
+        "total",
+        "seats",
+        "adults",
+        "minors",
+        "pay",
+        "sequenceNumber",
+        "createdAt",
+      ],
+      include: [
+        ticketItemsInclude,
+        {
+          model: Branch,
+          as: "branch",
+          attributes: ["id", "name", "company_id"],
+          where:
+            Object.keys(branchWhereClause).length > 0
+              ? branchWhereClause
+              : undefined,
+          required: true,
+          include: [
+            {
+              model: Company,
+              as: "company",
+              attributes: ["id", "name"],
+              required: false,
+            },
+          ],
+        },
+        {
+          model: Trip,
+          as: "trip",
+          attributes: [
+            "id",
+            "code",
+            "date",
+            "schedule",
+            "branch_id",
+            "route_id",
+            "saleMode",
+          ],
+          where: tripWhereClause,
+          required: true,
+          include: [
+            {
+              model: Route,
+              as: "route",
+              attributes: ["id", "code", "name"],
+              include: [
+                {
+                  model: Location,
+                  as: "origin",
+                  attributes: ["id", "address"],
+                },
+                {
+                  model: Location,
+                  as: "destination",
+                  attributes: ["id", "address"],
+                },
+              ],
+            },
+            {
+              model: TripWorker,
+              as: "tripworkers",
+              attributes: ["id", "worker_id"],
+              required: false,
+              include: [
+                {
+                  model: Worker,
+                  as: "worker",
+                  attributes: ["id", "name"],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      order: [
+        [{ model: Trip, as: "trip" }, "date", "ASC"],
+        [{ model: Trip, as: "trip" }, "schedule", "ASC"],
+        ["id", "ASC"],
+        [{ model: TicketItem, as: "ticketItems" }, "id", "ASC"],
+      ],
+    });
+  },
+
   async findByQRWithTrip(qr) {
     try {
     const ticket = await Ticket.findOne({ 

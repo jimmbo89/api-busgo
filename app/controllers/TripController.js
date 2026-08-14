@@ -52,6 +52,12 @@ const extractTimePart = (value) => {
   return match ? match[1] : null;
 };
 const formatDepartureTime = (value) => extractTimePart(String(value ?? "")) ?? null;
+const formatTripScheduledDeparture = (trip) => {
+  const date = trip?.date ? String(trip.date).slice(0, 10) : null;
+  const schedule = formatDepartureTime(trip?.schedule);
+
+  return date && schedule ? `${date} ${schedule}` : null;
+};
 
 const addMinutesToTripTime = (datePart, timePart, minutes = 0) => {
   if (typeof timePart !== "string") {
@@ -3038,6 +3044,19 @@ const TripController = {
         return res.status(404).json({ msg: "TripNotFound" });
       }
 
+      const startTriggered =
+        hasOwn(req.body, "start") &&
+        start !== undefined &&
+        start !== null &&
+        start !== false &&
+        String(start).trim() !== "";
+      const endTriggered =
+        hasOwn(req.body, "end") &&
+        end !== undefined &&
+        end !== null &&
+        end !== false &&
+        String(end).trim() !== "";
+
       // Verificar si ya existe un viaje en la misma sucursal con la misma fecha (excluyendo el viaje actual)
       // Pasamos el viaje y los nuevos datos al repositorio para que haga la comprobación
       const existingTrip = await TripRepository.existsByUpdatedFields(trip, {
@@ -3114,27 +3133,10 @@ const TripController = {
         }
       }
 
-      const scheduleWasProvided =
-        hasOwn(req.body, "schedule") &&
-        schedule !== undefined &&
-        schedule !== null &&
-        String(schedule).trim() !== "";
-      const startTriggered =
-        hasOwn(req.body, "start") &&
-        start !== undefined &&
-        start !== null &&
-        start !== false &&
-        String(start).trim() !== "";
-      const endTriggered =
-        hasOwn(req.body, "end") &&
-        end !== undefined &&
-        end !== null &&
-        end !== false &&
-        String(end).trim() !== "";
       let actualStart = null;
       let formattedStart = null;
       const scheduledTripDate = trip.date;
-      const scheduledTripSchedule = trip.schedule;
+      const scheduledTripSchedule = schedule || trip.schedule;
 
       if (startTriggered) {
         actualStart = new Date();
@@ -3143,14 +3145,10 @@ const TripController = {
         );
       }
 
-      if (startTriggered && !scheduleWasProvided) {
-        const today = formattedStart.slice(0, 10);
+      if (startTriggered) {
         const routeEstimatedMinutes = Number(routeForTiming?.estimated);
 
         req.body.start = formattedStart;
-        req.body.schedule = extractTimePart(formattedStart);
-        trip.date = today;
-        trip.schedule = req.body.schedule;
 
         if (Number.isFinite(routeEstimatedMinutes) && routeEstimatedMinutes >= 0) {
           const arrivalDate = new Date(
@@ -3179,8 +3177,8 @@ const TripController = {
           const incidentBody = {
             branch_id: trip.branch_id, // ID de la sucursal
             user_id: req.user.id, // ID del usuario que realiza la acción
-            title: "Retraso en la salida del viaje",
-            description: `Realizo la salida del viaje con un retraso de (${humanReadable}).`,
+            title: `Retraso en la salida del viaje ${trip.code ?? "Sin código"}`,
+            description: `Realizó la salida del viaje ${trip.code ?? "Sin código"} con un retraso de (${humanReadable}).`,
             details: {
               trip_code: trip.code ?? null,
               actualStart: formattedStart,
@@ -3211,8 +3209,8 @@ const TripController = {
             const incidentBody = {
               branch_id: trip.branch_id,
               user_id: req.user.id,
-              title: "Retraso en la llegada del viaje",
-              description: `Hizo la llegada del viaje con un retraso de (${humanReadable}).`,
+              title: `Retraso en la llegada del viaje ${trip.code ?? "Sin código"}`,
+              description: `Realizó la llegada del viaje ${trip.code ?? "Sin código"} con un retraso de (${humanReadable}).`,
               details: {
                 trip_code: trip.code ?? null,
                 actualEnd: formattedEnd,
@@ -3547,13 +3545,13 @@ const TripController = {
           { transaction }
         );
 
-        logger.info(`TripController->changeTrip: registrando incidencia por cambio de vehiculo del viaje ${trip.id}`);
+        logger.info(`TripController->changeTrip: registrando incidencia por cambio de vehículo del viaje ${trip.id}`);
         await Incident.create(
           {
             branch_id: trip.branch_id,
             user_id: req.user.id,
-            title: "Cambio de vehiculo del viaje",
-            description: `Se cambio el vehiculo ${oldVehicleLabel} por el vehiculo ${newVehicleLabel}.`,
+            title: `Cambio de vehículo del viaje ${tripCode}`,
+            description: `Se cambió el vehículo ${oldVehicleLabel} por el vehículo ${newVehicleLabel} en el viaje ${tripCode}.`,
             details: JSON.stringify({
               trip_code: tripCode,
               route_code: routeCode,
@@ -4107,6 +4105,8 @@ const TripController = {
           trip_template_id: trip.trip_template_id ?? null,
           date: trip.date,
           schedule: trip.schedule,
+          scheduledDeparture: formatTripScheduledDeparture(trip),
+          scheduled_departure: formatTripScheduledDeparture(trip),
           arrival: trip.arrival,
           start: trip.start,
           end: trip.end,

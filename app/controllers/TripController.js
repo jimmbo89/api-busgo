@@ -4102,6 +4102,7 @@ const TripController = {
           code: trip.code,
           routeCode: route.code ?? null,
           saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+          sale_mode: trip.saleMode ?? trip.sale_mode ?? "normal",
           trip_template_id: trip.trip_template_id ?? null,
           date: trip.date,
           schedule: trip.schedule,

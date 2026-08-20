@@ -611,6 +611,7 @@ const TripRepository = {
     return await Trip.findAll({
       attributes: [
         "id",
+        "code",
         "date",
         "schedule",
         "arrival",
@@ -1563,6 +1564,7 @@ const TripRepository = {
     return await Trip.findByPk(id, {
       attributes: [
         "id",
+        "code",
         "date",
         "schedule",
         "arrival",

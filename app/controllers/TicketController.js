@@ -298,6 +298,37 @@ const normalizeTicketItemsFromRequest = (body = {}, trip = null) => {
   });
 };
 
+const normalizeTripFareReferencesForTrip = (ticketItems = [], trip = null) => {
+  const unresolvedTripFareIds = [];
+
+  if (!Array.isArray(ticketItems) || ticketItems.length === 0) {
+    return unresolvedTripFareIds;
+  }
+
+  for (const item of ticketItems) {
+    const requestedTripFareId = item.trip_fare_id ?? item.tripFareId ?? null;
+    if (!requestedTripFareId) {
+      continue;
+    }
+
+    const tripFare = resolveTripFareById(trip, requestedTripFareId);
+    if (!tripFare) {
+      unresolvedTripFareIds.push(requestedTripFareId);
+      item.trip_fare_id = null;
+      continue;
+    }
+
+    item.trip_fare_id = tripFare.id;
+    item.ticket_type_id =
+      item.ticket_type_id ??
+      item.ticketTypeId ??
+      tripFare.fareSegmentTicketType?.ticket_type_id ??
+      null;
+  }
+
+  return unresolvedTripFareIds;
+};
+
 const mapMonthlyTrip = (trip) => {
   const vehicle = trip.vehicle || {};
   const tickets = trip.tickets || [];
@@ -764,6 +795,7 @@ async function findOrCreateExpressTripFromTemplate(body, branch, transaction) {
     }
 
     const templateTripFares = parseArrayValue(template.trip_fares);
+    const createdTripFares = [];
     for (const item of templateTripFares) {
       const fareSegmentTicketTypeId = Number(item.fare_segment_ticket_type_id);
       const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
@@ -782,13 +814,24 @@ async function findOrCreateExpressTripFromTemplate(body, branch, transaction) {
         throw new Error("FareSegmentTicketTypeRouteMismatch");
       }
 
-      await TripFareRepository.create(
+      const createdTripFare = await TripFareRepository.create(
         buildTripFarePayloadFromTemplate(trip, branch.company_id, item, fareSegmentTicketType),
         { transaction }
       );
+      createdTripFare.setDataValue("fareSegmentTicketType", fareSegmentTicketType);
+      createdTripFares.push(createdTripFare);
     }
 
-    return { trip: await TripRepository.findByIdWithTickets(trip.id, { transaction }) };
+    const refreshedTrip = await TripRepository.findByIdWithTickets(trip.id, { transaction });
+    if (
+      refreshedTrip &&
+      createdTripFares.length > 0 &&
+      (!Array.isArray(refreshedTrip.tripFares) || refreshedTrip.tripFares.length === 0)
+    ) {
+      refreshedTrip.setDataValue("tripFares", createdTripFares);
+    }
+
+    return { trip: refreshedTrip };
   } catch (error) {
     if (
       error?.name === "SequelizeUniqueConstraintError" ||
@@ -1421,6 +1464,8 @@ const TicketController = {
           branch_id: ticket.branch_id,
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
+          code: ticket.trip?.code ?? null,
+          tripCode: ticket.trip?.code ?? null,
           fare_segment_id: ticket.fare_segment_id,
           fareSegmentId: ticket.fare_segment_id,
           method: ticket.method,
@@ -1441,6 +1486,7 @@ const TicketController = {
           address: ticket.branch.address,
           phone: ticket.branch.phone,
           tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
+          routeCode: ticket.trip.route?.code ?? null,
           tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
           tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
         };
@@ -1598,6 +1644,16 @@ const TicketController = {
 
       const normalizedTicketItems = normalizeTicketItemsFromRequest(req.body, trip);
       if (normalizedTicketItems !== null) {
+        const unresolvedTripFareIds = normalizeTripFareReferencesForTrip(
+          normalizedTicketItems,
+          trip
+        );
+        if (unresolvedTripFareIds.length > 0) {
+          logger.warn(
+            `TicketController->store_express: tarifas no resueltas, se guardara snapshot sin trip_fare_id | trip_id=${trip.id} | trip_fare_ids=${unresolvedTripFareIds.join(",")}`
+          );
+        }
+
         req.body.ticketItems = normalizedTicketItems;
       }
 
@@ -1879,8 +1935,17 @@ async verifyEncryptedQR(req, res) {
   try {
     const qrNormalizado = TicketController.normalizarEscaneoSunmi(qr);
 
-    // 1. Buscar ticket por sequenceNumber
-    const ticket = await TicketRepository.findBySequenceNumberWithTrip(qrNormalizado);
+    // 1. Buscar ticket por el codigo escaneable actual y mantener compatibilidad
+    // con tickets antiguos que guardaban el QR cifrado o se imprimian con el ID.
+    let ticket = await TicketRepository.findBySequenceNumberWithTrip(qrNormalizado);
+
+    if (!ticket) {
+      ticket = await TicketRepository.findByQRWithTrip(qrNormalizado);
+    }
+
+    if (!ticket && /^\d+$/.test(String(qrNormalizado))) {
+      ticket = await TicketRepository.findByIdOrSequence(qrNormalizado);
+    }
 
     // 2. Si no se encuentra el ticket
     if (!ticket) {
@@ -2428,6 +2493,7 @@ async verifyEncryptedQR(req, res) {
 
       const totalsByCategory = new Map();
       const seenTicketIds = new Set();
+      const seenTicketIdsByCategory = new Map();
       const details = [];
       const summary = createPassengerTypeTotal({
         ticketTypeName: "Total general",
@@ -2439,11 +2505,13 @@ async verifyEncryptedQR(req, res) {
         if (!seenTicketIds.has(ticketId)) {
           seenTicketIds.add(ticketId);
           summary.cantidadTickets += 1;
+          summary.pasajesEmitidos += 1;
         }
 
         const route = ticket.trip?.route || {};
+        const ticketItems = ticket.ticketItems || [];
 
-        for (const item of ticket.ticketItems || []) {
+        for (const item of ticketItems) {
           const quantity = toNumber(item.quantity);
           const basePrice = toNumber(item.base_price);
           const unitPrice = toNumber(item.unit_price);
@@ -2471,8 +2539,17 @@ async verifyEncryptedQR(req, res) {
           }
 
           const category = totalsByCategory.get(categoryKey);
+          if (!seenTicketIdsByCategory.has(categoryKey)) {
+            seenTicketIdsByCategory.set(categoryKey, new Set());
+          }
+
+          const categoryTicketIds = seenTicketIdsByCategory.get(categoryKey);
+          if (!categoryTicketIds.has(ticketId)) {
+            categoryTicketIds.add(ticketId);
+            category.pasajesEmitidos += 1;
+          }
+
           for (const total of [summary, category]) {
-            total.pasajesEmitidos += quantity;
             total.asientosVendidos += quantity;
             total.tarifaBase += baseTotal;
             total.descuentoAplicado += discount;
@@ -2866,6 +2943,9 @@ async verifyEncryptedQR(req, res) {
           trip_id: ticket.trip_id,
           
           // Datos del viaje
+          code: ticket.trip?.code ?? null,
+          tripCode: ticket.trip?.code ?? null,
+          routeCode: ticket.trip?.route?.code ?? null,
           routeName: ticket.trip?.route?.name || 'N/A',
           origin: ticket.trip?.route?.origin?.address,
           destination: ticket.trip?.route?.destination?.address,

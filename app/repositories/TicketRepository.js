@@ -277,7 +277,7 @@ const TicketRepository = {
         {
           model: Trip,
           as: "trip",
-          attributes: ["id", "date", "schedule", "start", "end"],
+          attributes: ["id", "code", "date", "schedule", "start", "end"],
           include: [
             {
               model: Vehicle,
@@ -287,7 +287,7 @@ const TicketRepository = {
             {
               model: Route,
               as: "route",
-              attributes: ["id", "name"],
+              attributes: ["id", "code", "name"],
               include: [
                 {
                   model: Location,
@@ -372,7 +372,7 @@ const TicketRepository = {
             {
               model: Route,
               as: "route",
-              attributes: ["id", "name"],
+              attributes: ["id", "code", "name"],
               include: [
                 {
                   model: Location,
@@ -750,12 +750,12 @@ const TicketRepository = {
       {
         model: Trip,
         as: "trip",
-        attributes: ["id", "date", "schedule", "start", "end"],
+        attributes: ["id", "code", "date", "schedule", "start", "end"],
         include: [
           {
             model: Route,
             as: "route",
-            attributes: ["id", "name"],
+            attributes: ["id", "code", "name"],
             include: [
               {
                 model: Location,
@@ -1113,14 +1113,19 @@ const TicketRepository = {
 
   async generateTicketCodes(ticketData, ticket = null, options = {}) {
     try {
-      // Datos que quieres incluir en el código QR y el código de barras
-      const ticketInfo = JSON.stringify(ticketData); // Usa los datos del ticket
-      // Definir un string que se usará como clave base
-      const baseKey = "bulletin"; // Usa el string que desees
+      const existingSequenceNumber =
+        ticketData?.sequenceNumber ??
+        ticket?.sequenceNumber ??
+        null;
+      const normalizedSequenceNumber =
+        existingSequenceNumber !== null && existingSequenceNumber !== undefined
+          ? String(existingSequenceNumber).trim()
+          : "";
+      const sequenceNumber = normalizedSequenceNumber
+        ? normalizedSequenceNumber
+        : await this.generateUniqueSequenceNumber();
 
-      // Generar la clave de 32 bytes con SHA-256
-      const secretKey = crypto.createHash("sha256").update(baseKey).digest();
-      const qr = await this.encryptData(ticketData, secretKey);
+      const qr = sequenceNumber;
       const barcode = await this.generateUniqueBarcode();
 
       // Ruta para guardar los archivos generados
@@ -1167,8 +1172,9 @@ const TicketRepository = {
       fs.writeFileSync(barcodePath, barcodeData);*/
       if (ticket) {
         await ticket.update({
-          qr: qr.toString(), // Asegúrate de que se está pasando un string
-          barcode: barcode.toString(), // Asegúrate de que se está pasando un string
+          sequenceNumber,
+          qr,
+          barcode: barcode.toString(),
         }, options);
       }
 
@@ -1235,6 +1241,22 @@ const TicketRepository = {
     let encrypted = cipher.update(JSON.stringify(data), "utf8", "hex");
     encrypted += cipher.final("hex");
     return encrypted; // Retorna un string
+  },
+
+  async generateUniqueSequenceNumber() {
+    let sequenceNumber;
+    let isUnique = false;
+
+    while (!isUnique) {
+      sequenceNumber = `TKT-${crypto.randomBytes(8).toString("hex").toUpperCase()}`;
+      const existingTicket = await Ticket.findOne({ where: { sequenceNumber } });
+
+      if (!existingTicket) {
+        isUnique = true;
+      }
+    }
+
+    return sequenceNumber;
   },
 
   async generateUniqueBarcode() {
@@ -1960,7 +1982,15 @@ const TicketRepository = {
       where: { qr: qr },
       include: [{
         model: Trip,
-        as: 'trip'
+        as: 'trip',
+        attributes: ["id", "code", "date", "schedule", "start", "end"],
+        include: [
+          {
+            model: Route,
+            as: "route",
+            attributes: ["id", "code", "name"],
+          },
+        ],
       },
       ...ticketItemInclude,
       ...fareSegmentTicketInclude]
@@ -2066,12 +2096,12 @@ async findWithPrintStatus(filters) {
         {
           model: Trip,
           as: 'trip',
-          attributes: ['id', 'date', 'schedule', 'arrival'],
+          attributes: ['id', 'code', 'date', 'schedule', 'arrival'],
           include: [
             {
               model: Route,
               as: 'route',
-              attributes: ['id', 'name'],
+              attributes: ['id', 'code', 'name'],
               include: [
                 { model: Location, as: 'origin', attributes: ['address'] },
                 { model: Location, as: 'destination', attributes: ['address'] }

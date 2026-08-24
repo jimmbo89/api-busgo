@@ -8,6 +8,7 @@ const {
   Role,
   Company,
   Permission,
+  Device,
   sequelize,
 } = require("../models"); // Importamos sequelize desde db
 const bcrypt = require("bcrypt");
@@ -118,8 +119,8 @@ const AuthController = {
   //login
   async login(req, res) {
     logger.info("Entrando a loguearse");
-    logger.info("datos recibidos al loguerase");
-    logger.info(JSON.stringify(req.body));
+    //logger.info("datos recibidos al loguerase");
+    //logger.info(JSON.stringify(req.body));
     try {
       const user = await User.findOne({
         where: {
@@ -319,10 +320,18 @@ const AuthController = {
     }
   },
 
+  async login_apk_serial(req, res) {
+    req.loginApkSerial = true;
+    return AuthController.login_apk(req, res);
+  },
+
   async login_apk(req, res) {
-    logger.info("Entrando a loguearse APk");
-    logger.info(`datos recibidos al loguerase APK:\n ${JSON.stringify(req.body)}`);
+    const loginSource = req.loginApkSerial ? "login-apk-serial" : "login-apk";
+    logger.info(`Entrando a loguearse APK | endpoint=${loginSource}`);
+    //logger.info(`datos recibidos al loguerase APK:\n ${JSON.stringify(req.body)}`);
     const platform = (req.body.platform || '').trim().toLowerCase();
+    const serial = (req.body.serial || '').trim();
+    let sessionTransaction = null;
     try {
       const user = await User.findOne({
         where: {
@@ -432,6 +441,8 @@ const AuthController = {
           'view_saletickets',
           'view_reportbusgo',
           'view_changetrip',
+          'view_express_sales_app',
+          'view_traditional_sales_app'
         ];
 
         // Verificar si el usuario tiene AL MENOS UNO de los permisos permitidos
@@ -447,6 +458,40 @@ const AuthController = {
       const isMatch = await bcrypt.compare(req.body.password, user.password);
       if (!isMatch) {
         return res.status(400).json({ msg: "Credenciales inválidas" });
+      }
+
+      let device = null;
+      if (req.loginApkSerial) {
+        device = await Device.findOne({
+          where: { serial },
+          attributes: ["id", "serial", "status"],
+        });
+
+        if (!device) {
+          logger.info(`AuthController->${loginSource}: dispositivo no registrado | serial=${serial}`);
+          return res.status(400).json({ msg: "Dispositivo no registrado" });
+        }
+
+        if (device.status !== 1) {
+          logger.info(`AuthController->${loginSource}: dispositivo desactivado | serial=${serial}`);
+          return res.status(400).json({ msg: "Dispositivo desactivado" });
+        }
+
+        sessionTransaction = await sequelize.transaction();
+
+        const [revokedCount] = await UserToken.update(
+          { revoked: true },
+          {
+            where: {
+              device_id: device.id,
+              platform,
+              revoked: false,
+            },
+            transaction: sessionTransaction,
+          }
+        );
+
+        logger.info(`AuthController->${loginSource}: tokens previos revocados=${revokedCount} | serial=${serial} | platform=${platform}`);
       }
 
       let systemRolePermissions = [];
@@ -493,7 +538,14 @@ const AuthController = {
         user_id: user.id,
         token: token,
         expires_at: expiresAt,
-      });
+        device_id: device ? device.id : null,
+        platform: platform || null,
+      }, sessionTransaction ? { transaction: sessionTransaction } : undefined);
+
+      if (sessionTransaction) {
+        await sessionTransaction.commit();
+        sessionTransaction = null;
+      }
 
       let branchData = [];
       let roleData = [];
@@ -527,12 +579,46 @@ const AuthController = {
         permissions: allPermissions,
       });
     } catch (error) {
+      if (sessionTransaction) {
+        await sessionTransaction.rollback();
+      }
+
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
 
       logger.error("Error al loguear usuario: " + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
+  async logout_apk_serial(req, res) {
+    logger.info(`${req.user.name} - Cierra sessión | endpoint=logout-apk-serial`);
+
+    try {
+      const token = req.headers["authorization"]?.split(" ")[1]; // Obtener el token del encabezado Authorization
+
+      if (!token) {
+        return res.status(400).json({ msg: "No token proporcionado" });
+      }
+
+      // Marcar el token como revocado directamente en la base de datos
+      const [updated] = await UserToken.update(
+        { revoked: true },
+        { where: { token }, returning: true }
+      );
+
+      if (updated === 0) {
+        return res
+          .status(400)
+          .json({ msg: "Token no encontrado o ya revocado" });
+      }
+
+      // Responder al cliente
+      res.status(200).json({ msg: "Logout exitoso" });
+    } catch (err) {
+      logger.error("Error al hacer logout APK serial: " + err.message);
+      res.status(500).json({ error: "Error en el servidor" });
     }
   },
 

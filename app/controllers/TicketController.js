@@ -1107,6 +1107,18 @@ const TicketController = {
     logger.info("Datos recibidos al crear un ticket");
     logger.info(JSON.stringify(req.body));
 
+    const templateId = Number(req.body.template_id ?? req.body.templateId ?? 0);
+    const isExpressSaleFromTemplate =
+      Number.isFinite(templateId) && templateId > 0;
+
+    if (isExpressSaleFromTemplate) {
+      logger.info(
+        `${req.user.name} - Venta desde plantilla; se procesara como express`
+      );
+
+      return TicketController.store_express(req, res);
+    }
+
     req.body.user_id = req.user.id;
 
     const {
@@ -1133,6 +1145,14 @@ const TicketController = {
         `TicketController->store: Viaje no encontrado con ID ${trip_id}`
       );
       return res.status(400).json({ msg: "TripNotFound" });
+    }
+
+    if (normalizeSaleMode(trip.saleMode ?? trip.sale_mode) === "express") {
+      logger.info(
+        `${req.user.name} - Venta con viaje express; se procesara como express`
+      );
+
+      return TicketController.store_express(req, res);
     }
 
     const branch = await BranchRepository.findById(branch_id);

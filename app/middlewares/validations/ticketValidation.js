@@ -21,9 +21,30 @@ const storeTicketSchema = Joi.object({
     "number.base": "El campo branch_id debe ser un número entero",
     "any.required": "El campo branch_id es obligatorio",
   }),
-  trip_id: Joi.number().integer().required().messages({
+  trip_id: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo trip_id debe ser un número entero",
-    "any.required": "El campo trip_id es obligatorio",
+  }),
+  template_id: Joi.number()
+    .integer()
+    .positive()
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "number.base": "El campo template_id debe ser un número entero",
+      "number.integer": "El campo template_id debe ser un número entero",
+      "number.positive": "El campo template_id debe ser mayor que cero",
+    }),
+  templateId: Joi.number()
+    .integer()
+    .positive()
+    .allow(null)
+    .optional()
+    .empty("")
+    .messages({
+      "number.base": "El campo templateId debe ser un número entero",
+      "number.integer": "El campo templateId debe ser un número entero",
+      "number.positive": "El campo templateId debe ser mayor que cero",
   }),
   fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo fare_segment_id debe ser un número entero",
@@ -60,9 +81,8 @@ const storeTicketSchema = Joi.object({
     "number.base": "El campo total debe ser un número",
     "any.required": "El campo total es obligatorio",
   }),
-  seats: Joi.array().items(Joi.number().integer()).required().messages({
+  seats: Joi.array().items(Joi.number().integer()).allow(null).optional().messages({
     "array.base": "El campo seats debe ser un arreglo",
-    "any.required": "El campo seats es obligatorio",
   }),
   adults: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo adults debe ser un número entero",

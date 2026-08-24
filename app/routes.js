@@ -39,6 +39,7 @@ const validateSchema = require("./middlewares/validateSchema");
 const {
   registerSchema,
   loginSchema,
+  loginApkSerialSchema,
   updatePasswordSchema,
 } = require("./middlewares/validations/authValidation");
 const {
@@ -183,6 +184,7 @@ const TripTemplateController = require("./controllers/TripTemplateController");
 const { storeTripTemplateSchema, updateTripTemplateSchema, idTripTemplateSchema, branchTripTemplateSchema } = require("./middlewares/validations/triptemplateValidation");
 
 router.get("/", (req, res) => res.json({ hello: "World" }));
+router.get("/health", (req, res) => res.status(200).json(true));
 
 router.post(
   "/register",
@@ -194,6 +196,11 @@ router.post(
   "/login-apk",
   validateSchema(loginSchema),
   AuthController.login_apk
+);
+router.post(
+  "/login-apk-serial",
+  validateSchema(loginApkSerialSchema),
+  AuthController.login_apk_serial
 );
 router.get("/branch-login", BranchController.index_login);
 // Ruta para servir imágenes desde la carpeta `public`
@@ -228,6 +235,7 @@ router.post(
 //rutas protegidas
 router.use(auth);
 router.get("/logout", AuthController.logout);
+router.get("/logout-apk-serial", AuthController.logout_apk_serial);
 router.post(
   "/update-password",
   validateSchema(updatePasswordSchema),

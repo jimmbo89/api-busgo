@@ -2129,9 +2129,12 @@ const TripController = {
         null,
         { includeTickets: true }
       );
-      const expressTrips = trips.filter(
+      const allExpressTrips = trips.filter(
         (trip) =>
-          String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "express" &&
+          String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "express"
+      );
+      const expressTrips = allExpressTrips.filter(
+        (trip) =>
           trip.end === null
       );
       const tripIds = expressTrips.map((trip) => trip.id);
@@ -2167,6 +2170,10 @@ const TripController = {
           Number(trip.vehicle?.seats ?? 0) - soldQuantity,
           0
         );
+        if (availableCapacity <= 0) {
+          continue;
+        }
+
         const segmentOriginMinutes = getSegmentOriginMinutes(
           tripStopsRaw,
           matchingTripFares
@@ -2241,7 +2248,7 @@ const TripController = {
       }
 
       const existingTripTemplateIds = new Set(
-        expressTrips
+        allExpressTrips
           .map((trip) => Number(trip.trip_template_id))
           .filter((templateId) => Number.isFinite(templateId) && templateId > 0)
       );

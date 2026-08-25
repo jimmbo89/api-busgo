@@ -142,6 +142,7 @@ const {
 } = require("./middlewares/validations/vehicleworkerValidation");
 const {
   storeTripSchema,
+  storeMobileTripSchema,
   updateTripSchema,
   idTripSchema,
   changeTripSchema,
@@ -623,6 +624,7 @@ router.post("/get-trip-vehicle", validateSchema(branch_idTripSchema), TripContro
 router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
 router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
+router.post("/mobile-trip", validateSchema(storeMobileTripSchema), TripController.mobileStore); // endpoint movil para creacion de viajes desde la app movil
 router.post("/trip-show", validateSchema(idTripSchema), TripController.show);
 router.post("/trip-update", validateSchema(updateTripSchema), TripController.update);
 router.post("/trip-change-trip", validateSchema(changeTripSchema), TripController.changeTrip);

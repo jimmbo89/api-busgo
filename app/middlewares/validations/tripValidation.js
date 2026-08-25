@@ -110,6 +110,8 @@ const storeTripSchema = Joi.object({
     .optional(),
 });
 
+const storeMobileTripSchema = storeTripSchema;
+
 const updateTripSchema = Joi.object({
   id: Joi.number().required().messages({
     "number.base": "El campo id debe ser un numero entero",
@@ -384,6 +386,7 @@ const expressSalesDepartureAvailabilitySchema = Joi.object({
 
 module.exports = {
   storeTripSchema,
+  storeMobileTripSchema,
   updateTripSchema,
   idTripSchema,
   changeTripSchema,

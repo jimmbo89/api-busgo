@@ -2703,10 +2703,22 @@ const TripController = {
       res.status(500).json({ error: "ServerError", details: error.message });
     }
   },
-  // Crear un nuevo viaje
+  // Crear un nuevo viaje desde web
   async store(req, res) {
-    logger.info(`${req.user.name} - Crea un nuevo viaje`);
-    logger.info("datos recibidos al crear un viaje");
+    return TripController.createTrip(req, res, "web");
+  },
+
+  // Crear un nuevo viaje desde movil
+  async mobileStore(req, res) {
+    return TripController.createTrip(req, res, "mobile");
+  },
+
+  async createTrip(req, res, source = "web") {
+    const methodName = source === "mobile" ? "mobileStore" : "store";
+    const sourceLabel = source === "mobile" ? "movil" : "web";
+
+    logger.info(`${req.user.name} - Crea un nuevo viaje desde ${sourceLabel}`);
+    logger.info(`datos recibidos al crear un viaje desde ${sourceLabel}`);
     logger.info(JSON.stringify(req.body));
 
     const {
@@ -2749,21 +2761,21 @@ const TripController = {
       const vehicle = await VehicleRepository.findById(vehicle_id);
       if (!vehicle) {
         logger.error(
-          `TripController->store: Vehículo no encontrado con ID ${vehicle_id}`
+          `TripController->${methodName}: Vehículo no encontrado con ID ${vehicle_id}`
         );
         return res.status(400).json({ msg: "VehicleNotFound" });
       }
       const route = await RouteRepository.findById(route_id);
       if (!route) {
         logger.error(
-          `TripController->store: Ruta no encontrada con ID ${route_id}`
+          `TripController->${methodName}: Ruta no encontrada con ID ${route_id}`
         );
         return res.status(400).json({ msg: "RouteNotFound" });
       }
       const branch = await BranchRepository.findById(branch_id);
       if (!branch) {
         logger.error(
-          `TripController->update: Sucursal no encontrada con ID ${branch_id}`
+          `TripController->${methodName}: Sucursal no encontrada con ID ${branch_id}`
         );
         return res.status(400).json({ msg: "BranchNotFound" });
       }
@@ -2863,7 +2875,7 @@ const TripController = {
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
 
-      logger.error("TripController->store:" + errorMsg);
+      logger.error(`TripController->${methodName}:` + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },

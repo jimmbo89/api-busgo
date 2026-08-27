@@ -17,6 +17,11 @@ const loginSchema = Joi.object({
     platform: Joi.string().allow(null).optional().empty(""),
 });
 
+const loginApkSerialSchema = loginSchema.keys({
+    platform: Joi.string().required(),
+    serial: Joi.string().max(100).required(),
+});
+
 const updatePasswordSchema = Joi.object({
     id: Joi.number().integer().required().messages({
         'any.required': 'El ID del usuario es obligatorio.',
@@ -33,5 +38,6 @@ const updatePasswordSchema = Joi.object({
 module.exports = {
     registerSchema,
     loginSchema,
+    loginApkSerialSchema,
     updatePasswordSchema,
 };

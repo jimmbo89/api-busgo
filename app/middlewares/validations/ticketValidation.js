@@ -55,13 +55,10 @@ const storeTicketSchema = Joi.object({
     "any.required": "El campo date es obligatorio",
   }),
   method: Joi.string()
-    .valid("Efectivo", "Credito", "Debito")
     .required()
     .messages({
       "string.base": "El campo method debe ser un texto",
       "any.required": "El campo method es obligatorio",
-      "any.only":
-        "El campo method debe ser uno de los siguientes valores: Efectivo, Tarjeta",
     }),
   status: Joi.number().integer().default(0).optional().messages({
     "number.base": "El campo status debe ser un número entero",
@@ -101,17 +98,14 @@ const storeTicketSchema = Joi.object({
       "boolean.base": "El estado de la transacción debe ser un valor booleano.",
     }),
   sequenceNumber: Joi.string()
-    .length(12) // Longitud exacta de 12 caracteres
-    .pattern(/^\d+$/) // Solo dígitos
+    .max(50)
     .allow(null)
     .optional()
     .empty("") // Permite null
     .messages({
       "string.base": "El número de secuencia debe ser una cadena de texto.",
-      "string.length":
-        "El número de secuencia debe tener exactamente 12 dígitos.",
-      "string.pattern.base":
-        "El número de secuencia debe contener solo dígitos.",
+      "string.max":
+        "El número de secuencia no puede tener más de 50 caracteres.",
     }),
   extraData: Joi.object()
     .allow(null)
@@ -186,13 +180,10 @@ const storeTicketWebSchema = Joi.object({
     "any.required": "El campo date es obligatorio",
   }),
   method: Joi.string()
-    .valid("Efectivo", "Credito", "Debito")
     .required()
     .messages({
       "string.base": "El campo method debe ser un texto",
       "any.required": "El campo method es obligatorio",
-      "any.only":
-        "El campo method debe ser uno de los siguientes valores: Efectivo, Tarjeta",
     }),
   status: Joi.number().integer().default(0).optional().messages({
     "number.base": "El campo status debe ser un número entero",
@@ -314,11 +305,13 @@ const storeExpressTicketSchema = Joi.object({
       "boolean.base": "El estado de la transaccion debe ser un valor booleano",
     }),
   sequenceNumber: Joi.string()
+    .max(50)
     .allow(null)
     .optional()
     .empty("")
     .messages({
       "string.base": "El numero de secuencia debe ser una cadena de texto",
+      "string.max": "El numero de secuencia no puede tener más de 50 caracteres.",
     }),
   extraData: Joi.object()
     .allow(null)
@@ -394,7 +387,6 @@ const updateTicketSchema = Joi.object({
       "El campo date debe ser una fecha válida en formato YYYY-MM-DD",
   }),
   method: Joi.string()
-    .valid("Efectivo", "Credito", "Debito")
     .allow(null)
     .optional()
     .messages({
@@ -448,17 +440,14 @@ const updateTicketSchema = Joi.object({
       "boolean.base": "El estado de la transacción debe ser un valor booleano.",
     }),
   sequenceNumber: Joi.string()
-    .length(12) // Longitud exacta de 12 caracteres
-    .pattern(/^\d+$/) // Solo dígitos
+    .max(50)
     .allow(null)
     .optional()
     .empty("") // Permite null
     .messages({
       "string.base": "El número de secuencia debe ser una cadena de texto.",
-      "string.length":
-        "El número de secuencia debe tener exactamente 12 dígitos.",
-      "string.pattern.base":
-        "El número de secuencia debe contener solo dígitos.",
+      "string.max":
+        "El número de secuencia no puede tener más de 50 caracteres.",
     }),
   extraData: Joi.object()
     .allow(null)

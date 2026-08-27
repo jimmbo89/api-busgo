@@ -12,6 +12,7 @@ module.exports = (sequelize, DataTypes) => {
     static associate(models) {
       // Relación con el modelo User
       UserToken.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      UserToken.belongsTo(models.Device, { foreignKey: 'device_id', as: 'device' });
     }
   }
   UserToken.init({
@@ -30,6 +31,14 @@ module.exports = (sequelize, DataTypes) => {
     },
     expires_at: {
       type: DataTypes.DATE,
+      allowNull: true
+    },
+    device_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true
+    },
+    platform: {
+      type: DataTypes.STRING,
       allowNull: true
     },
     revoked: {

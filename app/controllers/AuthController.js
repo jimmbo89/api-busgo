@@ -121,6 +121,7 @@ const AuthController = {
     logger.info("Entrando a loguearse");
     //logger.info("datos recibidos al loguerase");
     //logger.info(JSON.stringify(req.body));
+    const platform = (req.body.platform || '').trim().toLowerCase() || 'web';
     try {
       const user = await User.findOne({
         where: {
@@ -288,6 +289,7 @@ const AuthController = {
         user_id: user.id,
         token: token,
         expires_at: expiresAt,
+        platform: platform || null,
       });
 
       // Combinar los permisos y eliminar duplicados usando un Set

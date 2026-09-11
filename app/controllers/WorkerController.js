@@ -7,6 +7,32 @@ const { Worker, User, Role, sequelize } = require('../models'); // Importar los 
 const logger = require('../../config/logger'); // Logger para seguimiento
 const { RoleRepository, WorkerRepository } = require('../repositories');
 
+const duplicateWorkerResponse = (res, conflictField = 'worker') => {
+    const fieldName = conflictField.charAt(0).toUpperCase() + conflictField.slice(1);
+    const messages = {
+        email: 'El correo ya está registrado en otro trabajador.',
+        rut: 'El rut ya está registrado en otro trabajador.',
+        user: 'El usuario ya está registrado.',
+        worker: 'El trabajador ya está registrado.',
+    };
+
+    return res.status(409).json({
+        error: `Duplicate${fieldName}`,
+        msg: messages[conflictField] || messages.worker,
+    });
+};
+
+const uniqueConstraintField = (error) => {
+    const fields = new Set([
+        ...Object.keys(error?.fields || {}),
+        ...(error?.errors || []).map(detail => detail.path),
+    ]);
+
+    if (fields.has('email')) return 'email';
+    if (fields.has('rut')) return 'rut';
+    return 'worker';
+};
+
 const WorkerController = {
     // Obtener todos los trabajadores
     async index(req, res) {
@@ -55,14 +81,16 @@ const WorkerController = {
         const { user_id, name, email, phone, rut, address, role_id, user } = req.body;
 
         // Verificar si ya existe un trabajador con el mismo email o rut
-        const existingWorker = await WorkerRepository.existsByEmailOrRut(email, rut, user);
-        if (existingWorker) {
-            const conflictField = existingWorker.email === email ? 'email' : 'rut';
-            logger.error(`El ${conflictField} ya está registrado en otro trabajador: ${existingWorker[conflictField]}`);
-            return res.status(400).json({ 
-                error: `Duplicate${conflictField.charAt(0).toUpperCase() + conflictField.slice(1)}`, 
-                msg: `El ${conflictField} ya está registrado en otro trabajador.` 
-            });
+        const duplicateFields = await WorkerRepository.findDuplicateFields(email, rut, user);
+        if (duplicateFields.email || duplicateFields.rut || duplicateFields.user) {
+            const conflictField = duplicateFields.email
+                ? 'email'
+                : duplicateFields.rut
+                    ? 'rut'
+                    : 'user';
+
+            logger.error(`El ${conflictField} ya está registrado al crear el trabajador`);
+            return duplicateWorkerResponse(res, conflictField);
         }
 
             const role = await RoleRepository.findById(role_id);
@@ -85,6 +113,14 @@ const WorkerController = {
             if (!t.finished) {
                 await t.rollback();
               }
+
+            const persistenceError = error.cause || error;
+            if (persistenceError.name === 'SequelizeUniqueConstraintError') {
+                const conflictField = uniqueConstraintField(persistenceError);
+                logger.warn(`Restricción única al crear trabajador (${conflictField})`);
+                return duplicateWorkerResponse(res, conflictField);
+            }
+
             const errorMsg = error.details
             ? error.details.map(detail => detail.message).join(', ')
             : error.message || 'Error desconocido';
@@ -162,21 +198,33 @@ const WorkerController = {
                 if (user) validFields.user = user;
         
                 if (Object.keys(validFields).length > 0) {
-                    const existingDevice = await WorkerRepository.existsByEmailOrRut(validFields.email, validFields.rut, validFields.user, id, user_id);
+                    const existingDevice = await WorkerRepository.existsByEmailOrRut(
+                        validFields.email,
+                        validFields.rut,
+                        validFields.user,
+                        id,
+                        user_id || worker.user_id
+                    );
         
                     if (existingDevice) {
                         logger.info('Email, User o Rut ya están registrados en otro dispositivo');
-                        return res.status(400).json({ info: 'DuplicateWorker', msg: 'Email, user o Rut ya están registrados.' });
+                        return res.status(409).json({ info: 'DuplicateWorker', msg: 'Email, user o Rut ya están registrados.' });
                     }
                 }
             }
 
         try {
 
-            const WorkerUpdate = WorkerRepository.update(worker, req.body, req.file);
+            const WorkerUpdate = await WorkerRepository.update(worker, req.body, req.file);
 
             res.status(200).json({ 'worker': WorkerUpdate });
         } catch (error) {
+            const persistenceError = error.cause || error;
+            if (persistenceError.name === 'SequelizeUniqueConstraintError') {
+                logger.warn('Restricción única al editar trabajador');
+                return res.status(409).json({ info: 'DuplicateWorker', msg: 'Email, user o Rut ya están registrados.' });
+            }
+
             const errorMsg = error.details
             ? error.details.map(detail => detail.message).join(', ')
             : error.message || 'Error desconocido';

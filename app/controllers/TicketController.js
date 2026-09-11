@@ -329,12 +329,49 @@ const normalizeTripFareReferencesForTrip = (ticketItems = [], trip = null) => {
   return unresolvedTripFareIds;
 };
 
-const mapMonthlyTrip = (trip) => {
+const getStopMinutesFromOrigin = (tripStop) => {
+  const minutes = Number(
+    tripStop?.routeStop?.minutes_from_origin ?? tripStop?.minutes_from_origin
+  );
+
+  return Number.isFinite(minutes) ? minutes : null;
+};
+
+const getDurationFromStops = (stops = []) => {
+  const minutes = (Array.isArray(stops) ? stops : [])
+    .filter((stop) => stop?.active !== false && stop?.routeStop?.active !== false)
+    .map(getStopMinutesFromOrigin)
+    .filter((value) => value !== null);
+
+  if (minutes.length < 2) {
+    return null;
+  }
+
+  return Math.max(...minutes) - Math.min(...minutes);
+};
+
+const formatLocalDateTime = (date) => {
+  if (!date || Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+const getMonthlyTripDuration = (trip, tripStops = []) => (
+  getDurationFromStops(tripStops) ??
+  getDurationFromStops(trip?.route?.routeStops) ??
+  (Number(trip?.route?.estimated) || 0)
+);
+
+const mapMonthlyTrip = (trip, tripStops = []) => {
   const vehicle = trip.vehicle || {};
   const tickets = trip.tickets || [];
   const route = trip.route || {};
   const origin = route.origin || {};
   const destination = route.destination || {};
+  const duration = getMonthlyTripDuration(trip, tripStops);
 
   const routeInfo = `${origin.address || ""} - ${destination.address || ""}`;
 
@@ -344,23 +381,17 @@ const mapMonthlyTrip = (trip) => {
   } else if (trip.start) {
     const startDate = new Date(trip.start);
     const estimatedTime = new Date(
-      startDate.getTime() + (route.estimated || 0) * 60000
+      startDate.getTime() + duration * 60000
     );
-    const formattedEstimated = estimatedTime
-      .toISOString()
-      .replace("T", " ")
-      .substring(0, 19);
+    const formattedEstimated = formatLocalDateTime(estimatedTime);
     horario = `${trip.start} - ${formattedEstimated}`;
   } else {
     const combinedDateTime = `${trip.date} ${trip.schedule}`;
     const scheduleDate = new Date(combinedDateTime);
     const estimatedTime = new Date(
-      scheduleDate.getTime() + (route.estimated || 0) * 60000
+      scheduleDate.getTime() + duration * 60000
     );
-    const formattedEstimated = estimatedTime
-      .toISOString()
-      .replace("T", " ")
-      .substring(0, 19);
+    const formattedEstimated = formatLocalDateTime(estimatedTime);
     horario = `${combinedDateTime} - ${formattedEstimated}`;
   }
 
@@ -375,7 +406,14 @@ const mapMonthlyTrip = (trip) => {
 
   return {
     id: trip.id,
+    code: trip.code,
+    tripCode: trip.code,
+    routeCode: route.code,
+    route_code: route.code,
     date: trip.date,
+    schedule: trip.schedule,
+    start: trip.start,
+    end: trip.end,
     saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
     sale_mode: trip.saleMode ?? trip.sale_mode ?? "normal",
     vehicleImage: vehicle.image,
@@ -384,7 +422,12 @@ const mapMonthlyTrip = (trip) => {
     internalNumber: vehicle.internal_number,
     vehicleBrand: vehicle.brand,
     route: routeInfo,
-    estimated: route.estimated,
+    origin: origin.address || null,
+    destination: destination.address || null,
+    duration,
+    durationMinutes: duration,
+    routeEstimated: route.estimated,
+    estimated: duration,
     horario,
     capacidad: vehicle.seats,
     asientosVendidos,
@@ -802,7 +845,10 @@ async function findOrCreateExpressTripFromTemplate(body, branch, transaction) {
         fareSegmentTicketTypeId
       );
       if (!fareSegmentTicketType) {
-        throw new Error(`FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`);
+        logger.warn(
+          `TicketController->findOrCreateExpressTripFromTemplate: tarifa ignorada; FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`
+        );
+        continue;
       }
 
       const fareSegment = fareSegmentTicketType.fareSegment;
@@ -1792,6 +1838,8 @@ const TicketController = {
           branch_id: ticket.branch_id,
           tripId: ticket.trip_id,
           trip_id: ticket.trip_id,
+          saleMode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
+          sale_mode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
           fare_segment_id: ticket.fare_segment_id,
           fareSegmentId: ticket.fare_segment_id,
           method: ticket.method,
@@ -2308,6 +2356,9 @@ async verifyEncryptedQR(req, res) {
         branchIds: scope.branchIds || null,
         limit: 5,
       });
+      const tripStopsByTripId = await TripRepository.getTripStopsByTripIds(
+        pendingTrips.map((trip) => trip.id)
+      );
 
       const { totalIncidents } = await IncidentRepository.getIncidentsByBranchDay(
         formattedToday,
@@ -2329,7 +2380,12 @@ async verifyEncryptedQR(req, res) {
         limit: 5,
       });
 
-      const formattedTrips = pendingTrips.map(mapMonthlyTrip);
+      const formattedTrips = pendingTrips.map((trip) =>
+        mapMonthlyTrip(
+          trip,
+          tripStopsByTripId.get(Number(trip.id)) || []
+        )
+      );
       const formattedIncidents = recentIncidents.map(mapMonthlyIncident);
 
       /* const formattedTrips = trips.map((trip) => {

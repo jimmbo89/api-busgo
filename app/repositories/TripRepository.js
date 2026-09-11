@@ -2328,6 +2328,11 @@ async existsByUpdatedFields(trip, updatedFields) {
                 as: "destination",
                 attributes: ["id", "address", "image"],
               },
+              {
+                model: RouteStop,
+                as: "routeStops",
+                attributes: ["id", "stop_order", "minutes_from_origin", "active"],
+              },
             ],
           },
           {

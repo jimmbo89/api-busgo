@@ -67,34 +67,47 @@ const WorkerRepository = {
     });
   },
 
-  // Método para comprobar si el email o el rut ya existen, excluyendo un trabajador específico si es necesario
+  // Obtener los campos duplicados, excluyendo un trabajador/usuario específico si es necesario
+  async findDuplicateFields(email, rut, user, excludeId = null, userId = null) {
+    logger.info("Verificando existencia por email, RUT o usuario en el repositorio");
+
+    const workerWhere = (field, value) => {
+      const where = { [field]: value };
+      if (excludeId) where.id = { [Op.ne]: excludeId };
+      return where;
+    };
+
+    const userWhere = (field, value) => {
+      const where = { [field]: value };
+      if (userId) where.id = { [Op.ne]: userId };
+      return where;
+    };
+
+    const [workerByEmail, workerByRut, userByName, userByEmail] = await Promise.all([
+      email ? Worker.findOne({ where: workerWhere("email", email) }) : null,
+      rut ? Worker.findOne({ where: workerWhere("rut", rut) }) : null,
+      user ? User.findOne({ where: userWhere("name", user) }) : null,
+      email ? User.findOne({ where: userWhere("email", email) }) : null,
+    ]);
+
+    return {
+      email: Boolean(workerByEmail || userByEmail),
+      rut: Boolean(workerByRut),
+      user: Boolean(userByName),
+    };
+  },
+
+  // Método para comprobar si el email, el rut o el usuario ya existen
   async existsByEmailOrRut(email, rut, user, excludeId = null, userId = null) {
-    logger.info( "Verificando existencia por email, RUT o usuario en el repositorio");
+    const duplicateFields = await this.findDuplicateFields(
+      email,
+      rut,
+      user,
+      excludeId,
+      userId
+    );
 
-    let workerExists = null;
-    let userExists = null;
-
-    // Construir cláusula WHERE para `Worker` solo si hay `email` o `rut`
-    if (email || rut) {
-        const workerWhereClause = {};
-        if (email) workerWhereClause.email = email;
-        if (rut) workerWhereClause.rut = rut;
-        if (excludeId) workerWhereClause.id = { [Op.ne]: excludeId }; // Excluir el ID actual
-
-        workerExists = await Worker.findOne({ where: workerWhereClause });
-    }
-
-    // Construir cláusula WHERE para `User` solo si hay `user`
-    if (user) {
-        const userWhereClause = {};
-        userWhereClause.name = user;
-        if (userId) userWhereClause.id = { [Op.ne]: userId }; // Excluir el ID del usuario actual
-
-        userExists = await User.findOne({ where: userWhereClause });
-    }
-
-    // Retornar true si alguna de las consultas encuentra un registro
-    return !!workerExists || !!userExists;
+    return duplicateFields.email || duplicateFields.rut || duplicateFields.user;
   },
 
   // Crear un nuevo trabajador con manejo de imágenes
@@ -152,9 +165,11 @@ const WorkerRepository = {
     } catch (error) {
       // Manejar errores
       logger.error("Error al crear usuario o trabajador:", error);
-      throw new Error(
+      const wrappedError = new Error(
         "No se pudo crear el usuario o trabajador. Intenta nuevamente."
       );
+      wrappedError.cause = error;
+      throw wrappedError;
     }
   },
 

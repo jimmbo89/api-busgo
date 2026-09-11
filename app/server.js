@@ -56,6 +56,7 @@ const server = app.listen(PORT, () => {
   sequelize.authenticate().then(async () => {
     logger.info('Conexión a la base de datos exitosa');
     await scheduler.runStartupRecovery();
+    scheduler.startRecoveryMonitor();
   }).catch((error) => {
     logger.error('Error al conectar a la base de datos:', error);
     process.exit(1); // Sale si no puede conectar con la DB

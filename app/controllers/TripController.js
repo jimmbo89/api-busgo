@@ -2277,7 +2277,7 @@ const TripController = {
           const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
             item.fare_segment_ticket_type_id
           );
-          if (fareSegmentTicketType?.active === false) {
+          if (!fareSegmentTicketType || fareSegmentTicketType.active === false) {
             continue;
           }
 

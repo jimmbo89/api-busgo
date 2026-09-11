@@ -39,6 +39,7 @@ const validateSchema = require("./middlewares/validateSchema");
 const {
   registerSchema,
   loginSchema,
+  webLoginSchema,
   loginApkSerialSchema,
   updatePasswordSchema,
 } = require("./middlewares/validations/authValidation");
@@ -192,7 +193,7 @@ router.post(
   validateSchema(registerSchema),
   AuthController.register
 );
-router.post("/login", validateSchema(loginSchema), AuthController.login);
+router.post("/login", validateSchema(webLoginSchema), AuthController.login);
 router.post(
   "/login-apk",
   validateSchema(loginSchema),

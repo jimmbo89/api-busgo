@@ -253,6 +253,14 @@ const storeExpressTicketSchema = Joi.object({
   trip_id: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo trip_id debe ser un numero entero",
   }),
+  sale_mode: Joi.string().valid("express").allow(null).optional().empty("").messages({
+    "any.only": "El campo sale_mode debe ser express",
+    "string.base": "El campo sale_mode debe ser un texto",
+  }),
+  saleMode: Joi.string().valid("express").allow(null).optional().empty("").messages({
+    "any.only": "El campo saleMode debe ser express",
+    "string.base": "El campo saleMode debe ser un texto",
+  }),
   template_id: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo template_id debe ser un numero entero",
   }),

@@ -17,6 +17,10 @@ const loginSchema = Joi.object({
     platform: Joi.string().allow(null).optional().empty(""),
 });
 
+const webLoginSchema = loginSchema.keys({
+    platform: Joi.string().trim().allow(null).optional().empty("").default("web"),
+});
+
 const loginApkSerialSchema = loginSchema.keys({
     platform: Joi.string().required(),
     serial: Joi.string().max(100).required(),
@@ -38,6 +42,7 @@ const updatePasswordSchema = Joi.object({
 module.exports = {
     registerSchema,
     loginSchema,
+    webLoginSchema,
     loginApkSerialSchema,
     updatePasswordSchema,
 };

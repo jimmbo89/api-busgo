@@ -215,7 +215,10 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
         );
 
         if (!fareSegmentTicketType) {
-          throw new Error(`FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`);
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada; FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`
+          );
+          continue;
         }
 
         const fareSegment = fareSegmentTicketType.fareSegment;
@@ -849,7 +852,10 @@ const TripTemplateController = {
                 );
 
                 if (!fareSegmentTicketType) {
-                  throw new Error(`FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`);
+                  logger.warn(
+                    `TripTemplateController->generateTripsForDate: tarifa ignorada; FareSegmentTicketTypeNotFound:${fareSegmentTicketTypeId}`
+                  );
+                  continue;
                 }
 
                 const fareSegment = fareSegmentTicketType.fareSegment;

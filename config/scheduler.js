@@ -3,6 +3,7 @@ const cron = require('node-cron');
 
 const TripTemplateController = require('../app/controllers/TripTemplateController');
 const { revokeDailyUserTokens } = require('../app/services/UserTokenService');
+const TuuTicketWebService = require('../app/services/TuuTicketWebService');
 const {
   getBusinessDate,
   beginExecution,
@@ -15,9 +16,16 @@ const schedulerCron = process.env.SCHEDULER_CRON || '0 3 * * *';
 const schedulerTimezone = process.env.SCHEDULER_TIMEZONE || process.env.TZ || 'America/Santiago';
 const recoveryIntervalMinutes = Number(process.env.SCHEDULER_RECOVERY_INTERVAL_MINUTES || 20);
 const recoveryIntervalMs = Math.max(recoveryIntervalMinutes, 1) * 60 * 1000;
+const tuuPaymentReconciliationIntervalSeconds = Math.max(
+  Number.parseInt(process.env.TUU_PAYMENT_RECONCILIATION_INTERVAL_SECONDS, 10) || 60,
+  60
+);
+const tuuPaymentReconciliationIntervalMs = tuuPaymentReconciliationIntervalSeconds * 1000;
 
 let isRunning = false;
 let recoveryInterval = null;
+let tuuPaymentReconciliationInterval = null;
+let isReconcilingTuuPayments = false;
 
 async function runScheduledJob(options = {}) {
   const { reason = 'cron', allowPastTime = false, revokeTokens = false } = options;
@@ -108,6 +116,36 @@ function startRecoveryMonitor() {
   logger.info(`Monitor de recuperación iniciado | intervalo_minutos=${recoveryIntervalMinutes}`);
 }
 
+async function runTuuPaymentReconciliation(reason) {
+  if (isReconcilingTuuPayments) return;
+  isReconcilingTuuPayments = true;
+  try {
+    const summary = await TuuTicketWebService.reconcilePending();
+    logger.info(`Conciliación de pagos TUU finalizada | reason=${reason} | ${JSON.stringify(summary)}`);
+  } catch (error) {
+    logger.error(`Conciliación de pagos TUU falló | reason=${reason} | ${error.message}`);
+  } finally {
+    isReconcilingTuuPayments = false;
+  }
+}
+
+function startTuuPaymentReconciliationMonitor() {
+  if (tuuPaymentReconciliationInterval) return;
+
+  runTuuPaymentReconciliation('startup');
+  tuuPaymentReconciliationInterval = setInterval(() => {
+    runTuuPaymentReconciliation('periodic');
+  }, tuuPaymentReconciliationIntervalMs);
+  tuuPaymentReconciliationInterval.unref?.();
+  logger.info(`Monitor de conciliación TUU iniciado | intervalo_segundos=${tuuPaymentReconciliationIntervalSeconds}`);
+}
+
+function stopTuuPaymentReconciliationMonitor() {
+  if (!tuuPaymentReconciliationInterval) return;
+  clearInterval(tuuPaymentReconciliationInterval);
+  tuuPaymentReconciliationInterval = null;
+}
+
 // Ejecutar inmediatamente al iniciar (opcional)
 // runScheduledJob();
 
@@ -126,4 +164,6 @@ module.exports = {
   runScheduledJob,
   runStartupRecovery,
   startRecoveryMonitor,
+  startTuuPaymentReconciliationMonitor,
+  stopTuuPaymentReconciliationMonitor,
 };

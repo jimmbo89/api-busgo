@@ -180,6 +180,7 @@ const storeTicketWebSchema = Joi.object({
     "any.required": "El campo date es obligatorio",
   }),
   method: Joi.string()
+    .valid("Efectivo", "Credito", "Debito")
     .required()
     .messages({
       "string.base": "El campo method debe ser un texto",
@@ -199,7 +200,11 @@ const storeTicketWebSchema = Joi.object({
     "number.base": "El campo price debe ser un número",
     "any.required": "El campo price es obligatorio",
   }),
-  total: Joi.number().precision(2).optional().messages({
+  total: Joi.when('method', {
+    is: Joi.valid('Credito', 'Debito'),
+    then: Joi.number().integer().min(0).max(99999999).required(),
+    otherwise: Joi.number().precision(2).optional(),
+  }).messages({
     "number.base": "El campo total debe ser un número",
     "any.required": "El campo total es obligatorio",
   }),
@@ -216,9 +221,24 @@ const storeTicketWebSchema = Joi.object({
   pay: Joi.number().precision(2).allow(null).empty("").optional().messages({
     "number.base": "El campo pay debe ser un número entero",
   }),
-  device: Joi.string().allow(null).optional("").messages({
+  device: Joi.when('method', {
+    is: Joi.valid('Credito', 'Debito'),
+    then: Joi.when('total', {
+      is: 0,
+      then: Joi.string().trim().allow(null, '').optional(),
+      otherwise: Joi.string().trim().required(),
+    }),
+    otherwise: Joi.string().allow(null).optional(),
+  }).messages({
     "string.base": "El campo device debe ser un texto",
-    "any.required": "El campo method es obligatorio",
+    "any.required": "El campo device es obligatorio para pagos con tarjeta",
+  }),
+  idempotencyKey: Joi.when('method', {
+    is: Joi.valid('Credito', 'Debito'),
+    then: Joi.string().pattern(/^[a-zA-Z0-9\-]{36}$/).allow(null, '').optional(),
+    otherwise: Joi.string().allow(null, '').optional(),
+  }).messages({
+    "string.pattern.base": "idempotencyKey debe tener 36 caracteres alfanuméricos o guiones",
   }),
   ticketItems: Joi.array()
     .items(Joi.object().unknown(true))
@@ -241,6 +261,10 @@ const storeTicketWebSchema = Joi.object({
     'array.base': 'Los tipos de ticket deben ser un array',
   }),
 });
+
+const ticketWebPaymentStatusSchema = Joi.object({
+  idempotencyKey: Joi.string().pattern(/^[a-zA-Z0-9\-]{36}$/).required(),
+}).required();
 
 const storeExpressTicketSchema = Joi.object({
   id: Joi.number().integer().allow(null).optional().empty("").messages({
@@ -709,6 +733,7 @@ module.exports = {
   ticketSoldDateSchema,
   passengerTypeSalesReportSchema,
   storeTicketWebSchema,
+  ticketWebPaymentStatusSchema,
   storeExpressTicketSchema,
   qrEncryptedSchema,
   ticketSoldDateWorkerSchema,

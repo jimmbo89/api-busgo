@@ -76,7 +76,9 @@ const resolveTripFareSnapshot = async (tripFareId, options = {}) => {
   });
 };
 
-const normalizeTicketItemPayload = (ticketId, item = {}, resolvedTripFare = null) => {
+const sequelizeOptions = ({ preserveServerPriceSnapshot, ...options }) => options;
+
+const normalizeTicketItemPayload = (ticketId, item = {}, resolvedTripFare = null, options = {}) => {
   const tripFare = resolvedTripFare || null;
   const fareSegmentTicketType = tripFare?.fareSegmentTicketType || null;
   const ticketType = fareSegmentTicketType?.ticketType || null;
@@ -92,6 +94,7 @@ const normalizeTicketItemPayload = (ticketId, item = {}, resolvedTripFare = null
     fareSegmentTicketType?.base_price ??
     0;
   const shouldTrustIncomingPrices =
+    options.preserveServerPriceSnapshot === true ||
     item.source_type === "manual" || item.source_type === "override";
   const basePriceValue = shouldTrustIncomingPrices
     ? item.base_price ??
@@ -158,30 +161,32 @@ const TicketItemRepository = {
   },
 
   async create(ticketId, item, options = {}) {
+    const dbOptions = sequelizeOptions(options);
     const resolvedTripFare = item.trip_fare_id
-      ? await resolveTripFareSnapshot(item.trip_fare_id, options)
+      ? await resolveTripFareSnapshot(item.trip_fare_id, dbOptions)
       : null;
-    const payload = normalizeTicketItemPayload(ticketId, item, resolvedTripFare);
+    const payload = normalizeTicketItemPayload(ticketId, item, resolvedTripFare, options);
     delete payload.id;
-    return await TicketItem.create(payload, options);
+    return await TicketItem.create(payload, dbOptions);
   },
 
   async update(ticketItem, item, options = {}) {
+    const dbOptions = sequelizeOptions(options);
     const resolvedTripFare = item.trip_fare_id
-      ? await resolveTripFareSnapshot(item.trip_fare_id, options)
+      ? await resolveTripFareSnapshot(item.trip_fare_id, dbOptions)
       : null;
-    const payload = normalizeTicketItemPayload(ticketItem.ticket_id, item, resolvedTripFare);
+    const payload = normalizeTicketItemPayload(ticketItem.ticket_id, item, resolvedTripFare, options);
     delete payload.id;
     delete payload.ticket_id;
-    return await ticketItem.update(payload, options);
+    return await ticketItem.update(payload, dbOptions);
   },
 
   async delete(ticketItem, options = {}) {
-    return await ticketItem.destroy(options);
+    return await ticketItem.destroy(sequelizeOptions(options));
   },
 
   async deleteByTicketId(ticketId, options = {}) {
-    return await TicketItem.destroy({ where: { ticket_id: ticketId }, ...options });
+    return await TicketItem.destroy({ where: { ticket_id: ticketId }, ...sequelizeOptions(options) });
   },
 
   async sync(ticketId, items = [], options = {}) {

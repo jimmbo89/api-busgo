@@ -1,203 +1,241 @@
 require("dotenv").config();
-const { Payment } = require("../models"); // Aquí usamos el modelo Vehicle
+const { Payment } = require("../models");
 const axios = require("axios");
-const logger = require("../../config/logger"); // Logger para seguimiento
-const { info } = require("winston");
+const logger = require("../../config/logger");
+const {
+  buildCreateRequest,
+  parsePaymentResponse,
+} = require("../services/TuuRemotePaymentContract");
 
-const TUU_API_URL =
-  "https://integrations.payment.haulmer.com/PaymentRequest/Create"; // URL oficial
+const TUU_API_URL = "https://integrations.payment.haulmer.com/PaymentRequest/Create";
+const TUU_REMOTE_API_URL = "https://integrations.payment.haulmer.com/RemotePayment/v2";
+const DEFINITIVE_TUU_REJECTION = /\b(?:RP-(?:000|001|003|004|005|006|007|008|010|011|012|015|017|018|019|020|021|022|025|026|027|028|029|030|031|032)|MR-(?:000|100|110|120|130|140|141|150|151|161|180)|KEY-00[23]|RP-10[012]|I-0[234])\b/;
+const TUU_ERROR_LOG_MESSAGE_LIMIT = 500;
+
+function boundedTuuLogValue(value) {
+  return String(value)
+    .replace(/(X-API-Key\s*[:=]\s*)[^\s,;]+/gi, "$1[REDACTED]")
+    .replace(/(Bearer\s+)[A-Za-z0-9._~+/-]+=*/gi, "$1[REDACTED]")
+    .replace(/\b(?:\d[ -]*?){13,19}\b/g, "[REDACTED]")
+    .slice(0, TUU_ERROR_LOG_MESSAGE_LIMIT);
+}
+
+function extractTuuError(responseData) {
+  const nestedError = responseData && typeof responseData === "object"
+    ? responseData.error
+    : null;
+  const firstError = responseData && typeof responseData === "object"
+    && Array.isArray(responseData.errors)
+    ? responseData.errors[0]
+    : null;
+  const providerCode = responseData && typeof responseData === "object"
+    ? responseData.code ?? responseData.errorCode ?? nestedError?.code ?? firstError?.code
+    : null;
+  const providerMessage = typeof responseData === "string"
+    ? responseData
+    : responseData && typeof responseData === "object"
+      ? responseData.message ?? responseData.errorMessage ?? nestedError?.message ?? firstError?.message
+      : null;
+  return { providerCode, providerMessage };
+}
+
+function logTuuError(operation, cause, payment) {
+  const responseData = cause.response?.data;
+  const { providerCode, providerMessage } = extractTuuError(responseData);
+  const details = {
+    operation,
+    httpStatus: cause.response?.status ?? null,
+    networkCode: cause.code ?? null,
+    ...(payment?.idempotencyKey ? { idempotencyKey: payment.idempotencyKey } : {}),
+    ...(providerCode != null ? { providerCode: boundedTuuLogValue(providerCode) } : {}),
+    ...(providerMessage != null ? { providerMessage: boundedTuuLogValue(providerMessage) } : {}),
+    ...(!cause.response && cause.message
+      ? { errorMessage: boundedTuuLogValue(cause.message) }
+      : {}),
+  };
+
+  // The Winston formatter writes info.message only; serialize the allowlisted
+  // diagnostic here instead of passing response/config objects as metadata.
+  logger.error(`TUU ${operation} failed ${JSON.stringify(details)}`);
+}
+
+function isDocumentedTuuRejection(response) {
+  if (response?.status === 401) return true;
+  if (!response || response.status < 400 || response.status >= 500) return false;
+  let payload;
+  try {
+    payload = typeof response.data === "string"
+      ? response.data
+      : JSON.stringify(response.data ?? "");
+  } catch {
+    return false;
+  }
+  return DEFINITIVE_TUU_REJECTION.test(payload || "");
+}
 
 const TuuRepository = {
-  /*async createPayment(paymentData) {
-    try {
-      // Incluye el encabezado directamente en la solicitud
-      const response = await tuuDevelopers.postPaymentrequestCreate(
-        paymentData,
-        {
-          headers: {
-            "X-API-Key": process.env.TUU_API_KEY, // Configura la API Key aquí
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      if (error.response) {
-        // El servidor respondió con un código de estado fuera del rango 2xx
-        logger.error(
-          "Error en la respuesta del servidor:",
-          error.response.data
-        );
-        throw new Error(
-          error.response.data.message || "Error al procesar el pago"
-        );
-      } else if (error.request) {
-        // La solicitud fue hecha pero no se recibió respuesta
-        logger.error("No se recibió respuesta del servidor:", error.request);
-        throw new Error("No se recibió respuesta del servidor");
-      } else {
-        // Algo sucedió en la configuración de la solicitud que provocó un error
-        logger.error("Error al configurar la solicitud:", error);
-        throw new Error("Error al configurar la solicitud");
-      }
-    }
-  },*/
-
-  /*async createPayment(paymentData) {
-    try {
-      if (!process.env.TUU_API_KEY) {
-        throw new Error("TUU_API_KEY no está definida en las variables de entorno");
-      }
-
-      // Construcción de datos en el formato requerido
-      const requestData = {
-        Amount: paymentData.amount,
-        Device: paymentData.device,
-        Description: paymentData.description,
-        DteType: paymentData.dteType,
-        extraData: {
-          exemptAmount: paymentData.exemptAmount ?? 0, // Si no está definido, asigna 0
-          customFields: paymentData.customFields || [],
-          sourceName: "POS Pagos",
-          sourceVersion: "v1.17v0.2",
-        },
-      };
-
-      const options = {
-        method: 'POST',
-        url: 'https://integrations.payment.haulmer.com/PaymentRequest/Create',
-        headers: {accept: 'application/json', 'content-type': 'application/json', "X-API-Key": "VGtcyYOqUM0x7ttAd2FL2CYuL2XiKhRC83AVT1GQMZ4PSacINB5gu9FTClvy9oijcNh3oY9j74bldwDQWVBvu8gLVYCa1DoxlbJBOod1oEcn2fbPGI3UWhkYi8mJrq",},
-        data: {
-          Amount: 3000,
-          Device: 'TJ44245N20440',
-          Description: 'Pago de compra de ticket',
-          DteType: 48,
-          extraData: {
-            exemptAmount: 0,
-            customFields: [{name: 'Contacto', value: '9 51221345', print: false}],
-            sourceName: 'POS Pagos',
-            sourceVersion: 'v1.17v0.2'
-          }
-        }
-      };
-
-      const response = await axios.request(options);
-      logger.info("Pago procesado exitosamente:", response.data);
-      return response.data;
-    } catch (error) {
-      if (error.response) {
-        logger.error("Error en la respuesta del servidor:", error.response.data);
-        throw new Error(error.response.data.message || "Error al procesar el pago");
-      } else if (error.request) {
-        logger.error("No se recibió respuesta del servidor:", error.request);
-        throw new Error("No se recibió respuesta del servidor");
-      } else {
-        logger.error("Error al configurar la solicitud:", error.message);
-        throw new Error("Error al configurar la solicitud");
-      }
-    }
-  },*/
-
+  // Adaptador existente v1. Crear una solicitud NO acredita un pago.
+  // https://developers.tuu.cl/docs/pago-remoto
   async createPayment(paymentData) {
-    logger.info("Datos Al hacer el pago web");
-    logger.info(JSON.stringify(paymentData));
-    try {
-      // Verificar que la API Key esté definida
-      if (!process.env.TUU_API_KEY) {
-        logger.info("TUU_API_KEY no está definida en las variables de entorno");
-        throw new Error(
-          "TUU_API_KEY no está definida en las variables de entorno"
-        );
-      }
+    const value = paymentData || {};
+    if (!process.env.TUU_API_KEY) {
+      throw new Error("TUU_API_KEY no está definida en las variables de entorno");
+    }
 
-      const options = {
+    try {
+      const response = await axios.request({
         method: "POST",
-        url: "https://integrations.payment.haulmer.com/PaymentRequest/Create",
+        url: TUU_API_URL,
         headers: {
           accept: "application/json",
           "content-type": "application/json",
-          "X-API-Key": process.env.TUU_API_KEY, // Usar la API Key desde las variables de entorno
+          "X-API-Key": process.env.TUU_API_KEY,
         },
         data: {
-          Amount: paymentData.amount,
-          Device: paymentData.device || "TJ44245N20440",
-          Description: paymentData.description || "Pago de compra de ticket",
-          DteType: paymentData.dteType || 48,
+          Amount: value.amount,
+          Device: value.device || "TJ44245N20440",
+          Description: value.description || "Pago de compra de ticket",
+          DteType: value.dteType || 48,
           extraData: {
-            exemptAmount: paymentData.exemptAmount ?? 0, // Valor predeterminado 0 si no está definido
+            exemptAmount: value.exemptAmount ?? 0,
             customFields: [
               { name: "Contacto", value: "9 51221345", print: false },
             ],
-            sourceName: paymentData.sourceName || "POS Pagos",
-            sourceVersion: paymentData.sourceVersion || "v1.17v0.2",
+            sourceName: value.sourceName || "POS Pagos",
+            sourceVersion: value.sourceVersion || "v1.17v0.2",
           },
         },
-      };
+      });
 
-      // Realizar la solicitud a la API
-      const response = await axios.request(options);
-
-      // Verificar la respuesta y devolver los datos relevantes
+      // Se conserva la lectura del adaptador v1; no es un decoder de v2
+      // ni se usa para confirmar o emitir tickets.
       if (response.data && response.data.paymentRequest) {
-        logger.info("Pago procesado exitosamente:", response.data);
         return {
           success: true,
-          status:response.data.status,
+          status: response.data.status,
           paymentRequestId: response.data.paymentRequest.paymentRequestId,
           amount: response.data.paymentRequest.amount,
           device: response.data.paymentRequest.device,
           description: response.data.paymentRequest.description,
           extraData: response.data.paymentRequest.extraData,
           message: "Pago creado exitosamente",
-          data: response.data, // Respuesta completa de la API
-        };
-      } else {
-        // Si la API no devuelve los datos esperados
-        logger.error("Error en la respuesta de la API:", response.data);
-        return {
-          success: false,
-          status:response.status,
-          message: response.data.message || "Error al procesar el pago",
-          data: response.data, // Respuesta completa de la API
+          data: response.data,
         };
       }
+
+      return {
+        success: false,
+        status: response.status,
+        message: response.data?.message || "Error al procesar el pago",
+        data: response.data,
+      };
     } catch (error) {
-      // Manejo de errores
+      // Axios incluye la API key en config/request: no registrar esos objetos.
+      logTuuError("PaymentRequest/Create", error, value);
       if (error.response) {
-        // Error en la respuesta del servidor
-        logger.error(
-          "Error en la respuesta del servidor:",
-          error.response.data
-        );
         return {
           success: false,
-          status:error.response.status,
-          message:
-            error.response.data.message || "Error en la respuesta del servidor",
-          data: error.response.data, // Respuesta de error de la API
-        };
-      } else if (error.request) {
-        // No se recibió respuesta del servidor
-        logger.error("No se recibió respuesta del servidor:", error.request);
-        return {
-          success: false,
-          status:error.response.status,
-          message: "No se recibió respuesta del servidor",
-        };
-      } else {
-        // Error al configurar la solicitud
-        logger.error("Error al configurar la solicitud:", error.message);
-        return {
-          success: false,
-          status:error.response.status,
-          message: "Error al configurar la solicitud",
+          status: error.response.status,
+          message: error.response.data?.message || "Error en la respuesta de TUU",
+          data: error.response.data,
         };
       }
+
+      const timedOut = ["ETIMEDOUT", "ECONNABORTED"].includes(error.code);
+      return {
+        success: false,
+        status: timedOut ? 504 : 502,
+        message: "No se obtuvo confirmación de TUU; no reintentar el cobro automáticamente",
+      };
     }
   },
 
-  async create(body) {
+  async createRemotePayment(payment) {
+    if (!process.env.TUU_API_KEY) {
+      const error = new Error('TUU_API_KEY no está configurada');
+      error.httpStatus = 503;
+      error.uncertain = false;
+      throw error;
+    }
+
+    const requestData = buildCreateRequest(payment);
     try {
-      // Crear y guardar el pago en la base de datos
+      const response = await axios.request({
+        method: 'POST',
+        url: `${TUU_REMOTE_API_URL}/Create`,
+        timeout: 15000,
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'X-API-Key': process.env.TUU_API_KEY,
+        },
+        data: requestData,
+      });
+      if (response.status !== 201) {
+        const error = new Error('TUU devolvió un código de creación inesperado');
+        error.httpStatus = 502;
+        error.uncertain = true;
+        throw error;
+      }
+      return parsePaymentResponse(response.data, payment, 'POST');
+    } catch (cause) {
+      logTuuError("RemotePayment/v2/Create", cause, payment);
+      if (cause.httpStatus) throw cause;
+
+      const { providerCode, providerMessage } = extractTuuError(cause.response?.data);
+      const error = new Error(providerMessage || cause.message || 'Error al crear pago remoto TUU');
+      error.httpStatus = cause.response?.status || (["ETIMEDOUT", "ECONNABORTED"].includes(cause.code) ? 504 : 502);
+      if (providerCode != null) error.providerCode = String(providerCode);
+      // El catálogo TUU también contiene errores 400 de duplicidad y proceso.
+      // Sin un código documentado de rechazo, un 4xx no demuestra por sí solo
+      // que no exista un pago asociado a esta clave.
+      error.uncertain = !isDocumentedTuuRejection(cause.response);
+      error.providerStatus = cause.response?.status ?? null;
+      throw error;
+    }
+  },
+
+  async getRemotePayment(payment) {
+    if (!process.env.TUU_API_KEY) {
+      const error = new Error('TUU_API_KEY no está configurada');
+      error.httpStatus = 503;
+      error.uncertain = true;
+      throw error;
+    }
+
+    try {
+      const response = await axios.request({
+        method: 'GET',
+        url: `${TUU_REMOTE_API_URL}/GetPaymentRequest/${encodeURIComponent(payment.idempotencyKey)}`,
+        timeout: 15000,
+        headers: {
+          accept: 'application/json',
+          'X-API-Key': process.env.TUU_API_KEY,
+        },
+      });
+      if (response.status !== 200) {
+        const error = new Error('TUU devolvió un código de consulta inesperado');
+        error.httpStatus = 502;
+        error.uncertain = true;
+        throw error;
+      }
+      return parsePaymentResponse(response.data, payment, 'GET');
+    } catch (cause) {
+      logTuuError("RemotePayment/v2/GetPaymentRequest", cause, payment);
+      if (cause.httpStatus) throw cause;
+
+      const { providerCode, providerMessage } = extractTuuError(cause.response?.data);
+      const error = new Error(providerMessage || cause.message || 'Error al consultar pago remoto TUU');
+      error.httpStatus = cause.response?.status || (["ETIMEDOUT", "ECONNABORTED"].includes(cause.code) ? 504 : 502);
+      if (providerCode != null) error.providerCode = String(providerCode);
+      error.uncertain = true;
+      error.providerStatus = cause.response?.status ?? null;
+      throw error;
+    }
+  },
+
+  async create(body, options = {}) {
+    try {
       const payment = await Payment.create({
         ticket_id: body.ticket_id,
         amount: body.amount,
@@ -206,10 +244,9 @@ const TuuRepository = {
         dteType: body.dteType,
         idempotencyKey: body.idempotencyKey,
         status: body.status,
-        exemptAmount: body.exemptAmount || 0, // Valor por defecto si no se proporciona
-        customFields: body.customFields || [], // Valor por defecto si no se proporciona
-      });
-
+        exemptAmount: body.exemptAmount || 0,
+        customFields: body.customFields || [],
+      }, options);
       return payment;
     } catch (err) {
       logger.error("Error al guardar el pago:", err);
@@ -219,16 +256,8 @@ const TuuRepository = {
 
   async getPaymentsByTicketId(ticket_id) {
     try {
-      // Realizar la consulta a la base de datos usando Sequelize
-      const payments = await Payment.findAll({
-        where: {
-          ticket_id: ticket_id, // Filtrar por ticket_id
-        },
-      });
-      // Si se encuentran pagos, devolver los pagos
-      return payments;
+      return await Payment.findAll({ where: { ticket_id } });
     } catch (error) {
-      // Manejo de errores
       logger.error("Error al obtener los pagos:", error);
       throw error;
     }

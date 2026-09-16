@@ -171,6 +171,7 @@ const {
   ticketSoldDateSchema,
   passengerTypeSalesReportSchema,
   storeTicketWebSchema,
+  ticketWebPaymentStatusSchema,
   storeExpressTicketSchema,
   qrEncryptedSchema,
   ticketSoldDateWorkerSchema,
@@ -670,6 +671,11 @@ router.post("/trips-worker-report", validateSchema(tripWorkerReportSchema), Trip
 //Rutas Ticket
 router.get("/ticket", TicketController.index);
 router.post("/ticket-web", validateSchema(storeTicketWebSchema),TicketController.store_web);
+router.post(
+  "/ticket-web/payment-status",
+  validateSchema(ticketWebPaymentStatusSchema),
+  TicketController.ticket_web_payment_status
+);
 router.post("/express-sales-ticket", validateSchema(storeExpressTicketSchema), TicketController.store_express); //ventas express de tickets
 router.post(
   "/ticket",

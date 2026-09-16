@@ -5,6 +5,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const {
   Ticket,
+  TicketWebPayment,
   TicketItem,
   TicketType,
   TripFare,
@@ -923,21 +924,38 @@ const TicketRepository = {
       }
 
       // Recupera todos los tickets que cumplan las condiciones
-      const tickets = await Ticket.findAll({
-        where: conditions,
-        attributes: ["seats"], // Obtiene solo los asientos reservados
+      const tickets = options.paymentHoldsOnly
+        ? []
+        : await Ticket.findAll({
+          where: conditions,
+          attributes: ["seats"], // Obtiene solo los asientos reservados
+          transaction: options.transaction || null,
+        });
+
+      const paymentHolds = await TicketWebPayment.findAll({
+        where: {
+          trip_id: tripId,
+          dispatch_state: { [Op.in]: ["RESERVED", "DISPATCHING", "UNKNOWN", "PENDING"] },
+          ...(options.excludeIdempotencyKey
+            ? { idempotency_key: { [Op.ne]: options.excludeIdempotencyKey } }
+            : {}),
+        },
+        attributes: ["seats"],
         transaction: options.transaction || null,
       });
 
       // Si no hay tickets, no hay asientos reservados, por lo que no hay conflicto
-      if (tickets.length === 0) {
+      if (tickets.length === 0 && paymentHolds.length === 0) {
         return [];
       }
 
       // Combina los asientos ya reservados en un único array
       const reservedSeats = tickets.reduce(
         (acc, ticket) => acc.concat(normalizeSeatNumbers(ticket.seats)),
-        []
+        paymentHolds.reduce(
+          (acc, hold) => acc.concat(normalizeSeatNumbers(hold.seats)),
+          []
+        )
       );
 
       // Normaliza los asientos seleccionados a números (por si vienen como strings)
@@ -1048,27 +1066,56 @@ const TicketRepository = {
         return normalizedSelectedSeats;
       }
 
-      const existingTickets = await Ticket.findAll({
+      const existingTickets = options.paymentHoldsOnly
+        ? []
+        : await Ticket.findAll({
+          where: {
+            trip_id: tripId,
+            ...(ticketId ? { id: { [Op.ne]: ticketId } } : {}),
+          },
+          attributes: ["id", "seats", "fare_segment_id"],
+          transaction: options.transaction || null,
+          include: [
+            {
+              model: FareSegment,
+              as: "fareSegment",
+              attributes: ["id", "origin_route_stop_id", "destination_route_stop_id", "active"],
+            },
+            ...ticketItemInclude,
+          ],
+        });
+
+      const activePaymentHolds = await TicketWebPayment.findAll({
         where: {
           trip_id: tripId,
-          ...(ticketId ? { id: { [Op.ne]: ticketId } } : {}),
+          dispatch_state: { [Op.in]: ["RESERVED", "DISPATCHING", "UNKNOWN", "PENDING"] },
+          ...(options.excludeIdempotencyKey
+            ? { idempotency_key: { [Op.ne]: options.excludeIdempotencyKey } }
+            : {}),
         },
-        attributes: ["id", "seats", "fare_segment_id"],
+        attributes: ["seats", "fare_segment_ids"],
         transaction: options.transaction || null,
-        include: [
-          {
-            model: FareSegment,
-            as: "fareSegment",
-            attributes: ["id", "origin_route_stop_id", "destination_route_stop_id", "active"],
-          },
-          ...ticketItemInclude,
-        ],
       });
 
       const conflictingSeats = new Set();
       const selectedSeatSet = new Set(normalizedSelectedSeats);
 
-      for (const existingTicket of existingTickets) {
+      const existingReservations = [
+        ...existingTickets,
+        ...activePaymentHolds.map((hold) => ({
+          seats: hold.seats,
+          fare_segment_ids: hold.fare_segment_ids,
+        })),
+      ];
+
+      const fareSegmentById = new Map(
+        (Array.isArray(trip.tripFares) ? trip.tripFares : [])
+          .map((tripFare) => tripFare?.fareSegmentTicketType?.fareSegment)
+          .filter(Boolean)
+          .map((fareSegment) => [Number(fareSegment.id), fareSegment])
+      );
+
+      for (const existingTicket of existingReservations) {
         const existingSeats = normalizeSeatNumbers(existingTicket.seats);
         const seatIntersection = existingSeats.filter((seat) => selectedSeatSet.has(seat));
         if (seatIntersection.length === 0) {
@@ -1076,6 +1123,12 @@ const TicketRepository = {
         }
 
         const existingFareSegments = extractTicketFareSegments(existingTicket);
+        if (!existingFareSegments.length && Array.isArray(existingTicket.fare_segment_ids)) {
+          for (const fareSegmentId of existingTicket.fare_segment_ids) {
+            const fareSegment = fareSegmentById.get(Number(fareSegmentId));
+            if (fareSegment) existingFareSegments.push(fareSegment);
+          }
+        }
         if (!existingFareSegments.length) {
           seatIntersection.forEach((seat) => conflictingSeats.add(seat));
           continue;

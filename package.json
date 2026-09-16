@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "test:tuu": "node --test test/tuu-ticket-web.test.js test/tuu-routes.test.js test/tuu-remote-contract.test.js test/tuu-ticket-web-service.test.js test/tuu-remote-repository.test.js test/ticket-web-payment-holds.test.js test/ticket-web-payment-migration.test.js test/ticket-update-payment-hold.test.js",
     "dev": "nodemon app/server.js",
     "start": "pm2 start ecosystem.config.js"
   },

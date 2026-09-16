@@ -1,6 +1,8 @@
-const { Ticket, sequelize } = require("../models");
+const { Ticket, Trip, sequelize } = require("../models");
 const { Transaction } = require("sequelize");
 const logger = require("../../config/logger"); // Logger para seguimiento
+const TuuTicketWebService = require("../services/TuuTicketWebService");
+const { ticketWebErrorMessage } = require("../services/TicketWebMessages");
 const {
   TicketRepository,
   TicketItemRepository,
@@ -10,7 +12,6 @@ const {
   RouteRepository,
   WorkerRepository,
   IncidentRepository,
-  TuuRepository,
   FareSegmentRepository,
   TicketTypeRepository,
   TripTemplateRepository,
@@ -21,6 +22,15 @@ const {
   } = require("../repositories");
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const ticketWebErrorBody = (code, details) => {
+  const message = ticketWebErrorMessage(code);
+  return {
+    code,
+    msg: message,
+    message,
+    ...(details === undefined ? {} : { details }),
+  };
+};
 const toPlainObject = (item) =>
   item && typeof item.toJSON === "function" ? item.toJSON() : item;
 const parseArrayValue = (value) => {
@@ -60,6 +70,39 @@ const mapTicketItems = (ticketItems = []) =>
     tripFare: ticketItem.tripFare ? toPlainObject(ticketItem.tripFare) : null,
     ticketType: ticketItem.ticketType ? toPlainObject(ticketItem.ticketType) : null,
   }));
+
+const mapWebTicketResponse = (ticket) => ({
+  id: ticket.id,
+  branchId: ticket.branch_id,
+  branch_id: ticket.branch_id,
+  tripId: ticket.trip_id,
+  trip_id: ticket.trip_id,
+  code: ticket.trip?.code ?? null,
+  tripCode: ticket.trip?.code ?? null,
+  fare_segment_id: ticket.fare_segment_id,
+  fareSegmentId: ticket.fare_segment_id,
+  method: ticket.method,
+  quantity: ticket.quantity,
+  price: Number(ticket.price),
+  total: Number(ticket.total),
+  date: ticket.date,
+  schedule: ticket.trip.schedule,
+  vehiclePlate: ticket.trip.vehicle?.plate,
+  internal_number: ticket.trip.vehicle?.internal_number,
+  internalNumber: ticket.trip.vehicle?.internal_number,
+  print: ticket.print,
+  qr: ticket.qr,
+  barcode: ticket.barcode,
+  ticketItems: mapTicketItems(ticket.ticketItems),
+  branchName: ticket.branch.name,
+  rut: ticket.branch.company.rut,
+  address: ticket.branch.address,
+  phone: ticket.branch.phone,
+  tripName: ticket.trip.route.name,
+  routeCode: ticket.trip.route?.code ?? null,
+  tripOrigin: ticket.trip.route.origin.address,
+  tripDestination: ticket.trip.route.destination.address,
+});
 
 const extractTimePart = (value) => {
   if (typeof value !== "string") {
@@ -1223,18 +1266,27 @@ const TicketController = {
         normalizedTicketItems ?? []
       );
 
-      /*
-      // Verifica los asientos reservados
+      const lockedTrip = await Trip.findByPk(trip_id, {
+        transaction: t,
+        lock: t.LOCK?.UPDATE,
+      });
+      if (!lockedTrip) {
+        await t.rollback();
+        return res.status(400).json({ msg: "TripNotFound" });
+      }
+
+      // Evita consumir un asiento retenido por un pago TUU pendiente.
       const conflictingSeats = fareSegmentIdsForValidation.length > 0
         ? await TicketRepository.checkReservedSeatsBySegment(
             trip_id,
             seats,
             fareSegmentIdsForValidation,
             null,
-            { transaction: t }
+            { transaction: t, paymentHoldsOnly: true }
           )
         : await TicketRepository.checkReservedSeats(trip_id, seats, null, {
             transaction: t,
+            paymentHoldsOnly: true,
           });
 
       if (conflictingSeats.length > 0) {
@@ -1250,7 +1302,6 @@ const TicketController = {
           .status(400)
           .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
-      */
 
       for (const fareSegmentId of fareSegmentIdsForValidation) {
         const fareSegmentValidation = await validateFareSegmentForTrip(
@@ -1377,13 +1428,18 @@ const TicketController = {
     logger.info("Datos recibidos al crear un ticket web");
     logger.info(JSON.stringify(req.body));
     req.body.user_id = req.user.id;
+    const cardRequestFingerprintBody = { ...req.body };
+
+    if (!["Efectivo", "Credito", "Debito"].includes(req.body.method)) {
+      return res.status(400).json(ticketWebErrorBody("InvalidPaymentMethod"));
+    }
 
     const trip = await TripRepository.findByIdWithTickets(req.body.trip_id);
     if (!trip) {
       logger.error(
         `TicketController->store_web: Viaje no encontrado con ID ${req.body.trip_id}`
       );
-      return res.status(400).json({ msg: "TripNotFound" });
+      return res.status(400).json(ticketWebErrorBody("TripNotFound"));
     }
 
     const branch = await BranchRepository.findById(req.body.branch_id);
@@ -1391,7 +1447,7 @@ const TicketController = {
       logger.error(
         `TicketController->store_web: Sucursal no encontrada con ID ${req.body.branch_id}`
       );
-      return res.status(400).json({ msg: "BranchNotFound" });
+      return res.status(400).json(ticketWebErrorBody("BranchNotFound"));
     }
 
     const {
@@ -1421,44 +1477,84 @@ const TicketController = {
         req.body.ticketItems = normalizedTicketItems;
       }
 
+      const lockedTrip = await Trip.findByPk(trip_id, {
+        transaction: t,
+        lock: t.LOCK?.UPDATE,
+      });
+      if (!lockedTrip) {
+        await t.rollback();
+        return res.status(400).json(ticketWebErrorBody("TripNotFound"));
+      }
+
+      let zeroCostCardSale = null;
+      let saleValidationTrip = trip;
+      if ((method === "Credito" || method === "Debito") && Number(req.body.total) === 0) {
+        saleValidationTrip = await TripRepository.findByIdWithTickets(trip_id, {
+          transaction: t,
+          lock: t.LOCK?.UPDATE,
+        });
+        if (!saleValidationTrip) {
+          await t.rollback();
+          return res.status(400).json(ticketWebErrorBody("TripNotFound"));
+        }
+        zeroCostCardSale = TuuTicketWebService.prepareCardSale(req.body, saleValidationTrip, user_id);
+      }
       const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
-        trip,
-        normalizedTicketItems ?? []
+        saleValidationTrip,
+        zeroCostCardSale?.ticketItems ?? normalizedTicketItems ?? []
       );
 
-      /*
-      // Verifica los asientos reservados
-      const conflictingSeats = fareSegmentIdsForValidation.length > 0
-        ? await TicketRepository.checkReservedSeatsBySegment(
-            trip_id,
-            seats,
-            fareSegmentIdsForValidation,
-            null,
-            { transaction: t }
-          )
-        : await TicketRepository.checkReservedSeats(trip_id, seats, null, {
-            transaction: t,
-          });
+      // Las ventas sin cargo también validan las reservas de pago y los tickets existentes.
+      if (method === "Efectivo" || zeroCostCardSale) {
+        const conflictingSeats = zeroCostCardSale && fareSegmentIdsForValidation.length > 0
+          ? await TicketRepository.checkReservedSeatsBySegment(
+              trip_id,
+              zeroCostCardSale.seats,
+              fareSegmentIdsForValidation,
+              null,
+              { transaction: t }
+            )
+          : zeroCostCardSale
+            ? await TicketRepository.checkReservedSeats(trip_id, zeroCostCardSale.seats, null, {
+                transaction: t,
+              })
+            : fareSegmentIdsForValidation.length > 0
+          ? await TicketRepository.checkReservedSeatsBySegment(
+              trip_id,
+              seats,
+              fareSegmentIdsForValidation,
+              null,
+              { transaction: t, paymentHoldsOnly: true }
+            )
+          : await TicketRepository.checkReservedSeats(trip_id, seats, null, {
+              transaction: t,
+              paymentHoldsOnly: true,
+            });
 
-      if (conflictingSeats.length > 0) {
-        logger.error(
-          `TicketController->store_web: Los asientos ya están reservados: ${conflictingSeats.join(
-            ", "
-          )}`
-        );
-        if (!t.finished) {
-          await t.rollback();
+        if (conflictingSeats.length > 0) {
+          if (zeroCostCardSale) {
+            await t.rollback();
+            return res.status(409).json(ticketWebErrorBody(
+              "SeatsAlreadyReserved",
+              { seats: conflictingSeats }
+            ));
+          }
+          logger.error(
+            `TicketController->store_web: Los asientos ya están reservados: ${conflictingSeats.join(", ")}`
+          );
+          if (!t.finished) {
+            await t.rollback();
+          }
+          return res
+            .status(400)
+            .json(ticketWebErrorBody("SeatsAlreadyReserved"));
         }
-        return res
-          .status(400)
-          .json({ msg: "Hacientos seleccionados ya han sido reservados" });
       }
-      */
 
       for (const fareSegmentId of fareSegmentIdsForValidation) {
         const fareSegmentValidation = await validateFareSegmentForTrip(
           fareSegmentId,
-          trip,
+          saleValidationTrip,
           branch
         );
         if (fareSegmentValidation?.error === "FareSegmentNotFound") {
@@ -1468,7 +1564,7 @@ const TicketController = {
           if (!t.finished) {
             await t.rollback();
           }
-          return res.status(400).json({ msg: "FareSegmentNotFound" });
+          return res.status(400).json(ticketWebErrorBody("FareSegmentNotFound"));
         }
         if (fareSegmentValidation?.error === "FareSegmentRouteMismatch") {
           logger.error(
@@ -1477,7 +1573,7 @@ const TicketController = {
           if (!t.finished) {
             await t.rollback();
           }
-          return res.status(400).json({ msg: "FareSegmentRouteMismatch" });
+          return res.status(400).json(ticketWebErrorBody("FareSegmentRouteMismatch"));
         }
         if (fareSegmentValidation?.error === "FareSegmentCompanyMismatch") {
           logger.error(
@@ -1486,17 +1582,38 @@ const TicketController = {
           if (!t.finished) {
             await t.rollback();
           }
-          return res.status(400).json({ msg: "FareSegmentCompanyMismatch" });
+          return res.status(400).json(ticketWebErrorBody("FareSegmentCompanyMismatch"));
         }
       }
 
-      if (method === "Efectivo") {
-        ticket = await TicketRepository.create(req.body, {
+      if ((method === "Credito" || method === "Debito") && !zeroCostCardSale) {
+        await t.commit();
+        const result = await TuuTicketWebService.start(
+          req.body,
+          user_id,
+          cardRequestFingerprintBody
+        );
+        if (result.body.ticket?.id) {
+          const issuedTicket = await TicketRepository.findById(result.body.ticket.id);
+          result.body.ticket = mapWebTicketResponse(issuedTicket);
+        }
+        return res.status(result.httpStatus).json(result.body);
+      }
+
+      if (method === "Efectivo" || zeroCostCardSale) {
+        const ticketBody = zeroCostCardSale
+          ? { ...req.body, ...zeroCostCardSale, transactionStatus: null }
+          : req.body;
+        const ticketItemsToSync = zeroCostCardSale
+          ? zeroCostCardSale.ticketItems
+          : normalizedTicketItems;
+        ticket = await TicketRepository.create(ticketBody, {
           transaction: t,
         });
-        if (normalizedTicketItems !== null) {
-          await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
+        if (ticketItemsToSync !== null) {
+          await TicketItemRepository.sync(ticket.id, ticketItemsToSync, {
             transaction: t,
+            ...(zeroCostCardSale ? { preserveServerPriceSnapshot: true } : {}),
           });
         }
         let mappedTicket = {
@@ -1511,7 +1628,7 @@ const TicketController = {
             sequenceNumber: ticket.sequenceNumber,
             trip_id: ticket.trip_id,  // Agregar trip_id
             seats: ticket.seats,      // Agregar seats para validación
-            ticketItems: normalizedTicketItems ?? []
+            ticketItems: ticketItemsToSync ?? []
         };
         //generar qr y codigo de barra
         const { qrCodePath, barcodePath } =
@@ -1524,142 +1641,53 @@ const TicketController = {
         
         await t.commit();
         ticket = await TicketRepository.findById(ticket.id);
-        mappedTicket = {
-          id: ticket.id,
-          branchId: ticket.branch_id,
-          branch_id: ticket.branch_id,
-          tripId: ticket.trip_id,
-          trip_id: ticket.trip_id,
-          code: ticket.trip?.code ?? null,
-          tripCode: ticket.trip?.code ?? null,
-          fare_segment_id: ticket.fare_segment_id,
-          fareSegmentId: ticket.fare_segment_id,
-          method: ticket.method,
-          quantity: ticket.quantity,
-          price: Number(ticket.price),
-          total: Number(ticket.total),
-          date: ticket.date,
-          schedule: ticket.trip.schedule,
-          vehiclePlate: ticket.trip.vehicle?.plate,
-          internal_number: ticket.trip.vehicle?.internal_number,
-          internalNumber: ticket.trip.vehicle?.internal_number,
-          print: ticket.print,
-          qr: ticket.qr,
-          barcode: ticket.barcode,
-          ticketItems: mapTicketItems(ticket.ticketItems),
-          branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-          rut: ticket.branch.company.rut,
-          address: ticket.branch.address,
-          phone: ticket.branch.phone,
-          tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
-          routeCode: ticket.trip.route?.code ?? null,
-          tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
-          tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
-        };
-        res.status(201).json({ ticket: mappedTicket });
-      } else {
-        const paymentData = {
-          amount: total,
-          device: device || "TJ44243320217",
-          description: "Compra de tickets",
-          dteType: 48,
-          exemptAmount: 0,
-          customFields: [
-            {
-              name: "Contacto",
-              value: "9 51221345",
-              print: false,
-            },
-          ],
-        };
-        const result = await TuuRepository.createPayment(paymentData);
-        if (result.success) {
-          logger.log("Pago creado con éxito:", result.paymentRequestId);
-          req.body.transactionStatus = result.success;
-          req.body.sequenceNumber = result.paymentRequestId;
-          req.body.extraData = result.extraData;
-
-          let ticket = await TicketRepository.create(req.body, {
-            transaction: t,
-          });
-          if (normalizedTicketItems !== null) {
-            await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
-              transaction: t,
-            });
-          }
-
-          let mappedTicket = {
-            id: ticket.id,
-            method: ticket.method,
-            quantity: ticket.quantity,
-            price: ticket.price,
-            total: ticket.total,
-            adults: ticket.adults,
-            minors: ticket.minors,
-            date: ticket.date,
-            sequenceNumber: ticket.sequenceNumber,
-               trip_id: ticket.trip_id,  // Agregar trip_id
-            seats: ticket.seats       // Agregar seats para validacións
-          };
-          //generar qr y codigo de barra
-          const { qrCodePath, barcodePath } =
-            await TicketRepository.generateTicketCodes(mappedTicket, ticket, { transaction: t });
-            const ticketWithCodes = {
-              ...ticket.get({ plain: true }), // Convertir el modelo Sequelize a objeto plano si es necesario
-              qrCodePath,
-              barcodePath
-            };
-          await t.commit();
-
-          ticket = await TicketRepository.findById(ticket.id);
-        mappedTicket = {
-          id: ticket.id,
-          branchId: ticket.branch_id,
-          branch_id: ticket.branch_id,
-          tripId: ticket.trip_id,
-          trip_id: ticket.trip_id,
-          fare_segment_id: ticket.fare_segment_id,
-          fareSegmentId: ticket.fare_segment_id,
-          method: ticket.method,
-          quantity: ticket.quantity,
-          price: Number(ticket.price),
-          total: Number(ticket.total),
-          date: ticket.date,
-          schedule: ticket.trip.schedule,
-          vehiclePlate: ticket.trip.vehicle?.plate,
-          internal_number: ticket.trip.vehicle?.internal_number,
-          internalNumber: ticket.trip.vehicle?.internal_number,
-          print: ticket.print,
-          qr: ticket.qr,
-          barcode: ticket.barcode,
-          ticketItems: mapTicketItems(ticket.ticketItems),
-          branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-          rut: ticket.branch.rut,
-          address: ticket.branch.address,
-          phone: ticket.branch.phone,
-          tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
-          tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
-          tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
-        };
-        res.status(201).json({ ticket: mappedTicket });
-        } else {
-          logger.error("Error al crear el pago:", result.message);
-          await t.commit();
-          res
-            .status(result.status || 500)
-            .json({ msg: result.message, ticket: [] });
-        }
+        mappedTicket = mapWebTicketResponse(ticket);
+        res.status(201).json({
+          message: zeroCostCardSale
+            ? "La venta se registró correctamente y no requirió un cobro con tarjeta."
+            : "La venta se registró correctamente.",
+          ticket: mappedTicket,
+        });
       }
     } catch (error) {
       if (!t.finished) {
         await t.rollback();
       }
-      const errorMsg = error.details
+      const errorMsg = Array.isArray(error.details)
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
 
       logger.error("TicketController->store_web:" + errorMsg);
-      return res.status(500).json({ error: "ServerError", details: errorMsg });
+      if (error.status) {
+        return res.status(error.status).json(ticketWebErrorBody(error.msg, error.details));
+      }
+      const message = "No pudimos completar la venta. Intenta nuevamente y, si el problema continúa, contacta soporte.";
+      return res.status(500).json({ code: "ServerError", msg: message, message });
+    }
+  },
+
+  async ticket_web_payment_status(req, res) {
+    try {
+      const result = await TuuTicketWebService.status(
+        req.body.idempotencyKey,
+        req.user.id
+      );
+      if (result.body.ticket?.id) {
+        const issuedTicket = await TicketRepository.findById(result.body.ticket.id);
+        result.body.ticket = mapWebTicketResponse(issuedTicket);
+      }
+      return res.status(result.httpStatus).json(result.body);
+    } catch (error) {
+      const status = error.status || 500;
+      const body = error.status
+        ? ticketWebErrorBody(error.msg, error.details)
+        : {
+            code: "ServerError",
+            msg: "No pudimos consultar el estado del pago. Vuelve a intentarlo o contacta soporte.",
+            message: "No pudimos consultar el estado del pago. Vuelve a intentarlo o contacta soporte.",
+          };
+      if (!error.status) logger.error("TicketController->ticket_web_payment_status:" + (error.message || "Error desconocido"));
+      return res.status(status).json(body);
     }
   },
 
@@ -2169,24 +2197,6 @@ async verifyEncryptedQR(req, res) {
       normalizedTicketItems ?? []
     );
 
-    const conflictingSeats = fareSegmentIdsForValidation.length > 0
-      ? await TicketRepository.checkReservedSeatsBySegment(
-          tripForValidation.id,
-          seats,
-          fareSegmentIdsForValidation,
-          id
-        )
-      : await TicketRepository.checkReservedSeats(tripForValidation.id, seats, id);
-
-    if (conflictingSeats.length > 0) {
-      logger.error(
-        `TicketController->update: Los asientos ya están reservados: ${conflictingSeats.join(
-          ", "
-        )}`
-      );
-      return res.status(400).json({ msg: "SeatsReserved" });
-    }
-
     for (const fareSegmentId of fareSegmentIdsForValidation) {
       const fareSegmentValidation = await validateFareSegmentForTrip(
         fareSegmentId,
@@ -2213,11 +2223,52 @@ async verifyEncryptedQR(req, res) {
       }
     }
 
+    const t = await sequelize.transaction({
+      isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE,
+    });
+
     try {
-      const updatedTicket = await TicketRepository.update(ticket, req.body);
-      if (normalizedTicketItems !== null) {
-        await TicketItemRepository.sync(ticket.id, normalizedTicketItems);
+      const lockedTrip = await Trip.findByPk(tripForValidation.id, {
+        transaction: t,
+        lock: t.LOCK?.UPDATE,
+      });
+      if (!lockedTrip) {
+        await t.rollback();
+        return res.status(400).json({ msg: "TripNotFound" });
       }
+
+      const conflictingSeats = fareSegmentIdsForValidation.length > 0
+        ? await TicketRepository.checkReservedSeatsBySegment(
+            tripForValidation.id,
+            seats,
+            fareSegmentIdsForValidation,
+            id,
+            { transaction: t }
+          )
+        : await TicketRepository.checkReservedSeats(
+            tripForValidation.id,
+            seats,
+            id,
+            { transaction: t }
+          );
+
+      if (conflictingSeats.length > 0) {
+        logger.error(
+          `TicketController->update: Los asientos ya están reservados: ${conflictingSeats.join(", ")}`
+        );
+        await t.rollback();
+        return res.status(400).json({ msg: "SeatsReserved" });
+      }
+
+      const updatedTicket = await TicketRepository.update(ticket, req.body, {
+        transaction: t,
+      });
+      if (normalizedTicketItems !== null) {
+        await TicketItemRepository.sync(ticket.id, normalizedTicketItems, {
+          transaction: t,
+        });
+      }
+      await t.commit();
 
       let ticketMaped = await TicketRepository.findById(ticket.id);
       const mappedTicket = {
@@ -2251,6 +2302,9 @@ async verifyEncryptedQR(req, res) {
         await TicketRepository.generateTicketCodes(mappedTicket, ticketMaped);
       res.status(200).json({ ticket: updatedTicket });
     } catch (error) {
+      if (!t.finished) {
+        await t.rollback();
+      }
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";

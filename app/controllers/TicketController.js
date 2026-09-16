@@ -639,6 +639,8 @@ const mapTicketResponse = (ticket) => ({
   branch_id: ticket.branch_id,
   tripId: ticket.trip_id,
   trip_id: ticket.trip_id,
+  saleMode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
+  sale_mode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
   fare_segment_id: ticket.fare_segment_id,
   fareSegmentId: ticket.fare_segment_id,
   method: ticket.method,

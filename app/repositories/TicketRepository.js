@@ -674,7 +674,7 @@ const TicketRepository = {
         {
           model: Trip,
           as: "trip",
-          attributes: ["id", "date", "schedule", "start", "end"],
+          attributes: ["id", "date", "schedule", "start", "end", "saleMode"],
           include: [
             {
               model: Route,

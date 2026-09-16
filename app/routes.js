@@ -169,6 +169,7 @@ const {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
+  getTicketsDateSchema,
   passengerTypeSalesReportSchema,
   storeTicketWebSchema,
   ticketWebPaymentStatusSchema,
@@ -699,7 +700,7 @@ router.post(
 );
 router.post(
   "/get-tickets-date",
-  validateSchema(branchTicketTripSchema),
+  validateSchema(getTicketsDateSchema),
   TicketController.getTicketsDate
 );
 router.post(

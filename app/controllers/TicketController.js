@@ -1028,34 +1028,45 @@ const TicketController = {
 
   async getTicketsDate(req, res) {
     logger.info(
-      `${req.user.name} - Entra a buscar los tickets de una sucursal en el dia `
+      `${req.user.name} - Entra a buscar tickets por alcance y fecha`
     );
 
-    const { branch_id, date, endDate } = req.body;
-    //const workerId = req.worker.id;
-    const workerId = null;
-    const branch = await BranchRepository.findById(branch_id);
-    if (!branch) {
-      logger.error(
-        `TripController->getTicketDate: Sucursal no encontrada con ID ${branch_id}`
-      );
-      return res.status(400).json({ msg: "BranchNotFound" });
-    }
-
     try {
-      const tickets = await TicketRepository.findAllDateBase(
-        branch_id,
+      const {
+        type,
+        id,
         date,
         endDate,
-        workerId
-      );
+        method,
+        sale_mode: saleMode,
+        include_maintainers: includeMaintainers,
+      } = req.body;
 
-      if (!tickets.length) {
-        logger.info(
-          "TripController->getTicketDate: TicketsNotFound"
-        );
-        return res.status(204).json({ msg: "TicketsNotFound" });
+      if (type === "Sucursal") {
+        const branch = await BranchRepository.findById(id);
+        if (!branch) {
+          logger.error(
+            `TicketController->getTicketsDate: Sucursal no encontrada con ID ${id}`
+          );
+          return res.status(404).json({ msg: "BranchNotFound" });
+        }
+      } else {
+        const company = await CompanyRepository.findById(id);
+        if (!company) {
+          logger.error(
+            `TicketController->getTicketsDate: Compañía no encontrada con ID ${id}`
+          );
+          return res.status(404).json({ msg: "CompanyNotFound" });
+        }
       }
+
+      const tickets = await TicketRepository.findAllDateBase(
+        id,
+        date,
+        endDate,
+        null,
+        { type, method, saleMode }
+      );
 
       const ticketIds = tickets.map((ticket) => ticket.id);
       const ticketItemsByTicketId = await TicketRepository.getTicketItemsByTicketIds(ticketIds);
@@ -1087,6 +1098,7 @@ const TicketController = {
         minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
         barcode: ticket.barcode,
+        print: ticket.print,
         date: ticket.date,
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
         userName: ticket.user.name, // Incluir los datos del usuario asociado
@@ -1120,9 +1132,51 @@ const TicketController = {
           : null,
       }));
 
-      res.status(200).json({ tickets: mappedTickets });
+      const summary = mappedTickets.reduce(
+        (result, ticket) => {
+          result.pasajesEmitidos += 1;
+          result.asientosComprados += getTicketSeatCount(ticket);
+          result.reimpresiones += Math.max(Number(ticket.print || 0) - 1, 0);
+          result.totales += Number(ticket.total) || 0;
+          return result;
+        },
+        {
+          pasajesEmitidos: 0,
+          asientosComprados: 0,
+          reimpresiones: 0,
+          totales: 0,
+        }
+      );
+      summary.totales = Number(summary.totales.toFixed(2));
+
+      const response = {
+        tickets: mappedTickets,
+        summary,
+      };
+
+      if (includeMaintainers !== false) {
+        response.maintainers = {
+          payment_methods: [
+            { value: "Efectivo", label: "Efectivo", icon: "mdi-cash" },
+            {
+              value: "Credito",
+              label: "Crédito",
+              icon: "mdi-credit-card-outline",
+            },
+            { value: "Debito", label: "Débito", icon: "mdi-bank-outline" },
+          ],
+          sale_types: [
+            { value: "normal", label: "Venta Full" },
+            { value: "express", label: "Venta Express" },
+            //{ value: "aboard", label: "Venta a Bordo" },
+            //{ value: "web", label: "Venta Web" },
+          ],
+        };
+      }
+
+      res.status(200).json(response);
     } catch (error) {
-      logger.error("TicketController->getTicketDate: " + error.message);
+      logger.error("TicketController->getTicketsDate: " + error.message);
       res.status(500).json({ error: "ServerError", details: error.message });
     }
   },

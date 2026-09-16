@@ -395,7 +395,14 @@ const TicketRepository = {
     });
   },
 
-  async findAllDateBase(branchId, date = null, endDate = null, workerId = null) {
+  async findAllDateBase(
+    scopeId,
+    date = null,
+    endDate = null,
+    workerId = null,
+    options = {}
+  ) {
+    const { type = "Sucursal", method = null, saleMode = null } = options;
     const today = new Date();
     const formattedToday = today.toLocaleDateString('es-CL', {
         timeZone: 'America/Santiago',
@@ -406,11 +413,18 @@ const TicketRepository = {
     const searchDate = date && date.trim() !== "" ? date : formattedToday;
 
     const whereClause = {
-      branch_id: branchId,
       date: endDate && endDate.trim() !== ""
         ? { [Op.between]: [searchDate, endDate] }
         : searchDate,
     };
+
+    if (method) {
+      whereClause.method = method;
+    }
+
+    const branchWhereClause =
+      type === "Company" ? { company_id: scopeId } : { id: scopeId };
+    const tripWhereClause = saleMode ? { saleMode } : undefined;
 
     return await Ticket.findAll({
       attributes: [
@@ -441,6 +455,8 @@ const TicketRepository = {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
+          where: branchWhereClause,
+          required: true,
         },
         {
           model: User,
@@ -451,6 +467,7 @@ const TicketRepository = {
           model: Trip,
           as: "trip",
           attributes: ["id", "code", "date", "schedule", "start", "end", "saleMode"],
+          where: tripWhereClause,
           required: true,
           include: [
             {

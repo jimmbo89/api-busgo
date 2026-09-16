@@ -20,6 +20,41 @@ const formatIncidentDateWithCreatedTime = (incident) => {
   )}`;
 };
 
+const normalizeIncidentTitle = (title) =>
+  String(title || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+const buildIncidentSummary = (incidents) =>
+  incidents.reduce(
+    (summary, incident) => {
+      const title = normalizeIncidentTitle(incident.title);
+
+      if (title.includes("reimpres")) {
+        summary.reimpresiones += 1;
+      } else if (
+        title.includes("re-escaneo") ||
+        title.includes("reescaneo") ||
+        title.includes("re escaneo")
+      ) {
+        summary.reescaneos += 1;
+      } else if (title.includes("retraso")) {
+        summary.retrasos += 1;
+      } else if (title.includes("cambio de vehiculo")) {
+        summary.cambiosVehiculo += 1;
+      }
+
+      return summary;
+    },
+    {
+      reimpresiones: 0,
+      reescaneos: 0,
+      retrasos: 0,
+      cambiosVehiculo: 0,
+    }
+  );
+
 const IncidentController = {
   /**
    * Crear una incidencia
@@ -113,7 +148,10 @@ const IncidentController = {
         };
       });
 
-      res.status(200).json({ incidents: formattedIncidents });
+      res.status(200).json({
+        incidents: formattedIncidents,
+        summary: buildIncidentSummary(incidents),
+      });
     } catch (error) {
       console.error("Error in incidentController.getIncidents:", error);
       res.status(500).json({

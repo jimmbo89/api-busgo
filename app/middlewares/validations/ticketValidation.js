@@ -613,6 +613,56 @@ const ticketSoldDateSchema = Joi.object({
     .optional() // Campo opcional
     .messages({
       "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+  }),
+});
+
+const getTicketsDateSchema = Joi.object({
+  type: Joi.string()
+    .valid("Company", "Sucursal")
+    .required()
+    .messages({
+      "string.base": "El campo type debe ser un texto",
+      "any.only": 'El campo type debe ser "Company" o "Sucursal"',
+      "any.required": "El campo type es requerido",
+    }),
+  id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo id debe ser un número entero",
+    "number.integer": "El campo id debe ser un número entero",
+    "number.positive": "El campo id debe ser un número positivo",
+    "any.required": "El campo id es requerido",
+  }),
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({
+      "string.pattern.base": "El formato de la fecha debe ser YYYY-MM-DD",
+      "any.required": "El campo date es requerido",
+    }),
+  endDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .allow("", null)
+    .optional()
+    .messages({
+      "string.pattern.base": "El formato de endDate debe ser YYYY-MM-DD",
+    }),
+  include_maintainers: Joi.boolean().optional().messages({
+    "boolean.base": "El campo include_maintainers debe ser booleano",
+  }),
+  method: Joi.string()
+    .valid("Efectivo", "Credito", "Debito")
+    .allow(null)
+    .optional()
+    .messages({
+      "any.only": "El campo method debe ser Efectivo, Credito o Debito",
+      "string.base": "El campo method debe ser un texto",
+    }),
+  sale_mode: Joi.string()
+    .valid("normal", "express", "aboard", "web")
+    .allow(null)
+    .optional()
+    .messages({
+      "any.only": "El campo sale_mode no es válido",
+      "string.base": "El campo sale_mode debe ser un texto",
     }),
 });
 
@@ -731,6 +781,7 @@ module.exports = {
   branchTicketTripSchema,
   monthlySalesSchema,
   ticketSoldDateSchema,
+  getTicketsDateSchema,
   passengerTypeSalesReportSchema,
   storeTicketWebSchema,
   ticketWebPaymentStatusSchema,

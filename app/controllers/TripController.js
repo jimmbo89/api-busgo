@@ -2737,6 +2737,12 @@ const TripController = {
     } = req.body;
 
     try {
+      const templateId = Number(req.body.trip_template_id);
+      const isTemplateTrip = Number.isInteger(templateId) && templateId > 0;
+      let workersForTrip = workers;
+      let tripStopsForTrip = tripStops;
+      let tripFaresForTrip = tripFares;
+
       // Verificar si ya existe un viaje en la misma sucursal con la misma fecha
       let trip = {}; // Este objeto es solo un placeholder para la comprobación de duplicados
 
@@ -2779,7 +2785,95 @@ const TripController = {
         );
         return res.status(400).json({ msg: "BranchNotFound" });
       }
-      if (Array.isArray(workers) && workers.length > 0) {
+
+      if (isTemplateTrip) {
+        if (!Array.isArray(tripStops)) {
+          tripStopsForTrip = [];
+        }
+
+        if (!Array.isArray(tripFares)) {
+          tripFaresForTrip = [];
+        }
+
+        if (Array.isArray(workers) && workers.length > 0) {
+          const workerIds = workers
+            .map((worker) => Number(worker?.worker_id))
+            .filter((workerId) => Number.isInteger(workerId) && workerId > 0);
+          const foundWorkers = workerIds.length
+            ? await Worker.findAll({ where: { id: workerIds } })
+            : [];
+          const foundWorkerIds = new Set(foundWorkers.map((worker) => Number(worker.id)));
+
+          workersForTrip = workers.filter((worker) => {
+            const workerId = Number(worker?.worker_id);
+            if (foundWorkerIds.has(workerId)) {
+              return true;
+            }
+
+            logger.warn(
+              `TripController->${methodName}: trabajador de plantilla ignorado; WorkerNotFound:${worker?.worker_id}`
+            );
+            return false;
+          });
+        }
+
+        if (Array.isArray(tripStops) && tripStops.length > 0) {
+          tripStopsForTrip = [];
+          for (const item of tripStops) {
+            const routeStopId = Number(item?.route_stop_id);
+            if (!Number.isInteger(routeStopId) || routeStopId <= 0) {
+              logger.warn(
+                `TripController->${methodName}: parada de plantilla ignorada; RouteStopNotFound:${item?.route_stop_id}`
+              );
+              continue;
+            }
+
+            const routeStop = await RouteStopRepository.findById(routeStopId);
+            if (
+              !routeStop ||
+              Number(routeStop.company_id) !== Number(branch.company_id) ||
+              Number(routeStop.route_id) !== Number(route_id)
+            ) {
+              logger.warn(
+                `TripController->${methodName}: parada de plantilla ignorada; RouteStopInvalid:${routeStopId}`
+              );
+              continue;
+            }
+
+            tripStopsForTrip.push({ ...item, id: null });
+          }
+        }
+
+        if (Array.isArray(tripFares) && tripFares.length > 0) {
+          tripFaresForTrip = [];
+          for (const item of tripFares) {
+            const fareSegmentTicketTypeId = Number(item?.fare_segment_ticket_type_id);
+            const fareSegmentTicketType = Number.isInteger(fareSegmentTicketTypeId) && fareSegmentTicketTypeId > 0
+              ? await FareSegmentTicketTypeRepository.findById(fareSegmentTicketTypeId)
+              : null;
+            const fareSegment = fareSegmentTicketType?.fareSegment;
+            const isValidFare =
+              fareSegmentTicketType &&
+              fareSegmentTicketType.ticketType &&
+              fareSegment &&
+              fareSegment.originRouteStop &&
+              fareSegment.destinationRouteStop &&
+              Number(fareSegment.company_id) === Number(branch.company_id) &&
+              Number(fareSegment.route_id) === Number(route_id);
+
+            if (!isValidFare) {
+              logger.warn(
+                `TripController->${methodName}: tarifa de plantilla ignorada; FareSegmentTicketTypeInvalid:${item?.fare_segment_ticket_type_id}`
+              );
+              continue;
+            }
+
+            tripFaresForTrip.push({ ...item, id: null });
+          }
+        }
+      }
+
+      if (!isTemplateTrip && Array.isArray(workers) && workers.length > 0) {
         const workerIds = workers.map((worker) => parseInt(worker.worker_id));
 
         const [foundWorkers] = await Promise.all([
@@ -2810,7 +2904,7 @@ const TripController = {
             createdTrip,
             branch,
             route_id,
-            tripStops,
+            tripStopsForTrip,
             transaction
           );
         }
@@ -2820,7 +2914,7 @@ const TripController = {
             createdTrip,
             branch,
             route_id,
-            tripFares,
+            tripFaresForTrip,
             transaction
           );
         }
@@ -2828,17 +2922,27 @@ const TripController = {
         return createdTrip;
       });
 
-      if (Array.isArray(workers) && workers.length > 0) {
+      if (Array.isArray(workersForTrip) && workersForTrip.length > 0) {
         // Crear las asociaciones en paralelo
-        for (const worker of workers) {
+        for (const worker of workersForTrip) {
           const { worker_id } = worker;
 
-          const workersTripAssociation = await TripWorker.create({
-            trip_id: trip.id,
-            worker_id,
-            branch_id,
-            date,
-          });
+          try {
+            await TripWorker.create({
+              trip_id: trip.id,
+              worker_id,
+              branch_id,
+              date,
+            });
+          } catch (workerError) {
+            if (!isTemplateTrip) {
+              throw workerError;
+            }
+
+            logger.warn(
+              `TripController->${methodName}: trabajador de plantilla ignorado; WorkerAssociationError:${worker_id} | ${workerError.message}`
+            );
+          }
         }
       }
 

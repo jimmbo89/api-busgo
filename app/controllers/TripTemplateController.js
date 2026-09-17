@@ -6,6 +6,7 @@ const {
   Route,
   Location,
   Trip,
+  Worker,
   sequelize
 } = require("../models");
 const moment = require('moment');
@@ -182,18 +183,34 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
     if (templateTripStops.length > 0) {
       for (const item of templateTripStops) {
         const routeStopId = Number(item.route_stop_id);
+        if (!Number.isInteger(routeStopId) || routeStopId <= 0) {
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: parada ignorada; RouteStopNotFound:${item.route_stop_id}`
+          );
+          continue;
+        }
+
         const routeStop = await RouteStopRepository.findById(routeStopId);
 
         if (!routeStop) {
-          throw new Error(`RouteStopNotFound:${routeStopId}`);
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: parada ignorada; RouteStopNotFound:${routeStopId}`
+          );
+          continue;
         }
 
         if (Number(routeStop.company_id) !== Number(template.branch.company_id)) {
-          throw new Error("RouteStopCompanyMismatch");
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: parada ignorada; RouteStopCompanyMismatch:${routeStopId}`
+          );
+          continue;
         }
 
         if (Number(routeStop.route_id) !== Number(template.route_id)) {
-          throw new Error("RouteStopRouteMismatch");
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: parada ignorada; RouteStopRouteMismatch:${routeStopId}`
+          );
+          continue;
         }
 
         const tripStopPayload = buildGeneratedTripStopPayload(
@@ -210,6 +227,13 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
     if (templateTripFares.length > 0) {
       for (const item of templateTripFares) {
         const fareSegmentTicketTypeId = Number(item.fare_segment_ticket_type_id);
+        if (!Number.isInteger(fareSegmentTicketTypeId) || fareSegmentTicketTypeId <= 0) {
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada; FareSegmentTicketTypeNotFound:${item.fare_segment_ticket_type_id}`
+          );
+          continue;
+        }
+
         const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
           fareSegmentTicketTypeId
         );
@@ -224,13 +248,22 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
         const fareSegment = fareSegmentTicketType.fareSegment;
         if (
           !fareSegment ||
+          !fareSegmentTicketType.ticketType ||
+          !fareSegment.originRouteStop ||
+          !fareSegment.destinationRouteStop ||
           Number(fareSegment.company_id) !== Number(template.branch.company_id)
         ) {
-          throw new Error("FareSegmentTicketTypeCompanyMismatch");
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada; FareSegmentTicketTypeCompanyMismatch:${fareSegmentTicketTypeId}`
+          );
+          continue;
         }
 
         if (Number(fareSegment.route_id) !== Number(template.route_id)) {
-          throw new Error("FareSegmentTicketTypeRouteMismatch");
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada; FareSegmentTicketTypeRouteMismatch:${fareSegmentTicketTypeId}`
+          );
+          continue;
         }
 
         const tripFarePayload = buildGeneratedTripFarePayload(
@@ -251,14 +284,34 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
           : template.workers;
 
         if (Array.isArray(workersArray) && workersArray.length > 0) {
+          const workerIds = workersArray
+            .map((worker) => Number(worker?.id))
+            .filter((workerId) => Number.isInteger(workerId) && workerId > 0);
+          const foundWorkers = workerIds.length
+            ? await Worker.findAll({ where: { id: workerIds } })
+            : [];
+          const foundWorkerIds = new Set(foundWorkers.map((worker) => Number(worker.id)));
+
           await Promise.all(workersArray.map(async (worker) => {
-            if (worker && worker.id) {
+            const workerId = Number(worker?.id);
+            if (!foundWorkerIds.has(workerId)) {
+              logger.warn(
+                `TripTemplateController->processTemplateGeneration: trabajador ignorado; WorkerNotFound:${worker?.id}`
+              );
+              return;
+            }
+
+            try {
               await TripWorkerRepository.create({
                 branch_id: template.branch_id,
                 trip_id: trip.id,
-                worker_id: worker.id,
+                worker_id: workerId,
                 date: formattedToday,
               }, { transaction });
+            } catch (workerError) {
+              logger.warn(
+                `TripTemplateController->processTemplateGeneration: trabajador ignorado; WorkerAssociationError:${workerId} | ${workerError.message}`
+              );
             }
           }));
         }

@@ -419,12 +419,20 @@ const TicketRepository = {
     };
 
     if (method) {
-      whereClause.method = method;
+      whereClause.method = Array.isArray(method)
+        ? { [Op.in]: method }
+        : method;
     }
 
     const branchWhereClause =
       type === "Company" ? { company_id: scopeId } : { id: scopeId };
-    const tripWhereClause = saleMode ? { saleMode } : undefined;
+    const tripWhereClause = saleMode
+      ? {
+          saleMode: Array.isArray(saleMode)
+            ? { [Op.in]: saleMode }
+            : saleMode,
+        }
+      : undefined;
 
     return await Ticket.findAll({
       attributes: [

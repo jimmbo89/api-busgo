@@ -616,6 +616,20 @@ const ticketSoldDateSchema = Joi.object({
   }),
 });
 
+const getTicketsDateFilterSchema = (values, fieldName) =>
+  Joi.alternatives()
+    .try(
+      Joi.string().valid(...values),
+      Joi.array().items(Joi.string().valid(...values)).min(1)
+    )
+    .allow(null)
+    .optional()
+    .messages({
+      "alternatives.types": `El campo ${fieldName} debe ser un texto o un array de opciones válidas`,
+      "alternatives.match": `El campo ${fieldName} contiene opciones no válidas`,
+      "array.min": `El campo ${fieldName} debe contener al menos una opción`,
+    });
+
 const getTicketsDateSchema = Joi.object({
   type: Joi.string()
     .valid("Company", "Sucursal")
@@ -648,22 +662,14 @@ const getTicketsDateSchema = Joi.object({
   include_maintainers: Joi.boolean().optional().messages({
     "boolean.base": "El campo include_maintainers debe ser booleano",
   }),
-  method: Joi.string()
-    .valid("Efectivo", "Credito", "Debito")
-    .allow(null)
-    .optional()
-    .messages({
-      "any.only": "El campo method debe ser Efectivo, Credito o Debito",
-      "string.base": "El campo method debe ser un texto",
-    }),
-  sale_mode: Joi.string()
-    .valid("normal", "express", "aboard", "web")
-    .allow(null)
-    .optional()
-    .messages({
-      "any.only": "El campo sale_mode no es válido",
-      "string.base": "El campo sale_mode debe ser un texto",
-    }),
+  method: getTicketsDateFilterSchema(
+    ["Efectivo", "Credito", "Debito"],
+    "method"
+  ),
+  sale_mode: getTicketsDateFilterSchema(
+    ["normal", "express", "aboard", "web"],
+    "sale_mode"
+  ),
 });
 
 const ticketSoldDateWorkerSchema = Joi.object({

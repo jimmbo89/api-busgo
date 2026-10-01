@@ -20,8 +20,9 @@ const VehicleRepository = {
   },
 
   // Buscar un vehículo por ID
-  async findById(id) {
+  async findById(id, options = {}) {
     return await Vehicle.findByPk(id, {
+      ...options,
       attributes: ['id', 'brand', 'model', 'plate', 'internal_number', 'rut', 'seats', 'state', 'image', 'structure_id'],
       include: [
         {
@@ -59,7 +60,7 @@ const VehicleRepository = {
 },
 
   // Crear un nuevo vehículo con manejo de imágenes
-  async create(body, file) {
+  async create(body, file, options = {}) {
     const { brand, model, plate, internal_number, rut, seats, state, structure_id } = body;
     const vehicle = await Vehicle.create({
       structure_id,
@@ -71,20 +72,20 @@ const VehicleRepository = {
       seats,
       state,
       image: 'vehicles/default.jpg', // Imagen por defecto
-    });
+    }, options);
 
     // Manejar archivo si se proporciona
     if (file) {
       const newFilename = ImageService.generateFilename('vehicles', vehicle.id, file.originalname);
       vehicle.image = await ImageService.moveFile(file, newFilename);
-      await vehicle.update({ image: vehicle.image });
+      await vehicle.update({ image: vehicle.image }, options);
     }
 
     return vehicle;
   },
 
   // Actualizar un vehículo con manejo de imágenes
-  async update(vehicle, body, file) {
+  async update(vehicle, body, file, options = {}) {
     const fieldsToUpdate = ['brand', 'model', 'plate', 'internal_number', 'rut', 'seats', 'state', 'image', 'structure_id'];
 
     const updatedData = Object.keys(body)
@@ -105,7 +106,7 @@ const VehicleRepository = {
 
     if (Object.keys(updatedData).length > 0) {
       logger.info(`Vehículo actualizado exitosamente (ID: ${vehicle.id})`);
-      return await vehicle.update(updatedData);
+      return await vehicle.update(updatedData, options);
     }
 
     return await vehicle;

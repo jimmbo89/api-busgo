@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const logger = require('../../config/logger');
 const { BranchRoute, Branch, Route, Location, RouteStop } = require('../models');
 
@@ -109,6 +110,129 @@ const BranchRouteRepository = {
         return await BranchRoute.findAll(queryOptions);
     },
 
+    async findByRoute(routeId, options = {}) {
+        return await BranchRoute.findAll({
+            ...options,
+            where: {
+                route_id: routeId
+            },
+            attributes: ['id', 'branch_id', 'route_id', 'price'],
+            order: [['branch_id', 'ASC']]
+        });
+    },
+
+    async findByRoutes(routeIds) {
+        const normalizedRouteIds = (Array.isArray(routeIds) ? routeIds : [])
+            .map((routeId) => Number(routeId))
+            .filter((routeId) => Number.isInteger(routeId) && routeId > 0);
+
+        if (normalizedRouteIds.length === 0) {
+            return [];
+        }
+
+        return await BranchRoute.findAll({
+            where: {
+                route_id: { [Op.in]: normalizedRouteIds },
+            },
+            attributes: ['id', 'branch_id', 'route_id', 'price'],
+            include: [
+                {
+                    model: Branch,
+                    as: 'branch',
+                    attributes: ['id', 'name', 'image', 'address', 'rut', 'phone', 'company_id'],
+                },
+            ],
+        });
+    },
+
+    async createMissingForRoute(routeId, branchIds, price = null) {
+        const existingBranchRoutes = await BranchRoute.findAll({
+            where: {
+                route_id: routeId,
+                branch_id: { [Op.in]: branchIds }
+            },
+            attributes: ['id', 'branch_id', 'route_id', 'price'],
+            raw: true
+        });
+
+        const existingBranchIds = new Set(
+            existingBranchRoutes.map((branchRoute) => Number(branchRoute.branch_id))
+        );
+
+        const branchIdsToCreate = branchIds.filter(
+            (branchId) => !existingBranchIds.has(Number(branchId))
+        );
+
+        const branchRoutes = branchIdsToCreate.length > 0
+            ? await BranchRoute.bulkCreate(
+                branchIdsToCreate.map((branchId) => ({
+                    branch_id: branchId,
+                    route_id: routeId,
+                    price
+                }))
+            )
+            : [];
+
+        return {
+            branchRoutes,
+            existingBranchRoutes
+        };
+    },
+
+    async findByBranches(branchIds) {
+        const normalizedBranchIds = Array.from(
+            new Set(
+                (Array.isArray(branchIds) ? branchIds : [])
+                    .map((branchId) => Number(branchId))
+                    .filter((branchId) => Number.isInteger(branchId) && branchId > 0)
+            )
+        );
+
+        if (normalizedBranchIds.length === 0) {
+            return [];
+        }
+
+        return await BranchRoute.findAll({
+            where: {
+                branch_id: { [Op.in]: normalizedBranchIds }
+            },
+            include: [
+                {
+                    model: Branch,
+                    as: 'branch',
+                    attributes: ['id', 'name', 'image']
+                },
+                {
+                    model: Route,
+                    as: 'route',
+                    attributes: [
+                        'id',
+                        'code',
+                        'name',
+                        'estimated',
+                        'origin_id',
+                        'destination_id',
+                        'distance',
+                        'status'
+                    ],
+                    include: [
+                        {
+                            model: Location,
+                            as: 'origin',
+                            attributes: ['id', 'address', 'image']
+                        },
+                        {
+                            model: Location,
+                            as: 'destination',
+                            attributes: ['id', 'address', 'image']
+                        }
+                    ]
+                }
+            ],
+            order: [['branch_id', 'ASC'], ['route_id', 'ASC']]
+        });
+    },
+
     async findRoutesByBranch(branchId) {
         return await BranchRoute.findAll({
             where: {
@@ -201,16 +325,16 @@ const BranchRouteRepository = {
         });
     },
 
-    async create(body) {
+    async create(body, options = {}) {
         const { branch_id, route_id, price } = body;
         return await BranchRoute.create({
             branch_id: branch_id,
             route_id: route_id,
             price: price
-        });
+        }, options);
     },
 
-    async update(branchRoute, body) {
+    async update(branchRoute, body, options = {}) {
         const fieldsToUpdate = ['branch_id', 'route_id', 'price'];
 
         // Filtrar campos en req.body y construir el objeto updatedData
@@ -223,11 +347,15 @@ const BranchRouteRepository = {
 
         // Actualizar la relación solo si hay datos para cambiar
         if (Object.keys(updatedData).length > 0) {
-            await branchRoute.update(updatedData);
+            await branchRoute.update(updatedData, options);
             logger.info(`Relación sucursal-vehículo actualizada exitosamente (ID: ${branchRoute.id})`);
         }
 
         return branchRoute;
+    },
+
+    async delete(branchRoute, options = {}) {
+        return await branchRoute.destroy(options);
     },
 };
 

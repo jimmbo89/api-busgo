@@ -20,6 +20,12 @@ const RouteStopController = require("./controllers/RouteStopController");
 const TripStopController = require("./controllers/TripStopController");
 const FareSegmentController = require("./controllers/FareSegmentController");
 const DeviceController = require("./controllers/DeviceController");
+const DeviceVehicleController = require("./controllers/DeviceVehicleController");
+const OnBoardRouteController = require("./controllers/OnBoardRouteController");
+const OnBoardRoutePreferenceController = require("./controllers/OnBoardRoutePreferenceController");
+const OnBoardTripController = require("./controllers/OnBoardTripController");
+const OnBoardTicketController = require("./controllers/OnBoardTicketController");
+const OnBoardGpsController = require("./controllers/OnBoardGpsController");
 const BranchRouteController = require("./controllers/BranchRouteController");
 const BranchVehicleController = require("./controllers/BranchVehicleController");
 const VehicleWorkerController = require("./controllers/VehicleWorkerController");
@@ -68,6 +74,7 @@ const {
   storeWorkerSchema,
   updateWorkerSchema,
   idWorkerSchema,
+  parseWorkerBranches,
 } = require("./middlewares/validations/workerValidation");
 const {
   storeBranchWorkerSchema,
@@ -86,6 +93,7 @@ const {
   storeVehicleSchema,
   updateVehicleSchema,
   idVehicleSchema,
+  parseVehicleBranches,
 } = require("./middlewares/validations/vehicleValidation");
 const {
   storeLocationSchema,
@@ -124,12 +132,42 @@ const {
   idDeviceSchema,
   branchIdDeviceSchema,
   deviceCompanySchema,
+  parseDeviceVehicles,
 } = require("./middlewares/validations/deviceValidation");
+const {
+  storeOnBoardTripSchema,
+  updateOnBoardTripSchema,
+  onBoardActiveTripsSchema,
+  onBoardTicketSchema,
+  onBoardTicketWebSchema,
+  onBoardRouteSegmentsSchema,
+} = require("./middlewares/validations/onboardValidation");
+const {
+  storeDeviceVehicleSchema,
+  deviceIdDeviceVehicleSchema,
+  idDeviceVehicleSchema,
+  updateDeviceVehicleSchema,
+} = require("./middlewares/validations/devicevehicleValidation");
+const {
+  onBoardGpsLocationSchema,
+  onBoardGpsTripSchema,
+} = require("./middlewares/validations/onboardGpsValidation");
+const {
+  onBoardWebAvailableRoutesSchema,
+} = require("./middlewares/validations/onboardWebValidation");
+const {
+  vehicleIdSchema: onBoardRoutePreferencesByVehicleSchema,
+  updateOnBoardRoutePreferencesSchema,
+} = require("./middlewares/validations/onboardRoutePreferenceValidation");
 const {
   storeBranchRouteSchema,
   updateBranchRouteSchema,
   idBranchRouteSchema,
 } = require("./middlewares/validations/branchrouteValidation");
+const {
+  routeBranchSchema,
+  routeIdBranchSchema,
+} = require("./middlewares/validations/routebranchValidation");
 const {
   storeBranchVehicleSchema,
   updateBranchVehicleSchema,
@@ -332,6 +370,7 @@ router.get("/worker", WorkerController.index);
 router.post(
   "/worker",
   multerImage("image", "workers"),
+  parseWorkerBranches,
   validateSchema(storeWorkerSchema),
   WorkerController.store
 );
@@ -343,6 +382,7 @@ router.post(
 router.post(
   "/worker-update",
   multerImage("image", "workers"),
+  parseWorkerBranches,
   validateSchema(updateWorkerSchema),
   WorkerController.update
 );
@@ -420,6 +460,7 @@ router.get("/vehicle", VehicleController.index);
 router.post(
   "/vehicle",
   multerImage("image", "vehicles"),
+  parseVehicleBranches,
   validateSchema(storeVehicleSchema),
   VehicleController.store
 );
@@ -431,6 +472,7 @@ router.post(
 router.post(
   "/vehicle-update",
   multerImage("image", "vehicles"),
+  parseVehicleBranches,
   validateSchema(updateVehicleSchema),
   VehicleController.update
 );
@@ -510,6 +552,7 @@ router.get("/device", DeviceController.index);
 router.post(
   "/device",
   multerImage("image", "devices"),
+  parseDeviceVehicles,
   validateSchema(storeDeviceSchema),
   DeviceController.store
 );
@@ -526,6 +569,7 @@ router.post(
 router.post(
   "/device-update",
   multerImage("image", "devices"),
+  parseDeviceVehicles,
   validateSchema(updateDeviceSchema),
   DeviceController.update
 );
@@ -535,8 +579,97 @@ router.post(
   DeviceController.destroy
 );
 
+// Rutas DeviceVehicle gestionadas desde la vista de dispositivo
+router.get("/device-vehicle", DeviceVehicleController.index);
+router.post(
+  "/device-vehicles",
+  validateSchema(deviceIdDeviceVehicleSchema),
+  DeviceVehicleController.byDevice
+);
+router.post(
+  "/device-vehicle",
+  validateSchema(storeDeviceVehicleSchema),
+  DeviceVehicleController.store
+);
+router.post(
+  "/device-vehicle-show",
+  validateSchema(idDeviceVehicleSchema),
+  DeviceVehicleController.show
+);
+router.post(
+  "/device-vehicle-update",
+  validateSchema(updateDeviceVehicleSchema),
+  DeviceVehicleController.update
+);
+router.post(
+  "/device-vehicle-destroy",
+  validateSchema(idDeviceVehicleSchema),
+  DeviceVehicleController.destroy
+);
+
+router.post("/on-board-available-routes", OnBoardRouteController.availableRoutes); //on_board
+router.post("/on-board-web-context", OnBoardRouteController.webContext); //on_board
+router.post(
+  "/on-board-available-routes-web",
+  validateSchema(onBoardWebAvailableRoutesSchema),
+  OnBoardRouteController.availableRoutesWeb
+); //on_board
+router.post(
+  "/on-board-route-preferences-by-vehicle",
+  validateSchema(onBoardRoutePreferencesByVehicleSchema),
+  OnBoardRoutePreferenceController.byVehicle
+); //on_board
+router.post(
+  "/on-board-route-preferences-update",
+  validateSchema(updateOnBoardRoutePreferencesSchema),
+  OnBoardRoutePreferenceController.update
+); //on_board
+router.post(
+  "/on-board-active-trips",
+  validateSchema(onBoardActiveTripsSchema),
+  OnBoardTripController.active
+); //on_board
+router.post(
+  "/on-board-trip",
+  validateSchema(storeOnBoardTripSchema),
+  OnBoardTripController.store
+); //on_board
+router.post(
+  "/on-board-trip-update",
+  validateSchema(updateOnBoardTripSchema),
+  OnBoardTripController.update
+); //on_board
+router.post(
+  "/on-board-ticket",
+  validateSchema(onBoardTicketSchema),
+  OnBoardTicketController.store
+); //on_board
+router.post(
+  "/on-board-ticket-web",
+  validateSchema(onBoardTicketWebSchema),
+  OnBoardTicketController.storeWeb
+); //on_board
+router.post(
+  "/on-board-route-segments",
+  validateSchema(onBoardRouteSegmentsSchema),
+  OnBoardRouteController.routeSegments
+); //on_board
+// GPS preparado para una futura habilitación del flujo ON_BOARD.
+router.post("/on-board-gps-location", validateSchema(onBoardGpsLocationSchema),OnBoardGpsController.store); //on_board
+router.post("/on-board-gps-locations-by-trip",validateSchema(onBoardGpsTripSchema), OnBoardGpsController.byTrip); //on_board
+
 //Rutas BranchRoute
 router.get("/branch-route", BranchRouteController.index);
+router.post(
+  "/route-branches",
+  validateSchema(routeIdBranchSchema),
+  BranchRouteController.route_branches
+);
+router.post(
+  "/route-branch",
+  validateSchema(routeBranchSchema),
+  BranchRouteController.route_branch
+);
 router.post(
   "/branch-routes",
   BranchRouteController.branch_routes
@@ -739,6 +872,7 @@ router.post(
 
 //Rutas Structure
 router.get("/structure", StructureController.index);
+router.post("/structure-branches", StructureController.index_with_branches);
 router.post("/structure-cursor", StructureController.index_cursor);
 router.post(
   "/structure",

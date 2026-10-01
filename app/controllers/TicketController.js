@@ -1168,7 +1168,7 @@ const TicketController = {
           sale_types: [
             { value: "normal", label: "Venta Full" },
             { value: "express", label: "Venta Express" },
-            //{ value: "aboard", label: "Venta a Bordo" },
+            { value: "on_board", label: "Venta a Bordo" },
             //{ value: "web", label: "Venta Web" },
           ],
         };

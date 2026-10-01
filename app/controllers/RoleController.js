@@ -1,5 +1,5 @@
 const logger = require('../../config/logger'); // Importa el logger
-const {RoleRepository} = require('../repositories');
+const { RoleRepository, BranchRepository } = require('../repositories');
 
 const RoleController = {
     // Listar roles
@@ -100,13 +100,29 @@ const RoleController = {
 
         try {
           const { type } = req.body; // Supongamos que el tipo viene como parámetro en la URL
-          const roles = await RoleRepository.findByType(null);
+          const [roles, branches] = await Promise.all([
+            RoleRepository.findByType(null),
+            BranchRepository.findAll(),
+          ]);
       
           if (!roles || roles.length === 0) {
             return res.status(404).json({ message: 'No se encontraron roles para el tipo especificado.' });
           }
       
-          return res.status(200).json({ 'roles': roles});
+          return res.status(200).json({
+            roles,
+            branches: branches.map((branch) => ({
+              id: branch.id,
+              name: branch.name,
+              image: branch.image,
+              address: branch.address,
+              rut: branch.rut,
+              phone: branch.phone,
+              company_id: branch.company_id,
+              companyName: branch.company?.name,
+              companyImage: branch.company?.image,
+            })),
+          });
         } catch (error) {
             const errorMsg = error.details
             ? error.details.map(detail => detail.message).join(', ')

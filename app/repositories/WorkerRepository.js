@@ -1,12 +1,11 @@
 const { Op } = require("sequelize");
 const path = require("path");
 const fs = require("fs");
-const { Worker, User, Role } = require("../models");
+const { Worker, User, Role, BranchWorker, Branch, Company } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 const bcrypt = require("bcrypt");
 const authConfig = require("../../config/auth");
 const ImageService = require("../services/ImageService");
-const BranchWorkerRepository = require("./BranchWorkerRepository");
 
 const WorkerRepository = {
   // Obtener todos los trabajadores
@@ -34,13 +33,32 @@ const WorkerRepository = {
           as: "role", // Incluir el usuario asociado
           attributes: ["id", "name"], // Solo incluir los atributos necesarios de `users`
         },
+        {
+          model: BranchWorker,
+          as: "branchWorkers",
+          attributes: ["id", "branch_id", "worker_id", "role_id"],
+          required: false,
+          include: [
+            {
+              model: Branch,
+              as: "branch",
+              attributes: ["id", "name", "image", "address", "rut", "phone", "company_id"],
+              include: {
+                model: Company,
+                as: "company",
+                attributes: ["id", "name", "image"],
+              },
+            },
+          ],
+        },
       ],
     });
   },
 
   // Buscar un trabajador por ID
-  async findById(id) {
+  async findById(id, options = {}) {
     return await Worker.findByPk(id, {
+      ...options,
       attributes: [
         "id",
         "user_id",
@@ -174,7 +192,8 @@ const WorkerRepository = {
   },
 
   // Actualizar un trabajador con manejo de imágenes
-  async update(worker, body, file) {
+  async update(worker, body, file, options = {}) {
+    const transaction = options.transaction;
     const fieldsToUpdate = [
       "user_id",
       "role_id",
@@ -193,13 +212,10 @@ const WorkerRepository = {
         return obj;
       }, {});
 
-       // 👇 Detectar si role_id está siendo actualizado
-    const isRoleIdChanging = updatedData.hasOwnProperty('role_id') && updatedData.role_id !== worker.role_id;
-
     // Actualizar email y/o user en la tabla users si están en el body
     if (body.email || body.user) {
       logger.info("entra a actualizar los datos de user");
-      const user = await User.findByPk(body.user_id);
+      const user = await User.findByPk(body.user_id || worker.user_id, { transaction });
       if (user) {
         const userUpdates = {};
         if (body.email) {
@@ -208,7 +224,7 @@ const WorkerRepository = {
         if (body.user) {
           userUpdates.name = body.user;
         }
-        await user.update(userUpdates);
+        await user.update(userUpdates, { transaction });
         logger.info(
           `Datos actualizados en la tabla users (ID: ${
             worker.user_id
@@ -231,14 +247,8 @@ const WorkerRepository = {
     }
 
     if (Object.keys(updatedData).length > 0) {
-      await worker.update(updatedData);
+      await worker.update(updatedData, { transaction });
       logger.info(`Trabajador actualizado exitosamente (ID: ${worker.id})`);
-    }
-
-    if (isRoleIdChanging) {
-      const newRoleId = updatedData.role_id;
-      await BranchWorkerRepository.updateRoleForWorker(worker.id, newRoleId);
-      logger.info(`Rol actualizado en branch_worker para trabajador ID ${worker.id} → role_id: ${newRoleId}`);
     }
 
     return worker;

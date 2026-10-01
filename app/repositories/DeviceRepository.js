@@ -84,8 +84,9 @@ const  DeviceRepository = {
     }
     },
 
-    async findById(id) {
+    async findById(id, options = {}) {
         return await Device.findByPk(id, {
+            ...options,
             attributes: ['id', 'name', 'mac', 'version', 'image', 'serial', 'status', 'maintenance', 'acquisition', 'notes', 'branch_id'],
             include: {
                 model: Branch, as: 'branch',
@@ -106,7 +107,7 @@ const  DeviceRepository = {
         });
     },
 
-    async create(body, file) {
+    async create(body, file, options = {}) {
         // Filtrar solo los campos necesarios del body
         const { name, mac, version, serial, status, maintenance, acquisition, notes, branch_id, } = body;
 
@@ -121,19 +122,19 @@ const  DeviceRepository = {
             notes,
             branch_id,
             image: 'devices/default.jpg', // Imagen por defecto
-        });
+        }, options);
 
         // Manejar archivo si se proporciona
         if (file) {
             const newFilename = ImageService.generateFilename('devices', device.id, file.originalname);
             device.image = await ImageService.moveFile(file, newFilename);
-            await device.update({ image: device.image });
+            await device.update({ image: device.image }, options);
         }
 
         return device;
     },
 
-    async update(device, body, file) {
+    async update(device, body, file, options = {}) {
         const fieldsToUpdate = ['name', 'mac', 'version', 'serial', 'status', 'maintenance', 'acquisition', 'notes', 'branch_id'];
 
             const updatedData = Object.keys(body)
@@ -153,10 +154,10 @@ const  DeviceRepository = {
             }
 
             if (Object.keys(updatedData).length > 0) {
-                await device.update(updatedData);
+                await device.update(updatedData, options);
                 logger.info(`Dispositivo actualizado exitosamente (ID: ${device.id})`);
             }
-        return await device.update(updatedData);
+        return device;
     },
 
     async delete(device) {

@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
       Trip.belongsTo(models.Route, { foreignKey: 'route_id', as: 'route' });
       Trip.belongsTo(models.TripTemplate, { foreignKey: 'trip_template_id', as: 'tripTemplate' });
+      Trip.belongsTo(models.Device, { foreignKey: 'device_id', as: 'device' });
 
       // Relación de muchos a muchos con workers
       Trip.belongsToMany(models.Worker, {
@@ -22,6 +23,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.hasMany(models.TripWorker, { foreignKey: 'trip_id', as: 'tripworkers' });
       Trip.hasMany(models.TripStop, { foreignKey: 'trip_id', as: 'tripStops' });
       Trip.hasMany(models.TripFare, { foreignKey: 'trip_id', as: 'tripFares' });
+      Trip.hasMany(models.TripLocation, { foreignKey: 'trip_id', as: 'gpsLocations' });
     }
   }
   Trip.init({
@@ -66,6 +68,15 @@ module.exports = (sequelize, DataTypes) => {
         }
       }
     },
+    device_id: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      validate: {
+        isInt: {
+          msg: 'El campo device_id debe ser un número entero'
+        }
+      }
+    },
     code: {
       type: DataTypes.STRING(32),
       allowNull: true,
@@ -105,7 +116,7 @@ module.exports = (sequelize, DataTypes) => {
       field: "sale_mode",
       validate: {
         isIn: {
-          args: [["normal", "express"]],
+          args: [["normal", "express", "on_board"]],
           msg: "La modalidad de venta no es valida",
         },
       },
@@ -114,6 +125,16 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    finish_method: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      validate: {
+        isIn: {
+          args: [['MANUAL']],
+          msg: 'El método de finalización no es válido',
+        },
+      },
+    },
   }, {
     sequelize,
     modelName: 'Trip',
@@ -121,6 +142,10 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true,
     hooks: {
       beforeCreate: async (trip, options) => {
+        if (String(trip.saleMode || '').toLowerCase() === 'on_board') {
+          return;
+        }
+
         const existingTrip = await Trip.findOne({
           where: {
             branch_id: trip.branch_id,

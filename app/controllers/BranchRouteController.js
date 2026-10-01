@@ -141,6 +141,152 @@ const BranchRouteController = {
         }
     },
 
+    // Asociar una ruta a una o varias sucursales
+    async route_branch(req, res) {
+        logger.info(`${req.user.name} - Asocia una ruta a una o varias sucursales`);
+
+        const { route_id, branch_id, branch_ids, price = null } = req.body;
+        const branchIds = [...new Set(
+            (Array.isArray(branch_ids) ? branch_ids : [branch_id])
+                .map((value) => Number(value))
+        )];
+
+        try {
+            const route = await RouteRepository.findById(route_id);
+            if (!route) {
+                logger.error(`BranchRouteController->route_branch: Ruta no encontrada con ID ${route_id}`);
+                return res.status(404).json({ msg: 'RouteNotFound' });
+            }
+
+            const branches = await Branch.findAll({
+                where: { id: branchIds },
+                attributes: ['id']
+            });
+            const foundBranchIds = new Set(branches.map((branch) => Number(branch.id)));
+            const missingBranchIds = branchIds.filter((id) => !foundBranchIds.has(id));
+
+            if (missingBranchIds.length > 0) {
+                logger.error(
+                    `BranchRouteController->route_branch: Sucursales no encontradas ${missingBranchIds.join(', ')}`
+                );
+                return res.status(404).json({
+                    msg: 'BranchNotFound',
+                    branch_ids: missingBranchIds
+                });
+            }
+
+            const { branchRoutes, existingBranchRoutes } =
+                await BranchRouteRepository.createMissingForRoute(route.id, branchIds, price);
+
+            const mapBranchRoute = (branchRoute) => ({
+                id: branchRoute.id,
+                branchId: branchRoute.branch_id,
+                branch_id: branchRoute.branch_id,
+                routeId: branchRoute.route_id,
+                route_id: branchRoute.route_id,
+                price: branchRoute.price
+            });
+
+            const createdBranchRoutes = branchRoutes.map(mapBranchRoute);
+            const alreadyAssociatedBranchRoutes = existingBranchRoutes.map(mapBranchRoute);
+
+            return res.status(createdBranchRoutes.length > 0 ? 201 : 200).json({
+                msg: 'RouteBranchesProcessed',
+                routeId: route.id,
+                route_id: route.id,
+                branchRoutes: [
+                    ...createdBranchRoutes,
+                    ...alreadyAssociatedBranchRoutes
+                ],
+                createdBranchRoutes,
+                alreadyAssociatedBranchRoutes
+            });
+        } catch (error) {
+            const errorMsg = error.message || 'Error desconocido';
+            logger.error('BranchRouteController->route_branch: ' + errorMsg);
+            return res.status(500).json({ error: 'ServerError', details: errorMsg });
+        }
+    },
+
+    // Obtener todas las sucursales e indicar cuáles están asociadas a una ruta
+    async route_branches(req, res) {
+        logger.info(`${req.user.name} - Busca las sucursales asociadas a una ruta`);
+
+        try {
+            const { route_id } = req.body;
+            const route = await RouteRepository.findById(route_id);
+
+            if (!route) {
+                logger.error(`BranchRouteController->route_branches: Ruta no encontrada con ID ${route_id}`);
+                return res.status(404).json({ msg: 'RouteNotFound' });
+            }
+
+            const [branches, branchRoutes] = await Promise.all([
+                BranchRepository.findAll(),
+                BranchRouteRepository.findByRoute(route.id)
+            ]);
+
+            const branchRouteByBranchId = new Map(
+                branchRoutes.map((branchRoute) => [Number(branchRoute.branch_id), branchRoute])
+            );
+
+            const mappedBranches = branches.map((branch) => {
+                const branchRoute = branchRouteByBranchId.get(Number(branch.id));
+                const company = branch.company || null;
+
+                return {
+                    id: branch.id,
+                    branchId: branch.id,
+                    branch_id: branch.id,
+                    name: branch.name,
+                    address: branch.address,
+                    image: branch.image,
+                    rut: branch.rut,
+                    phone: branch.phone,
+                    companyId: branch.company_id,
+                    company_id: branch.company_id,
+                    companyName: company ? company.name : null,
+                    companyImage: company ? company.image : null,
+                    company: company
+                        ? {
+                            id: company.id,
+                            name: company.name,
+                            image: company.image
+                        }
+                        : null,
+                    associated: Boolean(branchRoute),
+                    branchRouteId: branchRoute ? branchRoute.id : null,
+                    branch_route_id: branchRoute ? branchRoute.id : null,
+                    price: branchRoute ? branchRoute.price : null
+                };
+            });
+
+            return res.status(200).json({
+                route: {
+                    id: route.id,
+                    routeId: route.id,
+                    route_id: route.id,
+                    code: route.code,
+                    name: route.name,
+                    originId: route.origin_id,
+                    origin_id: route.origin_id,
+                    origin: route.origin,
+                    destinationId: route.destination_id,
+                    destination_id: route.destination_id,
+                    destination: route.destination,
+                    distance: route.distance,
+                    estimated: route.estimated,
+                    status: route.status,
+                    branches: mappedBranches
+                }
+            });
+        } catch (error) {
+            const errorMsg = error.message || 'Error desconocido';
+            logger.error('BranchRouteController->route_branches: ' + errorMsg);
+            return res.status(500).json({ error: 'ServerError', details: errorMsg });
+        }
+    },
+
     // Crear una nueva relación Branch-Route
     async store(req, res) {
         logger.info(`${req.user.name} - Crea una nueva relación Branch-Route`);

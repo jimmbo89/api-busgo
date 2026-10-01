@@ -667,7 +667,7 @@ const getTicketsDateSchema = Joi.object({
     "method"
   ),
   sale_mode: getTicketsDateFilterSchema(
-    ["normal", "express", "aboard", "web"],
+    ["normal", "express", "on_board", "aboard", "web"],
     "sale_mode"
   ),
 });

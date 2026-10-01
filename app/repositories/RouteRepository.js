@@ -50,7 +50,7 @@ const RouteRepository = {
     });
   },
 
-  async findById(id) {
+  async findById(id, options = {}) {
     return await Route.findByPk(id, {
       attributes: ['id', 'code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
       include: [
@@ -88,6 +88,7 @@ const RouteRepository = {
           ],
         },
       ],
+      ...options,
     });
   },
 
@@ -160,7 +161,7 @@ const RouteRepository = {
     }
   },
 
-  async update(route, body) {
+  async update(route, body, options = {}) {
     const fieldsToUpdate = ['code', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'];
 
     const updatedData = Object.keys(body)
@@ -171,7 +172,7 @@ const RouteRepository = {
       }, {});
 
     if (Object.keys(updatedData).length > 0) {
-      await route.update(updatedData);
+      await route.update(updatedData, options);
       logger.info(`Ruta actualizada exitosamente (ID: ${route.id})`);
     }
 

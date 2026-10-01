@@ -38,6 +38,7 @@ module.exports = async (req, res, next) => {
             runWithUser(decoded.user.id, async () => {
                 req.user = decoded.user;
                 req.worker = decoded.user.worker;
+                req.device_id = userToken.device_id ?? null;
 
                 next();
             });

@@ -1,37 +1,139 @@
 const { Op } = require('sequelize');
 const logger = require('../../config/logger');
 const { Route, Location } = require('../models');
-const { RouteRepository, BranchRepository, LocationRepository } = require('../repositories');
+const {
+    RouteRepository,
+    BranchRepository,
+    BranchRouteRepository,
+    LocationRepository,
+} = require('../repositories');
+const RouteService = require('../services/RouteService');
+
+const routeAssociationErrorDetails = {
+    RouteNotFound: 'La ruta indicada no existe.',
+    BranchNotFound: 'La sucursal indicada no existe.',
+    BranchRouteActionsInvalid:
+        'El campo branches debe contener una lista válida de asociaciones.',
+    BranchRouteActionInvalid:
+        'Cada sucursal debe indicar una acción válida: associate o delete.',
+    BranchRouteCreateActionInvalid:
+        'Al crear una ruta solo se permite la acción associate.',
+    BranchRouteAssociationIdNotAllowed:
+        'La acción associate no debe incluir association_id.',
+    BranchRouteAssociationIdRequired:
+        'La acción delete requiere association_id.',
+    BranchRouteDuplicateOperation:
+        'No se puede procesar más de una acción para la misma sucursal en una solicitud.',
+    BranchRouteAlreadyAssociated:
+        'La ruta ya está asociada a la sucursal indicada.',
+    BranchRouteAssociationNotFound:
+        'La asociación indicada no pertenece a la ruta que se está editando.',
+    BranchRouteAssociationBranchMismatch:
+        'La sucursal no corresponde a la asociación indicada.',
+};
+
+const getRouteMutationStatus = (error) => {
+    if (error.message === 'RouteNotFound' || error.message === 'BranchNotFound') {
+        return 404;
+    }
+
+    if (error.message === 'BranchRouteAlreadyAssociated') {
+        return 409;
+    }
+
+    if (error.message.startsWith('BranchRoute')) {
+        return 400;
+    }
+
+    return 500;
+};
+
+const mapRoute = (route, branches = [], branchRoutes = []) => {
+    const relationByBranchId = new Map(
+        branchRoutes.map((branchRoute) => [Number(branchRoute.branch_id), branchRoute])
+    );
+
+    return {
+        id: route.id,
+        code: route.code,
+        name: route.name,
+        originId: route.origin_id,
+        origin_id: route.origin_id,
+        destinationId: route.destination_id,
+        destination_id: route.destination_id,
+        distance: route.distance,
+        estimated: route.estimated,
+        status: route.status,
+        originAddress: route.origin?.address,
+        originImage: route.origin?.image,
+        destinationAddress: route.destination?.address,
+        destinationImage: route.destination?.image,
+        branches: branches.map((branch) => {
+            const relation = relationByBranchId.get(Number(branch.id));
+
+            return {
+                id: branch.id,
+                name: branch.name,
+                image: branch.image,
+                address: branch.address,
+                rut: branch.rut,
+                phone: branch.phone,
+                company_id: branch.company_id,
+                companyName: branch.company?.name,
+                companyImage: branch.company?.image,
+                branch_route_id: relation?.id || null,
+                branch_route_price: relation?.price ?? null,
+                branch_route_status: relation
+                    ? 'ASSOCIATED_ACTIVE'
+                    : 'NOT_ASSOCIATED',
+                associated: Boolean(relation),
+                association_active: Boolean(relation),
+            };
+        }),
+    };
+};
+
+const getMappedRoute = async (routeId) => {
+    const [route, branches, branchRoutes] = await Promise.all([
+        RouteRepository.findById(routeId),
+        BranchRepository.findAll(),
+        BranchRouteRepository.findByRoute(routeId),
+    ]);
+
+    if (!route) {
+        throw new Error('RouteNotFound');
+    }
+
+    return mapRoute(route, branches, branchRoutes);
+};
 
 const RouteController = {
     async index(req, res) {
         logger.info(`${req.user.name} - Entra a buscar las rutas`);
 
         try {
-            const routes = await RouteRepository.findAll();
+            const [routes, branches] = await Promise.all([
+                RouteRepository.findAll(),
+                BranchRepository.findAll(),
+            ]);
 
             if (!routes.length) {
                 return res.status(204).json({ msg: 'RoutesNotFound' });
             }
 
-            const mappedRoutes = routes.map(route => {
-                return {
-                    id: route.id,
-                    code: route.code,
-                    name: route.name,
-                    originId: route.origin_id,
-                    origin_id: route.origin_id,
-                    destinationId: route.destination_id,
-                    destination_id: route.destination_id,
-                    distance: route.distance,
-                    estimated: route.estimated,
-                    status: route.status,
-                    originAddress: route.origin.address,
-                    originImage: route.origin.image,
-                    destinationAddress: route.destination.address,
-                    destinationImage: route.destination.image,
-                };
-            });
+            const branchRoutes = await BranchRouteRepository.findByRoutes(
+                routes.map((route) => route.id)
+            );
+
+            const mappedRoutes = routes.map((route) =>
+                mapRoute(
+                    route,
+                    branches,
+                    branchRoutes.filter(
+                        (branchRoute) => Number(branchRoute.route_id) === Number(route.id)
+                    )
+                )
+            );
 
             res.status(200).json({ routes: mappedRoutes });
         } catch (error) {
@@ -123,13 +225,18 @@ const RouteController = {
                 });
             }
 
-            const route = await RouteRepository.create(req.body);
+            const route = await RouteService.create({ body: req.body });
+            const mappedRoute = await getMappedRoute(route.id);
 
-            return res.status(201).json({ route: route });
+            return res.status(201).json({ route: mappedRoute });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
             logger.error('RouteController->store:' + errorMsg);
-            return res.status(500).json({ error: 'ServerError', details: errorMsg });
+            const status = getRouteMutationStatus(error);
+            return res.status(status).json({
+                error: status === 500 ? 'ServerError' : 'Error de asociación de sucursal',
+                details: routeAssociationErrorDetails[error.message] || errorMsg,
+            });
         }
     },
 
@@ -241,29 +348,23 @@ const RouteController = {
                 });
             }
 
-            const routeData = {};
-            if (code !== undefined && code !== null) routeData.code = req.body.code;
-            if (name !== undefined) routeData.name = name;
-            if (origin_id !== undefined) routeData.origin_id = origin_id;
-            if (destination_id !== undefined) routeData.destination_id = destination_id;
-            if (distance !== undefined) routeData.distance = distance;
-            if (estimated !== undefined) routeData.estimated = estimated;
-            if (status !== undefined) routeData.status = status;
-
-            let routeUpdate = null;
-            if (Object.keys(routeData).length > 0) {
-                routeUpdate = await RouteRepository.update(route, routeData);
-            } else {
-                routeUpdate = route;
-            }
+            const routeUpdate = await RouteService.update({
+                id,
+                body: req.body,
+            });
+            const mappedRoute = await getMappedRoute(routeUpdate.id);
 
             return res.status(200).json({
-                route: routeUpdate,
+                route: mappedRoute,
             });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
             logger.error('RouteController->update:' + errorMsg);
-            return res.status(500).json({ error: 'ServerError', details: errorMsg });
+            const status = getRouteMutationStatus(error);
+            return res.status(status).json({
+                error: status === 500 ? 'ServerError' : 'Error de asociación de sucursal',
+                details: routeAssociationErrorDetails[error.message] || errorMsg,
+            });
         }
     },
 

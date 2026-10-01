@@ -1,4 +1,4 @@
-const { BranchWorker, Branch, Worker, Role, Vehicle } = require('../models');
+const { BranchWorker, Branch, Worker, Role, Vehicle, Company } = require('../models');
 const { Op } = require('sequelize');
 const BranchRepository = require('./BranchRepository');
 
@@ -40,8 +40,9 @@ const BranchWorkerRepository = {
         });
     },
 
-    async findByWorker(workerId) {
+    async findByWorker(workerId, options = {}) {
         return await BranchWorker.findAll({
+            ...options,
             where: {
                 worker_id: workerId // Filtramos por el ID de la sucursal
             },
@@ -54,10 +55,29 @@ const BranchWorkerRepository = {
                 { 
                     model: Branch, 
                     as: 'branch', 
-                    attributes: ['id', 'name', 'image'],
+                    attributes: ['id', 'name', 'image', 'address', 'rut', 'phone', 'company_id'],
+                    include: [
+                        {
+                            model: Company,
+                            as: 'company',
+                            attributes: ['id', 'name', 'image'],
+                        },
+                    ],
                 }
             ]
         });
+    },
+
+    async create(body, options = {}) {
+        return await BranchWorker.create(body, options);
+    },
+
+    async update(branchWorker, body, options = {}) {
+        return await branchWorker.update(body, options);
+    },
+
+    async delete(branchWorker, options = {}) {
+        return await branchWorker.destroy(options);
     },
 
     async findAllBranchesWithWorkersIncluding(targetWorkerId) {
@@ -224,11 +244,12 @@ const BranchWorkerRepository = {
     });
     },
 
-    async updateRoleForWorker(workerId, newRoleId) {
+    async updateRoleForWorker(workerId, newRoleId, options = {}) {
     await BranchWorker.update(
       { role_id: newRoleId },
       {
-        where: { worker_id: workerId }
+        where: { worker_id: workerId },
+        ...options,
       }
     );
   }

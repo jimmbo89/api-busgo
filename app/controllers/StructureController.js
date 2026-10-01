@@ -1,5 +1,45 @@
 const logger = require("../../config/logger"); // Importa el logger
-const { StructureRepository } = require("../repositories");
+const { StructureRepository, BranchRepository } = require("../repositories");
+
+const mapRoute = (route) => ({
+  id: route.id,
+  route_id: route.id,
+  code: route.code,
+  route_code: route.code,
+  name: route.name,
+  origin_id: route.origin_id,
+  destination_id: route.destination_id,
+  distance: route.distance,
+  estimated: route.estimated,
+  status: route.status,
+  origin: route.origin
+    ? {
+        id: route.origin.id,
+        address: route.origin.address,
+        image: route.origin.image,
+      }
+    : null,
+  destination: route.destination
+    ? {
+        id: route.destination.id,
+        address: route.destination.address,
+        image: route.destination.image,
+      }
+    : null,
+});
+
+const mapBranch = (branch) => ({
+  id: branch.id,
+  name: branch.name,
+  image: branch.image,
+  address: branch.address,
+  rut: branch.rut,
+  phone: branch.phone,
+  company_id: branch.company_id,
+  companyName: branch.company?.name,
+  companyImage: branch.company?.image,
+  routes: Array.isArray(branch.routes) ? branch.routes.map(mapRoute) : [],
+});
 
 const StructureController = {
   // Listar estructuras
@@ -29,6 +69,41 @@ const StructureController = {
         : error.message || "Error desconocido";
       logger.error("Error en StructureController->index: " + errorMsg);
       res.status(500).json({ error: "ServerError", details: errorMsg });
+    }
+  },
+
+  // Listar estructuras y sucursales para formularios que requieren ambos catálogos
+  async index_with_branches(req, res) {
+    logger.info(`${req.user.name} - Accediendo a estructuras y sucursales`);
+
+    try {
+      const [structures, branches] = await Promise.all([
+        StructureRepository.findAll(),
+        BranchRepository.findAll({ includeRoutes: true }),
+      ]);
+
+      const mappedStructures = structures.map((structure) => {
+        return {
+          ...structure.dataValues,
+          seats: Array.isArray(structure.seats)
+            ? structure.seats
+            : JSON.parse(structure.seats),
+          seatMap: Array.isArray(structure.seatMap)
+            ? structure.seatMap
+            : JSON.parse(structure.seatMap),
+        };
+      });
+
+      return res.status(200).json({
+        structures: mappedStructures,
+        branches: branches.map(mapBranch),
+      });
+    } catch (error) {
+      const errorMsg = error.details
+        ? error.details.map((detail) => detail.message).join(", ")
+        : error.message || "Error desconocido";
+      logger.error("Error en StructureController->index_with_branches: " + errorMsg);
+      return res.status(500).json({ error: "ServerError", details: errorMsg });
     }
   },
 

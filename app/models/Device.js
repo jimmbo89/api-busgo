@@ -17,6 +17,28 @@ module.exports = (sequelize, DataTypes) => {
         as: 'branch',
         onDelete: 'CASCADE'
       });
+
+      Device.hasMany(models.DeviceVehicle, {
+        foreignKey: 'device_id',
+        as: 'deviceVehicles',
+      });
+
+      Device.hasMany(models.Trip, {
+        foreignKey: 'device_id',
+        as: 'trips',
+      });
+
+      Device.hasMany(models.TripLocation, {
+        foreignKey: 'device_id',
+        as: 'tripLocations',
+      });
+
+      Device.belongsToMany(models.Vehicle, {
+        through: models.DeviceVehicle,
+        foreignKey: 'device_id',
+        otherKey: 'vehicle_id',
+        as: 'vehicles',
+      });
     }
   }
   Device.init({

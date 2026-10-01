@@ -74,11 +74,14 @@ const VehicleWorkerRepository = {
     },
 
     // Verificar si existe una relación por ID de sucursal y vehículo
-    async existsVehicleWorker(workerId, vehicleId, excludeId = null) {
+    async existsVehicleWorker(workerId, vehicleId, excludeId = null, options = {}) {
         const whereCondition = excludeId
             ? { worker_id: workerId, vehicle_id: vehicleId, id: { [Op.ne]: excludeId } }
             : { worker_id: workerId, vehicle_id: vehicleId };
-        return await VehicleWorker.findOne({ where: whereCondition });
+        return await VehicleWorker.findOne({
+            ...options,
+            where: whereCondition,
+        });
     }
 };
 

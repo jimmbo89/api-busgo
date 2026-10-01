@@ -6,6 +6,7 @@ const authConfig = require('../../config/auth');
 const { Worker, User, Role, sequelize } = require('../models'); // Importar los modelos necesarios
 const logger = require('../../config/logger'); // Logger para seguimiento
 const { RoleRepository, WorkerRepository } = require('../repositories');
+const WorkerService = require('../services/WorkerService');
 
 const duplicateWorkerResponse = (res, conflictField = 'worker') => {
     const fieldName = conflictField.charAt(0).toUpperCase() + conflictField.slice(1);
@@ -33,6 +34,54 @@ const uniqueConstraintField = (error) => {
     return 'worker';
 };
 
+const workerBranchErrorDetails = {
+    WorkerNotFound: 'El trabajador indicado no existe.',
+    RoleNotFound: 'El rol indicado no existe.',
+    BranchNotFound: 'La sucursal indicada no existe.',
+    WorkerBranchActionsInvalid: 'El campo branches debe contener un JSON válido con las asociaciones.',
+    WorkerBranchActionInvalid: 'Cada asociación debe indicar branch_id, role_id y una acción válida.',
+    WorkerBranchAssociationIdNotAllowed: 'La acción associate no debe incluir association_id.',
+    WorkerBranchAssociationIdRequired: 'Las acciones update y delete requieren association_id.',
+    WorkerBranchCreateActionInvalid: 'Al crear un trabajador solo se permite la acción associate.',
+    WorkerBranchRoleMismatch: 'El role_id de la asociación debe coincidir con el rol principal del trabajador.',
+    WorkerBranchAssociationNotFound: 'La relación trabajador-sucursal indicada no existe o no pertenece al trabajador.',
+    WorkerBranchAssociationBranchMismatch: 'La sucursal no corresponde a la relación indicada.',
+    WorkerBranchAssociationRoleMismatch: 'El role_id no corresponde al rol actual de la relación que se desea eliminar.',
+    WorkerBranchDuplicateOperation: 'No se puede procesar más de una acción sobre la misma relación.',
+    WorkerMultipleActiveBranches: 'El trabajador solo puede tener una sucursal activa asociada.',
+};
+
+const getWorkerMutationStatus = (error) => {
+    if (['WorkerNotFound', 'RoleNotFound', 'BranchNotFound', 'WorkerBranchAssociationNotFound'].includes(error.message)) {
+        return 404;
+    }
+
+    if (error.message === 'WorkerMultipleActiveBranches') {
+        return 409;
+    }
+
+    if (error.message.startsWith('WorkerBranch')) {
+        return 400;
+    }
+
+    return 500;
+};
+
+const mapBranchWorkers = (branchWorkers = []) => branchWorkers.map((branchWorker) => ({
+    id: branchWorker.branch?.id,
+    branch_id: branchWorker.branch_id,
+    name: branchWorker.branch?.name,
+    image: branchWorker.branch?.image,
+    address: branchWorker.branch?.address,
+    rut: branchWorker.branch?.rut,
+    phone: branchWorker.branch?.phone,
+    company_id: branchWorker.branch?.company_id,
+    companyName: branchWorker.branch?.company?.name,
+    companyImage: branchWorker.branch?.company?.image,
+    association_id: branchWorker.id,
+    role_id: branchWorker.role_id,
+}));
+
 const WorkerController = {
     // Obtener todos los trabajadores
     async index(req, res) {
@@ -46,6 +95,22 @@ const WorkerController = {
             }
 
             const mappedWorkers = workers.map(worker => ({
+                branches: (worker.branchWorkers || [])
+                    .filter(branchWorker => Number(branchWorker.role_id) === Number(worker.role_id))
+                    .map(branchWorker => ({
+                        id: branchWorker.branch?.id,
+                        branch_id: branchWorker.branch_id,
+                        name: branchWorker.branch?.name,
+                        image: branchWorker.branch?.image,
+                        address: branchWorker.branch?.address,
+                        rut: branchWorker.branch?.rut,
+                        phone: branchWorker.branch?.phone,
+                        company_id: branchWorker.branch?.company_id,
+                        companyName: branchWorker.branch?.company?.name,
+                        companyImage: branchWorker.branch?.company?.image,
+                        association_id: branchWorker.id,
+                        role_id: branchWorker.role_id,
+                    })),
                 id: worker.id,
                 userId: worker.user_id,
                 user_id: worker.user_id,
@@ -99,21 +164,17 @@ const WorkerController = {
                 return res.status(400).json({ msg: 'UserNotFound' });
             }
 
-        const t = await sequelize.transaction(); // Inicia una transacción
         try {
+            const result = await WorkerService.create({
+                body: req.body,
+                file: req.file,
+            });
 
-            const worker = await WorkerRepository.create(req.body, req.file, t);
-
-            // Hacer commit de la transacción
-            await t.commit();
-
-            res.status(201).json({ 'worker': worker });
+            res.status(201).json({
+                worker: result.worker,
+                branches: mapBranchWorkers(result.branchWorkers),
+            });
         } catch (error) {
-            // Revertir la transacción en caso de error
-            if (!t.finished) {
-                await t.rollback();
-              }
-
             const persistenceError = error.cause || error;
             if (persistenceError.name === 'SequelizeUniqueConstraintError') {
                 const conflictField = uniqueConstraintField(persistenceError);
@@ -125,8 +186,14 @@ const WorkerController = {
             ? error.details.map(detail => detail.message).join(', ')
             : error.message || 'Error desconocido';
         
-        logger.error('WorkerController->store:' + errorMsg);
-        return res.status(500).json({ error: 'ServerError', details: errorMsg });
+            logger.error('WorkerController->store:' + errorMsg);
+            const status = getWorkerMutationStatus(error);
+            return res.status(status).json({
+                error: status === 500
+                    ? 'Error interno del servidor'
+                    : 'No se pudo procesar la asociación del trabajador con la sucursal.',
+                details: workerBranchErrorDetails[error.message] || errorMsg,
+            });
         }
     },
 
@@ -215,9 +282,16 @@ const WorkerController = {
 
         try {
 
-            const WorkerUpdate = await WorkerRepository.update(worker, req.body, req.file);
+            const result = await WorkerService.update({
+                id,
+                body: req.body,
+                file: req.file,
+            });
 
-            res.status(200).json({ 'worker': WorkerUpdate });
+            res.status(200).json({
+                worker: result.worker,
+                branches: mapBranchWorkers(result.branchWorkers),
+            });
         } catch (error) {
             const persistenceError = error.cause || error;
             if (persistenceError.name === 'SequelizeUniqueConstraintError') {
@@ -230,7 +304,13 @@ const WorkerController = {
             : error.message || 'Error desconocido';
         
         logger.error('WorkerController->update:' + errorMsg);
-        return res.status(500).json({ error: 'ServerError', details: errorMsg });
+        const status = getWorkerMutationStatus(error);
+        return res.status(status).json({
+            error: status === 500
+                ? 'Error interno del servidor'
+                : 'No se pudo procesar la asociación del trabajador con la sucursal.',
+            details: workerBranchErrorDetails[error.message] || errorMsg,
+        });
         }
     },
 

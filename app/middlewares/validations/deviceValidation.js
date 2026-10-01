@@ -1,5 +1,38 @@
 const Joi = require("joi");
 
+const deviceVehicleActionSchema = Joi.object({
+  vehicle_id: Joi.number().integer().positive().required().messages({
+    "number.base": "El campo vehicle_id debe ser un número entero",
+    "number.integer": "El campo vehicle_id debe ser un número entero",
+    "number.positive": "El campo vehicle_id debe ser mayor que cero",
+    "any.required": "El campo vehicle_id es obligatorio",
+  }),
+  association_id: Joi.number().integer().positive().allow(null).optional().messages({
+    "number.base": "El campo association_id debe ser un número entero",
+    "number.integer": "El campo association_id debe ser un número entero",
+    "number.positive": "El campo association_id debe ser mayor que cero",
+  }),
+  action: Joi.string()
+    .valid("associate", "activate", "deactivate", "delete")
+    .insensitive()
+    .required()
+    .messages({
+      "any.only": "La acción debe ser associate, activate, deactivate o delete",
+      "any.required": "El campo action es obligatorio",
+    }),
+  active: Joi.boolean().optional().messages({
+    "boolean.base": "El campo active debe ser booleano",
+  }),
+});
+
+const deviceVehiclesSchema = Joi.array()
+  .items(deviceVehicleActionSchema)
+  .allow(null)
+  .optional()
+  .messages({
+    "array.base": "El campo vehicles debe ser un arreglo",
+  });
+
 // Validación para crear un nuevo dispositivo
 const storeDeviceSchema = Joi.object({
   branch_id: Joi.number().required().messages({
@@ -45,6 +78,7 @@ const storeDeviceSchema = Joi.object({
   notes: Joi.string().allow(null).empty("").optional().messages({
     "string.base": "El campo notes debe ser una cadena de texto",
   }),
+  vehicles: deviceVehiclesSchema,
 });
 
 // Validación para actualizar un dispositivo
@@ -93,7 +127,23 @@ const updateDeviceSchema = Joi.object({
   notes: Joi.string().allow(null).empty("").optional().messages({
     "string.base": "El campo notes debe ser una cadena de texto",
   }),
+  vehicles: deviceVehiclesSchema,
 });
+
+const parseDeviceVehicles = (req, res, next) => {
+  if (req.body && typeof req.body.vehicles === "string") {
+    try {
+      req.body.vehicles = JSON.parse(req.body.vehicles);
+    } catch (error) {
+      return res.status(400).json({
+        msg: "Error de validación",
+        details: ["El campo vehicles debe contener un JSON válido"],
+      });
+    }
+  }
+
+  return next();
+};
 
 const deviceCompanySchema = Joi.object({
   mac: Joi.string()
@@ -136,5 +186,6 @@ module.exports = {
   updateDeviceSchema,
   idDeviceSchema,
   branchIdDeviceSchema,
-  deviceCompanySchema
+  deviceCompanySchema,
+  parseDeviceVehicles,
 };

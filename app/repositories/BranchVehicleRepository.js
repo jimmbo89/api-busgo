@@ -12,8 +12,9 @@ const BranchVehicleRepository = {
         });
     },
 
-    async findByBranch(branchId) {
+    async findByBranch(branchId, options = {}) {
         return await BranchVehicle.findAll({
+            ...options,
             where: {
                 branch_id: branchId // Filtramos por el ID de la sucursal
             },
@@ -26,14 +27,62 @@ const BranchVehicleRepository = {
         });
     },
 
+    async findByVehicle(vehicleId, options = {}) {
+        return await BranchVehicle.findAll({
+            ...options,
+            where: {
+                vehicle_id: vehicleId
+            },
+            include: [
+                {
+                    model: Branch,
+                    as: 'branch',
+                    attributes: ['id', 'name', 'image', 'address']
+                }
+            ],
+            order: [['branch_id', 'ASC']]
+        });
+    },
+
+    async findByVehicles(vehicleIds, options = {}) {
+        const normalizedVehicleIds = (Array.isArray(vehicleIds) ? vehicleIds : [])
+            .map((vehicleId) => Number(vehicleId))
+            .filter((vehicleId) => Number.isInteger(vehicleId) && vehicleId > 0);
+
+        if (normalizedVehicleIds.length === 0) {
+            return [];
+        }
+
+        return await BranchVehicle.findAll({
+            ...options,
+            where: {
+                vehicle_id: { [Op.in]: normalizedVehicleIds },
+            },
+            include: [
+                {
+                    model: Branch,
+                    as: 'branch',
+                    attributes: ['id', 'name', 'image', 'address', 'rut', 'phone', 'company_id'],
+                    include: [
+                        {
+                            association: 'company',
+                            attributes: ['id', 'name', 'image'],
+                        },
+                    ],
+                },
+            ],
+            order: [['vehicle_id', 'ASC'], ['branch_id', 'ASC']],
+        });
+    },
+
     // Crear una nueva relación Branch-Vehicle
-    async create(body) {      
+    async create(body, options = {}) {
 
         const { branch_id, vehicle_id } = body;
         return await BranchVehicle.create({
             branch_id,
             vehicle_id
-        });
+        }, options);
     },
 
     // Obtener una relación Branch-Vehicle por ID
@@ -68,8 +117,8 @@ const BranchVehicleRepository = {
     },
 
     // Eliminar una relación Branch-Vehicle por ID
-    async delete(branchVehicle) {
-        return await branchVehicle.destroy();
+    async delete(branchVehicle, options = {}) {
+        return await branchVehicle.destroy(options);
     },
 
     // Verificar si existe una relación por ID de sucursal y vehículo

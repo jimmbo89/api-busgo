@@ -12,6 +12,36 @@ const routeCodeSchema = Joi.string()
         'string.pattern.base': 'El campo code solo permite letras, nÃºmeros y guiones, sin espacios, sin guiones al inicio o final y sin guiones consecutivos',
     });
 
+const routeBranchActionSchema = Joi.object({
+    association_id: Joi.number().integer().positive().allow(null).optional().messages({
+        'number.base': 'El campo association_id debe ser un número entero',
+        'number.integer': 'El campo association_id debe ser un número entero',
+        'number.positive': 'El campo association_id debe ser mayor que cero',
+    }),
+    branch_id: Joi.number().integer().positive().required().messages({
+        'number.base': 'El campo branch_id debe ser un número entero',
+        'number.integer': 'El campo branch_id debe ser un número entero',
+        'number.positive': 'El campo branch_id debe ser mayor que cero',
+        'any.required': 'El campo branch_id es obligatorio',
+    }),
+    action: Joi.string()
+        .valid('associate', 'delete')
+        .insensitive()
+        .required()
+        .messages({
+            'any.only': 'La acción debe ser associate o delete',
+            'any.required': 'El campo action es obligatorio',
+        }),
+});
+
+const routeBranchesSchema = Joi.array()
+    .items(routeBranchActionSchema)
+    .allow(null)
+    .optional()
+    .messages({
+        'array.base': 'El campo branches debe ser un arreglo',
+    });
+
 // Validacion para crear una nueva ruta
 const storeRouteSchema = Joi.object({
     code: routeCodeSchema.required().messages({
@@ -23,6 +53,7 @@ const storeRouteSchema = Joi.object({
     distance: Joi.number().precision(2).positive().allow(null).empty('').optional(),
     estimated: Joi.number().integer().allow(null).empty('').optional(),
     status: Joi.number().integer().allow(null).empty('').optional(),
+    branches: routeBranchesSchema,
 });
 
 // Validacion para actualizar una ruta
@@ -35,6 +66,7 @@ const updateRouteSchema = Joi.object({
     distance: Joi.number().precision(2).positive().allow(null).empty('').optional(),
     estimated: Joi.number().integer().allow(null).empty('').optional(),
     status: Joi.number().integer().allow(null).empty('').optional(),
+    branches: routeBranchesSchema,
 });
 
 // Validacion para obtener una ruta por ID

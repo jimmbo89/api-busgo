@@ -51,9 +51,10 @@ const LocationController = {
             ? null
             : rawBranchId;
 
+        let selectedBranch = null;
         if (branch_id) {
-            const branch = await BranchRepository.findById(branch_id);
-            if (!branch) {
+            selectedBranch = await BranchRepository.findById(branch_id);
+            if (!selectedBranch) {
                 logger.error(
                     `LocationController->index_route: Sucursal no encontrada con ID ${branch_id}`
                 );
@@ -73,6 +74,7 @@ const LocationController = {
         }
 
         const branchRoutes = await BranchRouteRepository.findByBranch(branch_id);
+        const branches = await BranchRepository.findAll();
 
         // Mapeo directo sin función auxiliar
         res.status(200).json({
@@ -106,8 +108,19 @@ const LocationController = {
                 route_id: branchRoute.route_id,
                 origin_id: route.origin_id,
                 destination_id: route.destination_id,
-            }
+                }
             }),
+            branches: branches.map((branch) => ({
+                id: branch.id,
+                name: branch.name,
+                image: branch.image,
+                address: branch.address,
+                rut: branch.rut,
+                phone: branch.phone,
+                company_id: branch.company_id,
+                companyName: branch.company?.name,
+                companyImage: branch.company?.image,
+            })),
         });
 
     } catch (error) {

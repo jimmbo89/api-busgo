@@ -1,4 +1,5 @@
 const DeviceRepository = require('./DeviceRepository');
+const DeviceVehicleRepository = require('./DeviceVehicleRepository');
 const BranchRepository = require('./BranchRepository');
 const CompanyRepository = require('./CompanyRepository');
 const TripRepository = require('./TripRepository');
@@ -27,9 +28,12 @@ const FareSegmentRepository = require('./FareSegmentRepository');
 const FareSegmentTicketTypeRepository = require('./FareSegmentTicketTypeRepository');
 const TripFareRepository = require('./TripFareRepository');
 const TicketItemRepository = require('./TicketItemRepository');
+const TripLocationRepository = require('./TripLocationRepository');
+const VehicleRoutePreferenceRepository = require('./VehicleRoutePreferenceRepository');
 
 module.exports = {
     DeviceRepository,
+    DeviceVehicleRepository,
     BranchRepository,
     CompanyRepository,
     TripRepository,
@@ -57,5 +61,7 @@ module.exports = {
     FareSegmentRepository,
     FareSegmentTicketTypeRepository,
     TripFareRepository,
-    TicketItemRepository
+    TicketItemRepository,
+    TripLocationRepository,
+    VehicleRoutePreferenceRepository
 };

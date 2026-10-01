@@ -53,6 +53,7 @@ module.exports = (sequelize, DataTypes) => {
     Branch.hasMany(models.Incident, { foreignKey: 'branch_id', as: 'incidents' });
     Branch.hasMany(models.Notification, { foreignKey: 'branch_id', as: 'notifications' });
     Branch.hasMany(models.TripTemplate, { foreignKey: 'branch_id', as: 'triptemplates' });
+    Branch.hasMany(models.DeviceVehicle, { foreignKey: 'branch_id', as: 'deviceVehicles' });
     }
   }
   Branch.init({

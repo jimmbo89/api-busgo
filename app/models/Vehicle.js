@@ -33,8 +33,29 @@ module.exports = (sequelize, DataTypes) => {
       as: 'workers' // Alias para acceder a los trabajadores de un vehículo
     });
 
+    Vehicle.hasMany(models.DeviceVehicle, {
+      foreignKey: 'vehicle_id',
+      as: 'deviceVehicles',
+    });
+
+    Vehicle.belongsToMany(models.Device, {
+      through: models.DeviceVehicle,
+      foreignKey: 'vehicle_id',
+      otherKey: 'device_id',
+      as: 'devices',
+    });
+
     Vehicle.hasMany(models.Trip, { foreignKey: 'vehicle_id', as: 'trips' });
     Vehicle.hasMany(models.TripTemplate, { foreignKey: 'vehicle_id', as: 'triptemplates' });
+    Vehicle.hasMany(models.TripLocation, {
+      foreignKey: 'vehicle_id',
+      as: 'tripLocations',
+    });
+
+    Vehicle.hasMany(models.VehicleRoutePreference, {
+      foreignKey: 'vehicle_id',
+      as: 'routePreferences',
+    });
     }
   }
   Vehicle.init({

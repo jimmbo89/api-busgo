@@ -1,6 +1,101 @@
 const logger = require('../../config/logger');
+const { Op } = require('sequelize');
 const { RouteStop, Company, Route, Location } = require('../models');
 const { RouteStopRepository, CompanyRepository, RouteRepository, LocationRepository } = require('../repositories');
+
+const findRouteStopConflict = async ({ routeId, locationId, stopOrder, excludeId = null }) => {
+  const exclusion = excludeId ? { [Op.ne]: excludeId } : undefined;
+
+  const locationConflict = await RouteStop.findOne({
+    where: {
+      route_id: routeId,
+      location_id: locationId,
+      ...(exclusion ? { id: exclusion } : {}),
+    },
+  });
+
+  if (locationConflict) {
+    return 'location';
+  }
+
+  const orderConflict = await RouteStop.findOne({
+    where: {
+      route_id: routeId,
+      stop_order: stopOrder,
+      ...(exclusion ? { id: exclusion } : {}),
+    },
+  });
+
+  return orderConflict ? 'order' : null;
+};
+
+const getConflictResponse = (conflict, location) => {
+  if (conflict === 'location') {
+    const locationName = location?.address || location?.city || 'seleccionada';
+    return {
+      status: 409,
+      body: {
+        error: 'La ubicación ya está asociada a esta ruta.',
+        details: `La ubicación ${locationName} ya está configurada como parada en esta ruta. Seleccione otra ubicación.`,
+      },
+    };
+  }
+
+  return {
+    status: 409,
+    body: {
+      error: 'El orden de la parada ya está ocupado.',
+      details: 'Ya existe otra parada con ese número de orden en la ruta. Seleccione un orden diferente.',
+    },
+  };
+};
+
+const getValidationErrorResponse = (error) => {
+  const errorText = [
+    error?.name,
+    error?.message,
+    error?.parent?.constraint,
+    error?.parent?.sqlMessage,
+    ...(Array.isArray(error?.errors) ? error.errors.map((item) => `${item.path} ${item.message}`) : []),
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+
+  if (errorText.includes('unique_route_stop_location')) {
+    return {
+      status: 409,
+      body: {
+        error: 'La ubicación ya está asociada a esta ruta.',
+        details: 'La ubicación seleccionada ya está configurada como parada en esta ruta.',
+      },
+    };
+  }
+
+  if (errorText.includes('unique_route_stop_order')) {
+    return {
+      status: 409,
+      body: {
+        error: 'El orden de la parada ya está ocupado.',
+        details: 'Ya existe otra parada con ese número de orden en la ruta.',
+      },
+    };
+  }
+
+  if (error?.name === 'SequelizeValidationError') {
+    return {
+      status: 400,
+      body: {
+        error: 'Los datos de la parada no son válidos.',
+        details: Array.isArray(error.errors)
+          ? error.errors.map((item) => item.message).join(' ')
+          : 'Revise los datos enviados e intente nuevamente.',
+      },
+    };
+  }
+
+  return null;
+};
 
 const mapRouteStop = (routeStop) => ({
   id: routeStop.id,
@@ -124,6 +219,17 @@ const RouteStopController = {
         return res.status(404).json({ msg: 'LocationNotFound' });
       }
 
+      const conflict = await findRouteStopConflict({
+        routeId: route_id,
+        locationId: location_id,
+        stopOrder: req.body.stop_order,
+      });
+
+      if (conflict) {
+        const response = getConflictResponse(conflict, location);
+        return res.status(response.status).json(response.body);
+      }
+
       const routeStop = await RouteStopRepository.create(req.body);
 
       return res.status(201).json({
@@ -133,6 +239,10 @@ const RouteStopController = {
     } catch (error) {
       const errorMsg = error.message || 'Error desconocido';
       logger.error('RouteStopController->store: ' + errorMsg);
+      const validationResponse = getValidationErrorResponse(error);
+      if (validationResponse) {
+        return res.status(validationResponse.status).json(validationResponse.body);
+      }
       return res.status(500).json({ error: 'ServerError', details: errorMsg });
     }
   },
@@ -188,6 +298,22 @@ const RouteStopController = {
         }
       }
 
+      const nextRouteId = req.body.route_id ?? routeStop.route_id;
+      const nextLocationId = req.body.location_id ?? routeStop.location_id;
+      const nextStopOrder = req.body.stop_order ?? routeStop.stop_order;
+      const location = await LocationRepository.findById(nextLocationId);
+      const conflict = await findRouteStopConflict({
+        routeId: nextRouteId,
+        locationId: nextLocationId,
+        stopOrder: nextStopOrder,
+        excludeId: routeStop.id,
+      });
+
+      if (conflict) {
+        const response = getConflictResponse(conflict, location);
+        return res.status(response.status).json(response.body);
+      }
+
       const updatedRouteStop = await RouteStopRepository.update(routeStop, req.body);
 
       return res.status(200).json({
@@ -197,6 +323,10 @@ const RouteStopController = {
     } catch (error) {
       const errorMsg = error.message || 'Error desconocido';
       logger.error('RouteStopController->update: ' + errorMsg);
+      const validationResponse = getValidationErrorResponse(error);
+      if (validationResponse) {
+        return res.status(validationResponse.status).json(validationResponse.body);
+      }
       return res.status(500).json({ error: 'ServerError', details: errorMsg });
     }
   },

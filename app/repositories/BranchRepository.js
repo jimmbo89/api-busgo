@@ -1,20 +1,52 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Branch, Company } = require('../models');
+const { Branch, Company, Route, Location } = require('../models');
 const ImageService = require('../services/ImageService');
 const logger = require('../../config/logger'); // Logger para seguimiento
 
 const BranchRepository = {
   // Obtener todas las sucursales
-  async findAll() {
+  async findAll({ includeRoutes = false } = {}) {
+    const include = [{
+      model: Company,
+      as: 'company',
+      attributes: ['id', 'name', 'image'],
+    }];
+
+    if (includeRoutes) {
+      include.push({
+        model: Route,
+        as: 'routes',
+        attributes: [
+          'id',
+          'code',
+          'name',
+          'origin_id',
+          'destination_id',
+          'distance',
+          'estimated',
+          'status',
+        ],
+        through: { attributes: [] },
+        include: [
+          {
+            model: Location,
+            as: 'origin',
+            attributes: ['id', 'address', 'image'],
+          },
+          {
+            model: Location,
+            as: 'destination',
+            attributes: ['id', 'address', 'image'],
+          },
+        ],
+      });
+    }
+
     return await Branch.findAll({
       attributes: ['id', 'name', 'address', 'image', 'rut', 'phone', 'company_id'],
-      include: {
-        model: Company,
-        as: 'company',
-        attributes: ['id', 'name', 'image'],
-      },
+      include,
     });
   },
 
@@ -38,6 +70,19 @@ const BranchRepository = {
     });
 
     return branches.map((branch) => branch.id);
+  },
+
+  async findByCompanyId(company_id) {
+    return await Branch.findAll({
+      where: { company_id },
+      attributes: ['id', 'name', 'address', 'image', 'rut', 'phone', 'company_id'],
+      include: {
+        model: Company,
+        as: 'company',
+        attributes: ['id', 'name', 'image'],
+      },
+      order: [['id', 'ASC']],
+    });
   },
 
   // Buscar una sucursal por RUT, excluyendo una sucursal específica

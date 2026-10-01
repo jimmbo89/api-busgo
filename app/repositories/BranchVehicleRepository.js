@@ -1,4 +1,4 @@
-const { BranchVehicle, Branch, Vehicle } = require('../models');
+const { BranchVehicle, Branch, Vehicle, Worker, Role } = require('../models');
 const { Op } = require('sequelize');
 
 const BranchVehicleRepository = {
@@ -18,9 +18,28 @@ const BranchVehicleRepository = {
                 branch_id: branchId // Filtramos por el ID de la sucursal
             },
             include: [
-                { 
-                    model: Vehicle, 
-                    as: 'vehicle'
+                {
+                    model: Vehicle,
+                    as: 'vehicle',
+                    include: [{
+                        model: Worker,
+                        as: 'workers',
+                        attributes: ['id', 'name', 'image'],
+                        include: [
+                            {
+                                model: Role,
+                                as: 'role',
+                                attributes: ['id', 'name'],
+                            },
+                            {
+                                model: Vehicle,
+                                as: 'vehicles',
+                                attributes: ['id'],
+                                through: { attributes: [] },
+                            },
+                        ],
+                        through: { attributes: [] },
+                    }],
                 }
             ]
         });

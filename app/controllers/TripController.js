@@ -3833,6 +3833,30 @@ const TripController = {
         const routeFareSegments = await FareSegmentRepository.findByRoute(mappedRoute.id);
         mappedRoute.fareSegments = mapRouteFareSegments(routeFareSegments);
       }
+      const branchWorkersById = new Map(
+        branchWorkers.map((branchWorker) => [
+          Number(branchWorker.worker_id),
+          branchWorker,
+        ])
+      );
+
+      const mapVehicleWorker = (worker) => {
+        const branchWorker = branchWorkersById.get(Number(worker.id));
+        const role = branchWorker?.role || worker.role;
+
+        return {
+          id: worker.id,
+          workerId: worker.id,
+          worker_id: worker.id,
+          workerName: worker.name,
+          workerImage: worker.image,
+          roleId: role?.id ?? null,
+          role_id: role?.id ?? null,
+          roleName: role?.name ?? null,
+          vehicles: worker.vehicles || [],
+        };
+      };
+
       const mappedBranchVehicles = branchVehicles.map((branchVehicle) => ({
         id: branchVehicle.vehicle_id,
         vehicleName: branchVehicle.vehicle.plate,
@@ -3841,6 +3865,7 @@ const TripController = {
         vehicleImage: branchVehicle.vehicle.image,
         brand: branchVehicle.vehicle.brand,
         seats: branchVehicle.vehicle.seats,
+        workers: (branchVehicle.vehicle.workers || []).map(mapVehicleWorker),
       }));
 
       // Mapeamos los resultados para obtener solo los IDs y nombres

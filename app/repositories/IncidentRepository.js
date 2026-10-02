@@ -1,6 +1,15 @@
 const { Op } = require("sequelize");
 const { Incident, Branch, Worker, User, sequelize } = require("../models"); // Importa el modelo de Incident
 const logger = require("../../config/logger");
+const { getIncidentTypeById } = require("../constants/incidentTypes");
+
+const buildIncidentTypeFilter = (type) => {
+  const incidentType = getIncidentTypeById(type);
+
+  return incidentType
+    ? { title: { [Op.like]: incidentType.titlePattern } }
+    : {};
+};
 
 const IncidentRepository = {
   async create(body) {
@@ -175,7 +184,12 @@ const IncidentRepository = {
     }
   },
 
-  async getIncidentsByBranchAndDate( branch_id, startDate = null, endDate = null ) {
+  async getIncidentsByBranchAndDate(
+    branch_id,
+    startDate = null,
+    endDate = null,
+    type = null
+  ) {
     try {
       let dateFilter = {};
 
@@ -203,7 +217,11 @@ const IncidentRepository = {
         };
       }
 
-      const whereClause = branch_id ? { ...dateFilter, branch_id } : dateFilter;
+      const whereClause = {
+        ...dateFilter,
+        ...(branch_id ? { branch_id } : {}),
+        ...buildIncidentTypeFilter(type),
+      };
 
       const incidents = await Incident.findAll({
         where: whereClause,
@@ -237,7 +255,12 @@ const IncidentRepository = {
     }
   },
 
-  async getIncidentsByCompanyAndDate(company_id, startDate = null, endDate = null) {
+  async getIncidentsByCompanyAndDate(
+    company_id,
+    startDate = null,
+    endDate = null,
+    type = null
+  ) {
     try {
       let dateFilter = {};
 
@@ -259,7 +282,10 @@ const IncidentRepository = {
       }
 
       const incidents = await Incident.findAll({
-        where: dateFilter,
+        where: {
+          ...dateFilter,
+          ...buildIncidentTypeFilter(type),
+        },
         include: [
           {
             model: Branch,

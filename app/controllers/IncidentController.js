@@ -1,5 +1,6 @@
 const logger = require("../../config/logger"); // Logger para seguimiento
 const { IncidentRepository, BranchRepository, CompanyRepository } = require("../repositories");
+const { INCIDENT_TYPES } = require("../constants/incidentTypes");
 
 const padDatePart = (value) => String(value).padStart(2, "0");
 
@@ -93,7 +94,7 @@ const IncidentController = {
     logger.info("Datos recibidos buscar las incidencias");
     logger.info(JSON.stringify(req.body));
     try {
-      const { company_id, branch_id, startDate, endDate } = req.body;
+      const { company_id, branch_id, startDate, endDate, type } = req.body;
 
       let incidents = [];
 
@@ -109,7 +110,8 @@ const IncidentController = {
         incidents = await IncidentRepository.getIncidentsByCompanyAndDate(
           company_id,
           startDate,
-          endDate
+          endDate,
+          type
         );
       } else {
         const branch = await BranchRepository.findById(branch_id);
@@ -123,7 +125,8 @@ const IncidentController = {
         incidents = await IncidentRepository.getIncidentsByBranchAndDate(
           branch_id,
           startDate,
-          endDate
+          endDate,
+          type
         );
       }
 
@@ -150,6 +153,7 @@ const IncidentController = {
 
       res.status(200).json({
         incidents: formattedIncidents,
+        incidentTypes: INCIDENT_TYPES.map(({ id, value }) => ({ id, value })),
         summary: buildIncidentSummary(incidents),
       });
     } catch (error) {

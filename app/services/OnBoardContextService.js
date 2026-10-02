@@ -90,7 +90,7 @@ const OnBoardContextService = {
 
     const [workerBranches, branchVehicles] = await Promise.all([
       BranchWorkerRepository.findByWorker(workerId, options),
-      BranchVehicleRepository.findByBranch(branchId, options),
+      BranchVehicleRepository.findByVehicle(vehicleId, options),
     ]);
 
     const vehicleBranchIds = new Set(

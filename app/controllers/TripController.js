@@ -3553,6 +3553,8 @@ const TripController = {
       }
 
       const sourceTickets = trip.tickets || [];
+      const tripSaleMode = String(trip.saleMode ?? "").trim().toLowerCase();
+      const isNormalTrip = tripSaleMode === "normal";
       const { soldSeatCount } = TripController.getSoldSeatSummary(trip);
       const targetVehicleSeats = Number(newVehicle.seats || 0);
 
@@ -3622,12 +3624,14 @@ const TripController = {
           seats: reassignedSeats,
         });
 
-        ticketUpdates.push({
-          ticket,
-          body: {
-            seats: reassignedSeats,
-          },
-        });
+        if (isNormalTrip) {
+          ticketUpdates.push({
+            ticket,
+            body: {
+              seats: reassignedSeats,
+            },
+          });
+        }
       });
 
       const updatedTripWorkers = eligibleWorkers.map((worker_id) => ({
@@ -3652,9 +3656,15 @@ const TripController = {
           transaction,
         });
 
-        logger.info(`TripController->changeTrip: actualizando tickets del viaje ${trip.id}`);
-        for (const ticketUpdate of ticketUpdates) {
-          await ticketUpdate.ticket.update(ticketUpdate.body, { transaction });
+        if (ticketUpdates.length > 0) {
+          logger.info(`TripController->changeTrip: actualizando tickets del viaje ${trip.id}`);
+          for (const ticketUpdate of ticketUpdates) {
+            await ticketUpdate.ticket.update(ticketUpdate.body, { transaction });
+          }
+        } else if (!isNormalTrip && sourceTickets.length > 0) {
+          logger.info(
+            `TripController->changeTrip: viaje ${trip.id} con modo ${tripSaleMode || "no definido"}; se conserva seats de los tickets y solo se registra la reasignacion en la incidencia`
+          );
         }
 
         logger.info(`TripController->changeTrip: asignando choferes del vehiculo ${newVehicle.id}`);

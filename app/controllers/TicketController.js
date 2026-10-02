@@ -1280,7 +1280,8 @@ const TicketController = {
       adults,
       minors,
       pay,
-      id
+      id,
+      sequenceNumber
     } = req.body;
     let ticket = {};
 
@@ -1394,10 +1395,16 @@ const TicketController = {
         }
       }
 
-      if(id){
-        req.body.qr = id;
-        req.body.barcode = id;
-        req.body.sequenceNumber = id;
+      const ticketCode = sequenceNumber !== undefined &&
+        sequenceNumber !== null &&
+        String(sequenceNumber).trim() !== ""
+        ? sequenceNumber
+        : id;
+
+      if (ticketCode) {
+        req.body.qr = ticketCode;
+        req.body.barcode = ticketCode;
+        req.body.sequenceNumber = ticketCode;
       }
 
       let ticket = await TicketRepository.create(req.body, { transaction: t });
@@ -1845,10 +1852,16 @@ const TicketController = {
         }
       }
 
-      if (req.body.id) {
-        req.body.qr = req.body.id;
-        req.body.barcode = req.body.id;
-        req.body.sequenceNumber = req.body.id;
+      const ticketCode = req.body.sequenceNumber !== undefined &&
+        req.body.sequenceNumber !== null &&
+        String(req.body.sequenceNumber).trim() !== ""
+        ? req.body.sequenceNumber
+        : req.body.id;
+
+      if (ticketCode) {
+        req.body.qr = ticketCode;
+        req.body.barcode = ticketCode;
+        req.body.sequenceNumber = ticketCode;
       }
 
       const ticket = await TicketRepository.create(req.body, {

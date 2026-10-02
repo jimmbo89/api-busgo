@@ -448,6 +448,8 @@ const TicketRepository = {
         "total",
         "seats",
         "date",
+        "createdAt",
+        "extraData",
         "adults",
         "minors",
         "qr",
@@ -470,6 +472,13 @@ const TicketRepository = {
           model: User,
           as: "user",
           attributes: ["id", "name", "email"],
+          include: [
+            {
+              model: Worker,
+              as: "worker",
+              attributes: ["id", "name"],
+            },
+          ],
         },
         {
           model: Trip,
@@ -546,6 +555,42 @@ const TicketRepository = {
     }
 
     return ticketItemsByTicketId;
+  },
+
+  async getTicketPaymentReferencesByTicketIds(ticketIds) {
+    const normalizedTicketIds = Array.from(
+      new Set(
+        (Array.isArray(ticketIds) ? ticketIds : [])
+          .map((ticketId) => Number(ticketId))
+          .filter((ticketId) => Number.isFinite(ticketId) && ticketId > 0)
+      )
+    );
+
+    if (normalizedTicketIds.length === 0) {
+      return new Map();
+    }
+
+    const webPayments = await TicketWebPayment.findAll({
+      where: {
+        ticket_id: { [Op.in]: normalizedTicketIds },
+      },
+      attributes: [
+        "ticket_id",
+        "transaction_reference",
+        "tuu_sequence_number",
+      ],
+      order: [["updatedAt", "DESC"]],
+    });
+
+    const paymentReferencesByTicketId = new Map();
+    for (const payment of webPayments) {
+      const ticketId = Number(payment.ticket_id);
+      if (!paymentReferencesByTicketId.has(ticketId)) {
+        paymentReferencesByTicketId.set(ticketId, payment);
+      }
+    }
+
+    return paymentReferencesByTicketId;
   },
 
   async getTicketsByTripIds(tripIds) {
@@ -669,6 +714,8 @@ const TicketRepository = {
         "total",
         "seats",
         "date",
+        "createdAt",
+        "extraData",
         "adults",
         "minors",
         "qr",
@@ -695,16 +742,28 @@ const TicketRepository = {
           model: User,
           as: "user",
           attributes: ["id", "name", "email"],
+          include: [
+            {
+              model: Worker,
+              as: "worker",
+              attributes: ["id", "name"],
+            },
+          ],
         },
         {
           model: Trip,
           as: "trip",
-          attributes: ["id", "date", "schedule", "start", "end", "saleMode"],
+          attributes: ["id", "code", "date", "schedule", "start", "end", "saleMode"],
           include: [
+            {
+              model: Vehicle,
+              as: "vehicle",
+              attributes: ["id", "plate", "internal_number", "image", "seats"],
+            },
             {
               model: Route,
               as: "route",
-              attributes: ["id", "name"],
+              attributes: ["id", "code", "name"],
               include: [
                 {
                   model: Location,
@@ -746,6 +805,8 @@ const TicketRepository = {
       "total",
       "seats",
       "date",
+      "createdAt",
+      "extraData",
       "adults",
       "minors",
       "qr",
@@ -772,12 +833,24 @@ const TicketRepository = {
         model: User,
         as: "user",
         attributes: ["id", "name", "email"],
+        include: [
+          {
+            model: Worker,
+            as: "worker",
+            attributes: ["id", "name"],
+          },
+        ],
       },
       {
         model: Trip,
         as: "trip",
         attributes: ["id", "code", "date", "schedule", "start", "end", "saleMode"],
         include: [
+          {
+            model: Vehicle,
+            as: "vehicle",
+            attributes: ["id", "plate", "internal_number", "image", "seats"],
+          },
           {
             model: Route,
             as: "route",

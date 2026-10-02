@@ -71,38 +71,7 @@ const mapTicketItems = (ticketItems = []) =>
     ticketType: ticketItem.ticketType ? toPlainObject(ticketItem.ticketType) : null,
   }));
 
-const mapWebTicketResponse = (ticket) => ({
-  id: ticket.id,
-  branchId: ticket.branch_id,
-  branch_id: ticket.branch_id,
-  tripId: ticket.trip_id,
-  trip_id: ticket.trip_id,
-  code: ticket.trip?.code ?? null,
-  tripCode: ticket.trip?.code ?? null,
-  fare_segment_id: ticket.fare_segment_id,
-  fareSegmentId: ticket.fare_segment_id,
-  method: ticket.method,
-  quantity: ticket.quantity,
-  price: Number(ticket.price),
-  total: Number(ticket.total),
-  date: ticket.date,
-  schedule: ticket.trip.schedule,
-  vehiclePlate: ticket.trip.vehicle?.plate,
-  internal_number: ticket.trip.vehicle?.internal_number,
-  internalNumber: ticket.trip.vehicle?.internal_number,
-  print: ticket.print,
-  qr: ticket.qr,
-  barcode: ticket.barcode,
-  ticketItems: mapTicketItems(ticket.ticketItems),
-  branchName: ticket.branch.name,
-  rut: ticket.branch.company.rut,
-  address: ticket.branch.address,
-  phone: ticket.branch.phone,
-  tripName: ticket.trip.route.name,
-  routeCode: ticket.trip.route?.code ?? null,
-  tripOrigin: ticket.trip.route.origin.address,
-  tripDestination: ticket.trip.route.destination.address,
-});
+const mapWebTicketResponse = (ticket) => mapTicketSaleResponse(ticket);
 
 const extractTimePart = (value) => {
   if (typeof value !== "string") {
@@ -136,6 +105,76 @@ const formatTimePart = (value) => {
   return date && !Number.isNaN(date.getTime())
     ? `${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`
     : null;
+};
+
+const parseObjectValue = (value) => {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim() !== "") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    } catch (error) {
+      return {};
+    }
+  }
+
+  return {};
+};
+
+const firstNonEmptyString = (...values) => {
+  const value = values.find(
+    (candidate) =>
+      candidate !== null &&
+      candidate !== undefined &&
+      String(candidate).trim() !== ""
+  );
+
+  return value === undefined ? null : String(value);
+};
+
+const getTicketTransactionId = (ticket, paymentReference = null) => {
+  const extraData = parseObjectValue(ticket?.extraData);
+  const tuuPayment = parseObjectValue(extraData.tuuPayment);
+
+  return firstNonEmptyString(
+    paymentReference?.transaction_reference,
+    tuuPayment.transactionReference,
+    paymentReference?.tuu_sequence_number,
+    tuuPayment.sequenceNumber
+  );
+};
+
+const getTicketSalesMetadata = (ticket, paymentReference = null) => {
+  const saleDateTime = ticket?.createdAt
+    ? new Date(ticket.createdAt)
+    : null;
+  const saleDateTimeIso =
+    saleDateTime && !Number.isNaN(saleDateTime.getTime())
+      ? saleDateTime.toISOString()
+      : null;
+  const tripDate = formatDateOnlyPart(ticket?.trip?.date);
+  const departureTime = formatTimePart(ticket?.trip?.schedule);
+  const printCount = Number(ticket?.print);
+
+  return {
+    saleDateTime: saleDateTimeIso,
+    saleTime: ticket?.saleTime ?? getTicketSaleTime(ticket),
+    tripDate,
+    departureTime,
+    departureDateTime:
+      tripDate && departureTime
+        ? `${tripDate}T${departureTime}:00`
+        : null,
+    transactionId: getTicketTransactionId(ticket, paymentReference),
+    reprintCount: Number.isFinite(printCount)
+      ? Math.max(printCount - 1, 0)
+      : 0,
+  };
 };
 
 const formatIncidentDateWithCreatedTime = (incident) => {
@@ -180,6 +219,58 @@ const getTicketSaleTime = (ticket) =>
   extractTimePart(ticket?.createdAt) ||
   extractTimePart(ticket?.updatedAt) ||
   null;
+
+const mapTicketSaleResponse = (ticket, paymentReference = null) => {
+  const trip = ticket?.trip || {};
+  const route = trip.route || {};
+  const branch = ticket?.branch || {};
+
+  return {
+    id: ticket?.id,
+    branchId: ticket?.branch_id,
+    branch_id: ticket?.branch_id,
+    userId: ticket?.user_id,
+    user_id: ticket?.user_id,
+    userName: ticket?.user?.worker?.name ?? ticket?.user?.name ?? null,
+    tripId: ticket?.trip_id,
+    trip_id: ticket?.trip_id,
+    code: trip.code ?? null,
+    tripCode: trip.code ?? null,
+    saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
+    sale_mode: trip.saleMode ?? trip.sale_mode ?? "normal",
+    fare_segment_id: ticket?.fare_segment_id,
+    fareSegmentId: ticket?.fare_segment_id,
+    method: ticket?.method,
+    status: ticket?.status,
+    quantity: Number(ticket?.quantity),
+    price: Number(ticket?.price),
+    total: Number(ticket?.total),
+    date: ticket?.date,
+    schedule: trip.schedule,
+    seats: parseArrayValue(ticket?.seats),
+    adults: ticket?.adults ?? 0,
+    minors: ticket?.minors ?? 0,
+    promotions: parseArrayValue(ticket?.promotions),
+    tickettypes: parseArrayValue(ticket?.tickettypes),
+    sequenceNumber: ticket?.sequenceNumber ?? null,
+    vehiclePlate: trip.vehicle?.plate ?? null,
+    internal_number: trip.vehicle?.internal_number ?? null,
+    internalNumber: trip.vehicle?.internal_number ?? null,
+    print: ticket?.print,
+    qr: ticket?.qr,
+    barcode: ticket?.barcode,
+    ticketItems: mapTicketItems(ticket?.ticketItems),
+    branchName: branch.name ?? null,
+    rut: branch.company?.rut ?? null,
+    address: branch.address ?? null,
+    phone: branch.phone ?? null,
+    tripName: route.name ?? null,
+    routeCode: route.code ?? null,
+    tripOrigin: route.origin?.address ?? null,
+    tripDestination: route.destination?.address ?? null,
+    ...getTicketSalesMetadata(ticket, paymentReference),
+  };
+};
 
 const resolveTripFareMatch = (trip, fareSegmentId, ticketTypeId) => {
   const tripFares = Array.isArray(trip?.tripFares) ? trip.tripFares : [];
@@ -633,37 +724,8 @@ const formatTripScheduledDeparture = (trip) => {
   return date && schedule ? `${date} ${schedule}` : null;
 };
 
-const mapTicketResponse = (ticket) => ({
-  id: ticket.id,
-  branchId: ticket.branch_id,
-  branch_id: ticket.branch_id,
-  tripId: ticket.trip_id,
-  trip_id: ticket.trip_id,
-  saleMode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
-  sale_mode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
-  fare_segment_id: ticket.fare_segment_id,
-  fareSegmentId: ticket.fare_segment_id,
-  method: ticket.method,
-  quantity: ticket.quantity,
-  price: Number(ticket.price),
-  total: Number(ticket.total),
-  date: ticket.date,
-  schedule: ticket.trip?.schedule,
-  vehiclePlate: ticket.trip?.vehicle?.plate,
-  internal_number: ticket.trip?.vehicle?.internal_number,
-  internalNumber: ticket.trip?.vehicle?.internal_number,
-  print: ticket.print,
-  qr: ticket.qr,
-  barcode: ticket.barcode,
-  ticketItems: mapTicketItems(ticket.ticketItems),
-  branchName: ticket.branch?.name,
-  rut: ticket.branch?.company?.rut,
-  address: ticket.branch?.address,
-  phone: ticket.branch?.phone,
-  tripName: ticket.trip?.route?.name,
-  tripOrigin: ticket.trip?.route?.origin?.address,
-  tripDestination: ticket.trip?.route?.destination?.address,
-});
+const mapTicketResponse = (ticket, paymentReference = null) =>
+  mapTicketSaleResponse(ticket, paymentReference);
 
 function buildComparison(currentValue, previousValue) {
   const current = Number(currentValue) || 0;
@@ -1069,7 +1131,10 @@ const TicketController = {
       );
 
       const ticketIds = tickets.map((ticket) => ticket.id);
-      const ticketItemsByTicketId = await TicketRepository.getTicketItemsByTicketIds(ticketIds);
+      const [ticketItemsByTicketId, paymentReferencesByTicketId] = await Promise.all([
+        TicketRepository.getTicketItemsByTicketIds(ticketIds),
+        TicketRepository.getTicketPaymentReferencesByTicketIds(ticketIds),
+      ]);
 
       const mappedTickets = tickets.map((ticket) => ({
         id: ticket.id,
@@ -1101,7 +1166,7 @@ const TicketController = {
         print: ticket.print,
         date: ticket.date,
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-        userName: ticket.user.name, // Incluir los datos del usuario asociado
+        userName: ticket.user?.worker?.name ?? ticket.user?.name ?? null, // Mostrar el nombre del trabajador
         tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
         routeCode: ticket.trip.route?.code ?? null,
         originImage: ticket.trip.route.origin.image, // Incluir los detalles del viaje asociadoc
@@ -1130,6 +1195,10 @@ const TicketController = {
               destinationRouteStop: ticket.fareSegment.destinationRouteStop?.location?.address ?? null,
             }
           : null,
+        ...getTicketSalesMetadata(
+          ticket,
+          paymentReferencesByTicketId.get(Number(ticket.id))
+        ),
       }));
 
       const summary = mappedTickets.reduce(
@@ -1443,35 +1512,7 @@ const TicketController = {
 
       await t.commit();
       ticket = await TicketRepository.findById(ticket.id);
-      mappedTicket = {
-        id: ticket.id,
-        branchId: ticket.branch_id,
-        branch_id: ticket.branch_id,
-        tripId: ticket.trip_id,
-        trip_id: ticket.trip_id,
-        fare_segment_id: ticket.fare_segment_id,
-        fareSegmentId: ticket.fare_segment_id,
-        method: ticket.method,
-        quantity: ticket.quantity,
-        price: Number(ticket.price),
-        total: Number(ticket.total),
-        date: ticket.date,
-        schedule: ticket.trip.schedule,
-        vehiclePlate: ticket.trip.vehicle?.plate,
-        internal_number: ticket.trip.vehicle?.internal_number,
-        internalNumber: ticket.trip.vehicle?.internal_number,
-        print: ticket.print,
-        qr: ticket.qr,
-        barcode: ticket.barcode,
-        ticketItems: mapTicketItems(ticket.ticketItems),
-        branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-        rut: ticket.branch.company.rut,
-        address: ticket.branch.address,
-        phone: ticket.branch.phone,
-        tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
-        tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
-        tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
-      };
+      mappedTicket = mapTicketResponse(ticket);
       res.status(201).json({ ticket: mappedTicket });
     } catch (error) {
       if (!t.finished) {
@@ -1930,36 +1971,8 @@ const TicketController = {
         // Incrementar el contador de impresiones
         const ticketIdentifier = ticket.sequenceNumber ?? null;
         mappedTicket = {
-          id: ticket.id,
-          branchId: ticket.branch_id,
-          branch_id: ticket.branch_id,
-          tripId: ticket.trip_id,
-          trip_id: ticket.trip_id,
-          saleMode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
-          sale_mode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
-          fare_segment_id: ticket.fare_segment_id,
-          fareSegmentId: ticket.fare_segment_id,
-          method: ticket.method,
-          quantity: Number(ticket.quantity),
-          price: Number(ticket.price),
-          total: Number(ticket.total),
+          ...mapTicketResponse(ticket),
           sequenceNumber: Number(ticket.sequenceNumber),
-          date: ticket.date,
-          schedule: ticket.trip.schedule,
-          vehiclePlate: ticket.trip.vehicle?.plate,
-          internal_number: ticket.trip.vehicle?.internal_number,
-          internalNumber: ticket.trip.vehicle?.internal_number,
-          print: ticket.print,
-          qr: ticket.qr,
-          barcode: ticket.barcode,
-          ticketItems: mapTicketItems(ticket.ticketItems),
-          branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
-          rut: ticket.branch.company.rut,
-          address: ticket.branch.address,
-          phone: ticket.branch.phone,
-          tripName: ticket.trip.route.name, // Incluir los detalles del viaje asociado
-          tripOrigin: ticket.trip.route.origin.address, // Incluir los detalles del viaje asociado
-          tripDestination: ticket.trip.route.destination.address, // Incluir los detalles del viaje asociado
         };
       //}
       const printCount = Number(ticket.print || 0);
@@ -3193,5 +3206,7 @@ async verifyEncryptedQR(req, res) {
     }
   }
 };
+
+TicketController.mapTicketSaleResponse = mapTicketSaleResponse;
 
 module.exports = TicketController;

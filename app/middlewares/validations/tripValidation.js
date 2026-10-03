@@ -316,6 +316,14 @@ const tripWorkerReportSchema = Joi.object({
   worker_id: Joi.number().allow(null).empty("").optional().messages({
     "number.base": "El campo branch_id debe ser un numero entero",
   }),
+  method: Joi.string()
+    .valid("Efectivo", "Credito", "Debito")
+    .allow("", null)
+    .optional()
+    .messages({
+      "any.only": "El método de pago no es válido",
+      "string.base": "El campo method debe ser un texto",
+    }),
 });
 
 const expressSalesDestinationsSchema = Joi.object({

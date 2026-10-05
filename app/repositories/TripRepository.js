@@ -16,7 +16,6 @@ const {
   TicketItem,
   Worker,
   Ticket,
-  Device,
   Structure,
   Company,
   sequelize,
@@ -527,12 +526,10 @@ const TripRepository = {
         "end",
         "branch_id",
         "vehicle_id",
-        "device_id",
         "route_id",
         "price",
         "saleMode",
         "trip_template_id",
-        "finish_method",
       ],
       include: [
         {
@@ -622,12 +619,10 @@ const TripRepository = {
         "end",
         "branch_id",
         "vehicle_id",
-        "device_id",
         "route_id",
         "price",
         "saleMode",
         "trip_template_id",
-        "finish_method",
       ],
       where: whereClause, // Usar el objeto `where` construido dinámicamente
        order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -1138,12 +1133,10 @@ const TripRepository = {
         "end",
         "branch_id",
         "vehicle_id",
-        "device_id",
         "route_id",
         "price",
         "saleMode",
         "trip_template_id",
-        "finish_method",
       ],
       where: {
         branch_id: branchId,
@@ -1567,7 +1560,7 @@ const TripRepository = {
   });
 },
 
-  async findById(id, options = {}) {
+  async findById(id) {
     return await Trip.findByPk(id, {
       attributes: [
         "id",
@@ -1579,12 +1572,10 @@ const TripRepository = {
         "end",
         "branch_id",
         "vehicle_id",
-        "device_id",
         "route_id",
         "price",
         "saleMode",
         "trip_template_id",
-        "finish_method",
       ],
       include: [
         {
@@ -1606,7 +1597,7 @@ const TripRepository = {
         {
           model: Route,
           as: "route",
-          attributes: ["id", "code", "name", "estimated"],
+          attributes: ["id", "code", "name"],
           include: [
             {
               model: Location, // Relación con el modelo de origen
@@ -1621,7 +1612,6 @@ const TripRepository = {
           ],
         },
       ],
-      ...options,
     });
   },
 
@@ -1637,12 +1627,10 @@ const TripRepository = {
         "end",
         "branch_id",
         "vehicle_id",
-        "device_id",
         "route_id",
         "price",
         "saleMode",
         "trip_template_id",
-        "finish_method",
       ],
       include: [
         {
@@ -1731,87 +1719,6 @@ const TripRepository = {
     });
   },
 
-  async findActiveOnBoard({
-    workerId,
-    vehicleId,
-    routeId,
-    branchIds = [],
-    date,
-    options = {},
-  }) {
-    const where = {
-      vehicle_id: vehicleId,
-      route_id: routeId,
-      saleMode: 'on_board',
-      date,
-      start: { [Op.not]: null },
-      end: { [Op.is]: null },
-    };
-
-    const normalizedBranchIds = (Array.isArray(branchIds) ? branchIds : [])
-      .map((branchId) => Number(branchId))
-      .filter((branchId) => Number.isInteger(branchId) && branchId > 0);
-
-    if (normalizedBranchIds.length > 0) {
-      where.branch_id = { [Op.in]: normalizedBranchIds };
-    }
-
-    return Trip.findAll({
-      ...options,
-      where,
-      include: [
-        {
-          model: TripWorker,
-          as: 'tripworkers',
-          required: true,
-          where: { worker_id: workerId },
-          attributes: ['id', 'trip_id', 'worker_id', 'branch_id', 'date'],
-          include: [
-            {
-              model: Worker,
-              as: 'worker',
-              attributes: ['id', 'name', 'image'],
-            },
-          ],
-        },
-        {
-          model: Branch,
-          as: 'branch',
-          attributes: ['id', 'name', 'image', 'address'],
-        },
-        {
-          model: Vehicle,
-          as: 'vehicle',
-          attributes: ['id', 'plate', 'internal_number', 'seats', 'state', 'image'],
-        },
-        {
-          model: Route,
-          as: 'route',
-          attributes: ['id', 'code', 'name', 'estimated', 'origin_id', 'destination_id'],
-          include: [
-            {
-              model: Location,
-              as: 'origin',
-              attributes: ['id', 'address', 'image'],
-            },
-            {
-              model: Location,
-              as: 'destination',
-              attributes: ['id', 'address', 'image'],
-            },
-          ],
-        },
-        {
-          model: Device,
-          as: 'device',
-          attributes: ['id', 'name', 'serial', 'status'],
-          required: false,
-        },
-      ],
-      order: [['start', 'ASC'], ['id', 'ASC']],
-    });
-  },
-
   async create(body, options = {}) {
     //logger.info("Creando viaje...");
     //logger.info(body);
@@ -1824,10 +1731,8 @@ const TripRepository = {
       branch_id,
       vehicle_id,
       route_id,
-      device_id,
       price,
       trip_template_id,
-      finish_method,
     } = body;
     const saleMode = normalizeSaleMode(body.saleMode ?? body.sale_mode);
 
@@ -1844,11 +1749,9 @@ const TripRepository = {
         branch_id,
         vehicle_id,
         route_id,
-        device_id: device_id ?? null,
         price: price ?? null,
         saleMode,
         trip_template_id: trip_template_id ?? null,
-        finish_method: finish_method ?? null,
       }, { ...options, transaction });
 
       const sequence = await reserveTripSequence(date, transaction);
@@ -2268,7 +2171,9 @@ async existsByUpdatedFields(trip, updatedFields) {
     };
 
     if (method) {
-      ticketWhere.method = method;
+      ticketWhere.method = Array.isArray(method)
+        ? { [Op.in]: method }
+        : method;
     }
 
     return await Trip.findAll({

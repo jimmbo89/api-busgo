@@ -316,13 +316,19 @@ const tripWorkerReportSchema = Joi.object({
   worker_id: Joi.number().allow(null).empty("").optional().messages({
     "number.base": "El campo branch_id debe ser un numero entero",
   }),
-  method: Joi.string()
-    .valid("Efectivo", "Credito", "Debito")
+  method: Joi.alternatives()
+    .try(
+      Joi.string().valid("Efectivo", "Credito", "Debito"),
+      Joi.array()
+        .items(Joi.string().valid("Efectivo", "Credito", "Debito"))
+        .min(1)
+    )
     .allow("", null)
     .optional()
     .messages({
-      "any.only": "El método de pago no es válido",
-      "string.base": "El campo method debe ser un texto",
+      "alternatives.types": "El campo method debe ser un texto o un array de opciones válidas",
+      "alternatives.match": "El campo method contiene opciones no válidas",
+      "array.min": "El campo method debe contener al menos una opción",
     }),
 });
 

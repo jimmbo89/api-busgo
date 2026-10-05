@@ -91,6 +91,7 @@ const buildAvailableRoutes = async ({ context, branchIds = null }) => {
         availableRoute = {
           ...mapRoute(route),
           compatible_branch_ids: [],
+          branches: [],
           priority: null,
           preferred: false,
         };
@@ -100,6 +101,15 @@ const buildAvailableRoutes = async ({ context, branchIds = null }) => {
       const branchId = Number(branchRoute.branch_id);
       if (!availableRoute.compatible_branch_ids.includes(branchId)) {
         availableRoute.compatible_branch_ids.push(branchId);
+
+        const branch = branchesById.get(branchId);
+        if (branch) {
+          availableRoute.branches.push({
+            id: branch.id,
+            image: branch.image,
+            address: branch.address,
+          });
+        }
       }
 
     }

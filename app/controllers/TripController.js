@@ -59,6 +59,12 @@ const formatTripScheduledDeparture = (trip) => {
   return date && schedule ? `${date} ${schedule}` : null;
 };
 
+const REPORT_PAYMENT_METHODS = [
+  { value: "Efectivo", label: "Efectivo", icon: "mdi-cash" },
+  { value: "Credito", label: "Crédito", icon: "mdi-credit-card-outline" },
+  { value: "Debito", label: "Débito", icon: "mdi-bank-outline" },
+];
+
 const addMinutesToTripTime = (datePart, timePart, minutes = 0) => {
   if (typeof timePart !== "string") {
     return timePart;
@@ -4161,7 +4167,14 @@ const TripController = {
   },
 
   async getTripsByBranchAndWorker(req, res) {
-    let { branch_id, date, endDate, worker_id: bodyWorkerId, user_id: bodyUserId } = req.body;
+    let {
+      branch_id,
+      date,
+      endDate,
+      method,
+      worker_id: bodyWorkerId,
+      user_id: bodyUserId,
+    } = req.body;
     let user_id = bodyUserId !== undefined && bodyUserId !== null && bodyUserId !== ""
       ? bodyUserId
       : null;
@@ -4191,12 +4204,13 @@ const TripController = {
     }
 
     try {
-      // Obtener los trips que no han finalizado
+      // Obtener los viajes con ventas del trabajador dentro del período.
       const trips = await TripRepository.findTripsByBranchAndWorker(
         branch_id,
         date,
         endDate,
-        user_id
+        user_id,
+        method
       );
 
       // Obtener fecha actual en zona horaria de Chile para comparación
@@ -4297,6 +4311,7 @@ const TripController = {
         trips: mappedTrips,
         totalGeneral,
         totalAsientosComprados,
+        payment_methods: REPORT_PAYMENT_METHODS,
       });
     } catch (error) {
       logger.error(

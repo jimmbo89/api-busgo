@@ -454,6 +454,7 @@ const TicketRepository = {
         "minors",
         "qr",
         "barcode",
+        "sequenceNumber",
         "print",
         "promotions",
         "tickettypes",

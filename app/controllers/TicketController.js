@@ -145,7 +145,8 @@ const getTicketTransactionId = (ticket, paymentReference = null) => {
     paymentReference?.transaction_reference,
     tuuPayment.transactionReference,
     paymentReference?.tuu_sequence_number,
-    tuuPayment.sequenceNumber
+    tuuPayment.sequenceNumber,
+    ticket?.sequenceNumber
   );
 };
 

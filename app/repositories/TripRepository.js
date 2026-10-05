@@ -2260,9 +2260,8 @@ async existsByUpdatedFields(trip, updatedFields) {
 
     const ticketWhere = {
       user_id: userId,
-      // Ticket.date representa la salida del viaje en ventas a bordo. La
-      // fecha real de venta está en createdAt.
-      createdAt: {
+      // El período del reporte se filtra por la fecha registrada en el ticket.
+      date: {
         [Op.gte]: `${searchDate} 00:00:00`,
         [Op.lt]: `${exclusiveEndDate} 00:00:00`,
       },

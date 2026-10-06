@@ -3593,6 +3593,7 @@ const TripController = {
       }
 
       const reassignedSeatsByTicket = [];
+      const reassignedPassengersByTicket = [];
       let seatCursor = 0;
       const availableSeatNumbers = Array.from(
         { length: targetVehicleSeats },
@@ -3618,6 +3619,7 @@ const TripController = {
         const currentSeatCount = parsedSeats.length > 0
           ? parsedSeats.length
           : Number(ticket.quantity || 0);
+        const passengerCount = Number(ticket.quantity || 0);
 
         const reassignedSeats = availableSeatNumbers.slice(
           seatCursor,
@@ -3628,6 +3630,10 @@ const TripController = {
         reassignedSeatsByTicket.push({
           sequenceNumber: ticket.sequenceNumber ?? null,
           seats: reassignedSeats,
+        });
+        reassignedPassengersByTicket.push({
+          sequenceNumber: ticket.sequenceNumber ?? null,
+          quantity: passengerCount,
         });
 
         if (isNormalTrip) {
@@ -3700,7 +3706,11 @@ const TripController = {
               destination: trip.route?.destination?.address ?? null,
               old_vehicle: oldVehicleLabel,
               new_vehicle: newVehicleLabel,
-              reassignedSeats: reassignedSeatsByTicket,
+              reassignedPassengers: reassignedPassengersByTicket,
+              passengersMoved: reassignedPassengersByTicket.reduce(
+                (total, item) => total + item.quantity,
+                0
+              ),
             }),
             date: new Date(),
           },

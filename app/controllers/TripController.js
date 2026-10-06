@@ -3666,6 +3666,15 @@ const TripController = {
       const tripSchedule = trip.schedule;
       const tripCode = trip.code ?? null;
       const routeCode = trip.route?.code ?? null;
+      const incidentReassignmentDetails = isNormalTrip
+        ? { reassignedSeats: reassignedSeatsByTicket }
+        : {
+            reassignedPassengers: reassignedPassengersByTicket,
+            passengersMoved: reassignedPassengersByTicket.reduce(
+              (total, item) => total + item.quantity,
+              0
+            ),
+          };
 
       await sequelize.transaction(async (transaction) => {
         logger.info(`TripController->changeTrip: eliminando choferes actuales del viaje ${trip.id}`);
@@ -3712,11 +3721,7 @@ const TripController = {
               destination: trip.route?.destination?.address ?? null,
               old_vehicle: oldVehicleLabel,
               new_vehicle: newVehicleLabel,
-              reassignedPassengers: reassignedPassengersByTicket,
-              passengersMoved: reassignedPassengersByTicket.reduce(
-                (total, item) => total + item.quantity,
-                0
-              ),
+              ...incidentReassignmentDetails,
             }),
             date: new Date(),
           },

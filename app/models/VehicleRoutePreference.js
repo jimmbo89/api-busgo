@@ -25,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
         onUpdate: 'CASCADE',
         onDelete: 'CASCADE',
       });
+
     }
   }
 
@@ -49,19 +50,6 @@ module.exports = (sequelize, DataTypes) => {
           },
         },
       },
-      branch_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        validate: {
-          isInt: {
-            msg: 'El campo branch_id debe ser un número entero',
-          },
-          min: {
-            args: [1],
-            msg: 'El campo branch_id debe ser mayor que cero',
-          },
-        },
-      },
       route_id: {
         type: DataTypes.BIGINT,
         allowNull: false,
@@ -75,18 +63,15 @@ module.exports = (sequelize, DataTypes) => {
           },
         },
       },
+      // Legacy columns kept nullable for a possible future branch-scoped flow.
+      // The current vehicle form never reads or writes these values.
+      branch_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
       priority: {
         type: DataTypes.INTEGER,
-        allowNull: false,
-        validate: {
-          isInt: {
-            msg: 'El campo priority debe ser un número entero',
-          },
-          min: {
-            args: [1],
-            msg: 'El campo priority debe ser mayor que cero',
-          },
-        },
+        allowNull: true,
       },
     },
     {

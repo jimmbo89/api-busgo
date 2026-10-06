@@ -41,31 +41,18 @@ const vehicleRoutePreferenceActionSchema = Joi.object({
         'number.integer': 'El campo vehicle_id de la preferencia debe ser un número entero',
         'number.positive': 'El campo vehicle_id de la preferencia debe ser mayor que cero',
     }),
-    branch_id: Joi.number().integer().positive().required().messages({
-        'number.base': 'El campo branch_id de la preferencia debe ser un número entero',
-        'number.integer': 'El campo branch_id de la preferencia debe ser un número entero',
-        'number.positive': 'El campo branch_id de la preferencia debe ser mayor que cero',
-        'any.required': 'El campo branch_id de la preferencia es obligatorio',
-    }),
     route_id: Joi.number().integer().positive().required().messages({
         'number.base': 'El campo route_id de la preferencia debe ser un número entero',
         'number.integer': 'El campo route_id de la preferencia debe ser un número entero',
         'number.positive': 'El campo route_id de la preferencia debe ser mayor que cero',
         'any.required': 'El campo route_id de la preferencia es obligatorio',
     }),
-    priority: Joi.number().integer().min(1).max(3).required().messages({
-        'number.base': 'La prioridad de la preferencia debe ser un número entero entre 1 y 3',
-        'number.integer': 'La prioridad de la preferencia debe ser un número entero entre 1 y 3',
-        'number.min': 'La prioridad mínima permitida es 1',
-        'number.max': 'La prioridad máxima permitida es 3',
-        'any.required': 'El campo priority de la preferencia es obligatorio',
-    }),
     action: Joi.string()
-        .valid('associate', 'update', 'delete')
+        .valid('associate', 'delete')
         .insensitive()
         .required()
         .messages({
-            'any.only': 'La acción de la preferencia debe ser associate, update o delete',
+            'any.only': 'La acción de la preferencia debe ser associate o delete',
             'any.required': 'El campo action de la preferencia es obligatorio',
         }),
 });

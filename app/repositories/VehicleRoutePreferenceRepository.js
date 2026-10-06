@@ -1,31 +1,15 @@
 'use strict';
 
 const { Op } = require('sequelize');
-const { VehicleRoutePreference, Route, Location, Branch } = require('../models');
+const { VehicleRoutePreference, Route, Location } = require('../models');
 
 const VehicleRoutePreferenceRepository = {
-  async findByVehicle(vehicleId, branchId = undefined, options = {}) {
-    if (typeof branchId === 'object' && branchId !== null) {
-      options = branchId;
-      branchId = undefined;
-    }
-
-    const where = { vehicle_id: vehicleId };
-    if (branchId !== undefined) {
-      where.branch_id = branchId;
-    }
-
+  async findByVehicle(vehicleId, options = {}) {
     return VehicleRoutePreference.findAll({
       ...options,
-      where,
-      attributes: ['id', 'vehicle_id', 'branch_id', 'route_id', 'priority', 'createdAt', 'updatedAt'],
-      include: [
-        {
-          model: Branch,
-          as: 'branch',
-          attributes: ['id', 'name', 'image', 'address', 'company_id'],
-        },
-        {
+      where: { vehicle_id: vehicleId },
+      attributes: ['id', 'vehicle_id', 'route_id', 'createdAt', 'updatedAt'],
+      include: [{
           model: Route,
           as: 'route',
           attributes: [
@@ -52,7 +36,7 @@ const VehicleRoutePreferenceRepository = {
           ],
         },
       ],
-      order: [['priority', 'ASC'], ['route_id', 'ASC']],
+      order: [['route_id', 'ASC']],
     });
   },
 
@@ -70,14 +54,8 @@ const VehicleRoutePreferenceRepository = {
       where: {
         vehicle_id: { [Op.in]: normalizedVehicleIds },
       },
-      attributes: ['id', 'vehicle_id', 'branch_id', 'route_id', 'priority', 'createdAt', 'updatedAt'],
-      include: [
-        {
-          model: Branch,
-          as: 'branch',
-          attributes: ['id', 'name', 'image', 'address', 'company_id'],
-        },
-        {
+      attributes: ['id', 'vehicle_id', 'route_id', 'createdAt', 'updatedAt'],
+      include: [{
           model: Route,
           as: 'route',
           attributes: [
@@ -106,19 +84,16 @@ const VehicleRoutePreferenceRepository = {
       ],
       order: [
         ['vehicle_id', 'ASC'],
-        ['branch_id', 'ASC'],
-        ['priority', 'ASC'],
         ['route_id', 'ASC'],
       ],
     });
   },
 
-  async findByVehicleAndRoute(vehicleId, branchId, routeId, options = {}) {
+  async findByVehicleAndRoute(vehicleId, routeId, options = {}) {
     return VehicleRoutePreference.findOne({
       ...options,
       where: {
         vehicle_id: vehicleId,
-        branch_id: branchId,
         route_id: routeId,
       },
     });
@@ -138,18 +113,8 @@ const VehicleRoutePreferenceRepository = {
     });
   },
 
-  async deleteByVehicleBranch(vehicleId, branchId, options = {}) {
-    return VehicleRoutePreference.destroy({
-      ...options,
-      where: {
-        vehicle_id: vehicleId,
-        branch_id: branchId,
-      },
-    });
-  },
-
-  async deleteNotIncluded(vehicleId, branchId, routeIds, options = {}) {
-    const where = { vehicle_id: vehicleId, branch_id: branchId };
+  async deleteNotIncluded(vehicleId, routeIds, options = {}) {
+    const where = { vehicle_id: vehicleId };
 
     if (routeIds.length > 0) {
       where.route_id = { [Op.notIn]: routeIds };

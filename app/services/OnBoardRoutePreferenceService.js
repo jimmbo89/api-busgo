@@ -22,9 +22,8 @@ const normalizePreferences = (preferences) => {
 
   return preferences.map((preference) => {
     const routeId = normalizeId(preference?.route_id);
-    const priority = normalizeId(preference?.priority);
 
-    if (!routeId || !priority) {
+    if (!routeId) {
       throw new Error('OnBoardRoutePreferenceInvalid');
     }
 
@@ -33,7 +32,7 @@ const normalizePreferences = (preferences) => {
     }
 
     routeIds.add(routeId);
-    return { routeId, priority };
+    return { routeId };
   });
 };
 
@@ -57,15 +56,13 @@ const ensureVehicleBelongsToBranch = async (vehicleId, branchId, transaction) =>
   }
 };
 
-const ensureRoutesExist = async (routeIds, branchId, transaction) => {
+const ensureRoutesExist = async (routeIds, vehicleId, transaction) => {
   if (routeIds.length === 0) {
     return;
   }
 
   const routes = await Route.findAll({
-    where: {
-      id: { [Op.in]: routeIds },
-    },
+    where: { id: { [Op.in]: routeIds } },
     attributes: ['id'],
     transaction,
   });
@@ -74,7 +71,12 @@ const ensureRoutesExist = async (routeIds, branchId, transaction) => {
     throw new Error('RouteNotFound');
   }
 
-  const branchRoutes = await BranchRouteRepository.findByBranch(branchId, {
+  const branchVehicles = await BranchVehicleRepository.findByVehicle(
+    vehicleId,
+    { transaction }
+  );
+  const branchIds = branchVehicles.map((relation) => Number(relation.branch_id));
+  const branchRoutes = await BranchRouteRepository.findByBranches(branchIds, {
     transaction,
   });
   const availableRouteIds = new Set(
@@ -82,14 +84,15 @@ const ensureRoutesExist = async (routeIds, branchId, transaction) => {
   );
 
   if (routeIds.some((routeId) => !availableRouteIds.has(routeId))) {
-    throw new Error('RouteNotAvailableForBranch');
+    throw new Error('RouteNotAvailableForVehicleBranches');
   }
 };
 
 const OnBoardRoutePreferenceService = {
   async findByVehicle(vehicleId, branch_id) {
     const normalizedVehicleId = normalizeId(vehicleId);
-    const normalizedBranchId = normalizeId(branch_id);
+    const normalizedBranchId =
+      branch_id === undefined || branch_id === null ? null : normalizeId(branch_id);
     const vehicle = normalizedVehicleId
       ? await Vehicle.findByPk(normalizedVehicleId)
       : null;
@@ -98,19 +101,18 @@ const OnBoardRoutePreferenceService = {
       throw new Error('VehicleNotFound');
     }
 
-    if (!normalizedBranchId) {
-      throw new Error('BranchRequired');
+    let branch = null;
+    if (branch_id !== undefined && branch_id !== null) {
+      if (!normalizedBranchId) {
+        throw new Error('BranchRequired');
+      }
+
+      branch = await ensureBranchExists(normalizedBranchId);
+      await ensureVehicleBelongsToBranch(normalizedVehicleId, normalizedBranchId);
     }
 
-    const branch = await ensureBranchExists(normalizedBranchId);
-    await ensureVehicleBelongsToBranch(
-      normalizedVehicleId,
-      normalizedBranchId
-    );
-
     const preferences = await VehicleRoutePreferenceRepository.findByVehicle(
-      normalizedVehicleId,
-      normalizedBranchId
+      normalizedVehicleId
     );
 
     return { vehicle, branch, preferences };
@@ -118,14 +120,15 @@ const OnBoardRoutePreferenceService = {
 
   async replace({ vehicle_id, branch_id, preferences }) {
     const vehicleId = normalizeId(vehicle_id);
-    const branchId = normalizeId(branch_id);
+    const normalizedBranchId =
+      branch_id === undefined || branch_id === null ? null : normalizeId(branch_id);
     const normalizedPreferences = normalizePreferences(preferences);
 
     if (!vehicleId) {
       throw new Error('VehicleNotFound');
     }
 
-    if (!branchId) {
+    if (branch_id !== undefined && branch_id !== null && !normalizedBranchId) {
       throw new Error('BranchRequired');
     }
 
@@ -135,15 +138,17 @@ const OnBoardRoutePreferenceService = {
         throw new Error('VehicleNotFound');
       }
 
-      const branch = await ensureBranchExists(branchId, transaction);
-      await ensureVehicleBelongsToBranch(vehicleId, branchId, transaction);
+      let branch = null;
+      if (normalizedBranchId) {
+        branch = await ensureBranchExists(normalizedBranchId, transaction);
+        await ensureVehicleBelongsToBranch(vehicleId, normalizedBranchId, transaction);
+      }
 
       const routeIds = normalizedPreferences.map((preference) => preference.routeId);
-      await ensureRoutesExist(routeIds, branchId, transaction);
+      await ensureRoutesExist(routeIds, vehicleId, transaction);
 
       const existingPreferences = await VehicleRoutePreferenceRepository.findByVehicle(
         vehicleId,
-        branchId,
         { transaction, lock: transaction.LOCK.UPDATE }
       );
       const existingByRouteId = new Map(
@@ -151,20 +156,13 @@ const OnBoardRoutePreferenceService = {
       );
 
       for (const preference of normalizedPreferences) {
-        const existing = existingByRouteId.get(preference.routeId);
-
-        if (existing) {
-          await existing.update(
-            { priority: preference.priority },
-            { transaction }
-          );
-        } else {
+        if (!existingByRouteId.has(preference.routeId)) {
           await VehicleRoutePreferenceRepository.create(
             {
               vehicle_id: vehicleId,
-              branch_id: branchId,
               route_id: preference.routeId,
-              priority: preference.priority,
+              branch_id: null,
+              priority: null,
             },
             { transaction }
           );
@@ -173,14 +171,12 @@ const OnBoardRoutePreferenceService = {
 
       await VehicleRoutePreferenceRepository.deleteNotIncluded(
         vehicleId,
-        branchId,
         routeIds,
         { transaction }
       );
 
       const savedPreferences = await VehicleRoutePreferenceRepository.findByVehicle(
         vehicleId,
-        branchId,
         { transaction }
       );
 

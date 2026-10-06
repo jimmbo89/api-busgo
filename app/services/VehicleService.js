@@ -35,9 +35,7 @@ const parseRoutePreferences = (routePreferences) => {
   const operationKeys = new Set();
 
   return parsedPreferences.map((item) => {
-    const branchId = normalizeId(item?.branch_id);
     const routeId = normalizeId(item?.route_id);
-    const priority = normalizeId(item?.priority);
     const associationId =
       item?.association_id === undefined ||
       item?.association_id === null ||
@@ -52,13 +50,7 @@ const parseRoutePreferences = (routePreferences) => {
         : normalizeId(item.vehicle_id);
     const action = String(item?.action || '').trim().toLowerCase();
 
-    if (
-      !branchId ||
-      !routeId ||
-      !priority ||
-      priority > 3 ||
-      !['associate', 'update', 'delete'].includes(action)
-    ) {
+    if (!routeId || !['associate', 'delete'].includes(action)) {
       throw new Error('VehicleRoutePreferenceActionInvalid');
     }
 
@@ -66,13 +58,13 @@ const parseRoutePreferences = (routePreferences) => {
       throw new Error('VehicleRoutePreferenceAssociationIdNotAllowed');
     }
 
-    if (['update', 'delete'].includes(action) && !associationId) {
+    if (action === 'delete' && !associationId) {
       throw new Error('VehicleRoutePreferenceAssociationIdRequired');
     }
 
     const operationKey = associationId
       ? `association:${associationId}`
-      : `${action}:${branchId}:${routeId}`;
+      : `${action}:${routeId}`;
 
     if (operationKeys.has(operationKey)) {
       throw new Error('VehicleRoutePreferenceDuplicateOperation');
@@ -82,9 +74,7 @@ const parseRoutePreferences = (routePreferences) => {
     return {
       associationId,
       vehicleId,
-      branchId,
       routeId,
-      priority,
       action,
     };
   });
@@ -141,9 +131,11 @@ const normalizeOperations = (branches) => {
   });
 };
 
-const ensureBranchesExist = async (operations) => {
+const ensureBranchesExist = async (operations, transaction) => {
   const branches = await Promise.all(
-    operations.map((operation) => BranchRepository.findById(operation.branchId))
+    operations.map((operation) =>
+      BranchRepository.findById(operation.branchId, { transaction })
+    )
   );
 
   if (branches.some((branch) => !branch)) {
@@ -260,39 +252,35 @@ const getFinalBranchIds = (existingRelations, operations) => {
   return branchIds;
 };
 
-const ensurePreferenceBranchesExist = async (operations) => {
-  const branchIds = [...new Set(operations.map((operation) => operation.branchId))];
-  const branches = await Promise.all(
-    branchIds.map((branchId) => BranchRepository.findById(branchId))
-  );
-
-  if (branches.some((branch) => !branch)) {
-    throw new Error('BranchNotFound');
-  }
-};
-
-const ensureRouteAvailableForBranch = async ({
-  routeId,
-  branchId,
+const ensureRoutesAvailableForVehicleBranches = async ({
+  routeIds,
+  branchIds,
   transaction,
-  availableRoutesByBranch,
 }) => {
-  const route = await Route.findByPk(routeId, { transaction });
-  if (!route) {
+  const uniqueRouteIds = [...new Set(routeIds)];
+  if (uniqueRouteIds.length === 0) {
+    return;
+  }
+
+  const routes = await Route.findAll({
+    where: { id: uniqueRouteIds },
+    attributes: ['id'],
+    transaction,
+  });
+
+  if (routes.length !== uniqueRouteIds.length) {
     throw new Error('VehicleRoutePreferenceRouteNotFound');
   }
 
-  if (!availableRoutesByBranch.has(branchId)) {
-    const branchRoutes = await BranchRouteRepository.findByBranch(branchId, {
-      transaction,
-    });
-    availableRoutesByBranch.set(
-      branchId,
-      new Set(branchRoutes.map((branchRoute) => Number(branchRoute.route_id)))
-    );
-  }
+  const branchRoutes = await BranchRouteRepository.findByBranches(
+    [...branchIds],
+    { transaction }
+  );
+  const availableRouteIds = new Set(
+    branchRoutes.map((branchRoute) => Number(branchRoute.route_id))
+  );
 
-  if (!availableRoutesByBranch.get(branchId).has(routeId)) {
+  if (uniqueRouteIds.some((routeId) => !availableRouteIds.has(routeId))) {
     throw new Error('VehicleRoutePreferenceRouteNotAvailableForBranch');
   }
 };
@@ -308,32 +296,11 @@ const validatePreferenceOperations = async ({
     existingPreferences.map((preference) => [Number(preference.id), preference])
   );
 
-  if (operations.length === 0) {
-    return { preferenceById };
-  }
-
-  await ensurePreferenceBranchesExist(operations);
-
   operations.forEach((operation) => {
     if (operation.vehicleId !== null && operation.vehicleId !== vehicleId) {
       throw new Error('VehicleRoutePreferenceVehicleIdMismatch');
     }
   });
-
-  const finalByKey = new Map();
-  existingPreferences.forEach((preference) => {
-    const branchId = Number(preference.branch_id);
-    if (finalBranchIds.has(branchId)) {
-      finalByKey.set(`${branchId}:${Number(preference.route_id)}`, {
-        branchId,
-        routeId: Number(preference.route_id),
-        priority: Number(preference.priority),
-        associationId: Number(preference.id),
-      });
-    }
-  });
-
-  const availableRoutesByBranch = new Map();
 
   for (const operation of operations.filter((item) => item.action === 'delete')) {
     const existing = preferenceById.get(operation.associationId);
@@ -341,102 +308,25 @@ const validatePreferenceOperations = async ({
       throw new Error('VehicleRoutePreferenceAssociationNotFound');
     }
 
-    if (
-      Number(existing.branch_id) !== operation.branchId ||
-      Number(existing.route_id) !== operation.routeId
-    ) {
+    if (Number(existing.route_id) !== operation.routeId) {
       throw new Error('VehicleRoutePreferenceAssociationMismatch');
     }
 
-    finalByKey.delete(`${operation.branchId}:${operation.routeId}`);
   }
 
-  for (const operation of operations.filter((item) => item.action === 'update')) {
-    const existing = preferenceById.get(operation.associationId);
-    if (!existing) {
-      throw new Error('VehicleRoutePreferenceAssociationNotFound');
-    }
-
-    if (
-      Number(existing.branch_id) !== operation.branchId ||
-      Number(existing.route_id) !== operation.routeId
-    ) {
-      throw new Error('VehicleRoutePreferenceAssociationMismatch');
-    }
-
-    if (!finalBranchIds.has(operation.branchId)) {
-      throw new Error('VehicleRoutePreferenceBranchNotAssociated');
-    }
-
-    await ensureRouteAvailableForBranch({
-      routeId: operation.routeId,
-      branchId: operation.branchId,
-      transaction,
-      availableRoutesByBranch,
-    });
-
-    finalByKey.set(`${operation.branchId}:${operation.routeId}`, {
-      branchId: operation.branchId,
-      routeId: operation.routeId,
-      priority: operation.priority,
-      associationId: operation.associationId,
-    });
-  }
-
-  for (const operation of operations.filter((item) => item.action === 'associate')) {
-    if (!finalBranchIds.has(operation.branchId)) {
-      throw new Error('VehicleRoutePreferenceBranchNotAssociated');
-    }
-
-    await ensureRouteAvailableForBranch({
-      routeId: operation.routeId,
-      branchId: operation.branchId,
-      transaction,
-      availableRoutesByBranch,
-    });
-
-    const key = `${operation.branchId}:${operation.routeId}`;
-    if (finalByKey.has(key)) {
-      throw new Error('VehicleRoutePreferenceAlreadyAssociated');
-    }
-
-    finalByKey.set(key, {
-      branchId: operation.branchId,
-      routeId: operation.routeId,
-      priority: operation.priority,
-      associationId: null,
-    });
-  }
-
-  const routesByBranch = new Map();
-  const prioritiesByBranch = new Map();
-
-  finalByKey.forEach((preference) => {
-    const routes = routesByBranch.get(preference.branchId) || new Set();
-    routes.add(preference.routeId);
-    routesByBranch.set(preference.branchId, routes);
-
-    const priorities = prioritiesByBranch.get(preference.branchId) || new Set();
-    if (priorities.has(preference.priority)) {
-      throw new Error('VehicleRoutePreferencePriorityDuplicate');
-    }
-    priorities.add(preference.priority);
-    prioritiesByBranch.set(preference.branchId, priorities);
+  await ensureRoutesAvailableForVehicleBranches({
+    routeIds: operations
+      .filter((item) => item.action === 'associate')
+      .map((operation) => operation.routeId),
+    branchIds: finalBranchIds,
+    transaction,
   });
 
-  routesByBranch.forEach((routes) => {
-    if (routes.size > 3) {
-      throw new Error('VehicleRoutePreferenceMaxRoutesExceeded');
-    }
-  });
-
-  return { preferenceById };
 };
 
 const applyPreferenceOperations = async ({
   vehicleId,
   operations,
-  preferenceById,
   transaction,
 }) => {
   for (const operation of operations.filter((item) => item.action === 'delete')) {
@@ -447,42 +337,33 @@ const applyPreferenceOperations = async ({
     );
   }
 
-  const updateOperations = operations.filter((item) => item.action === 'update');
-
-  // Usar valores temporales evita conflictos al intercambiar prioridades (1 <-> 2)
-  // si la base de datos aplica una restricción única por sucursal.
-  for (const [index, operation] of updateOperations.entries()) {
-    const preference = preferenceById.get(operation.associationId);
-    await preference.update(
-      { priority: 1000 + index + 1 },
-      { transaction }
-    );
-  }
-
-  for (const operation of updateOperations) {
-    const preference = preferenceById.get(operation.associationId);
-    await preference.update(
-      { priority: operation.priority },
-      { transaction }
-    );
-  }
-
   for (const operation of operations.filter((item) => item.action === 'associate')) {
-    await VehicleRoutePreferenceRepository.create(
-      {
-        vehicle_id: vehicleId,
-        branch_id: operation.branchId,
-        route_id: operation.routeId,
-        priority: operation.priority,
-      },
-      { transaction }
+    const existing = await VehicleRoutePreferenceRepository.findByVehicleAndRoute(
+      vehicleId,
+      operation.routeId,
+      { transaction, lock: transaction.LOCK.UPDATE }
     );
+
+    if (!existing) {
+      await VehicleRoutePreferenceRepository.create(
+        {
+          vehicle_id: vehicleId,
+          route_id: operation.routeId,
+          branch_id: null,
+          priority: null,
+        },
+        { transaction }
+      );
+    }
   }
 };
 
 const getVehiclePreferences = (vehicleId, transaction) =>
-  VehicleRoutePreferenceRepository.findByVehicle(
-    vehicleId,
+  VehicleRoutePreferenceRepository.findByVehicle(vehicleId, { transaction });
+
+const getBranchRoutes = (branchVehicles, transaction) =>
+  BranchRouteRepository.findByBranches(
+    branchVehicles.map((relation) => Number(relation.branch_id)),
     { transaction }
   );
 
@@ -494,7 +375,7 @@ const VehicleService = {
     validateCreatePreferenceOperations(preferenceOperations);
 
     return sequelize.transaction(async (transaction) => {
-      await ensureBranchesExist(operations);
+      await ensureBranchesExist(operations, transaction);
 
       const vehicle = await VehicleRepository.create(body, file, {
         transaction,
@@ -513,11 +394,10 @@ const VehicleService = {
       const finalBranchIds = new Set(
         branchVehicles.map((relation) => Number(relation.branch_id))
       );
-      const existingPreferences = [];
-      const { preferenceById } = await validatePreferenceOperations({
+      await validatePreferenceOperations({
         vehicleId: Number(vehicle.id),
         operations: preferenceOperations,
-        existingPreferences,
+        existingPreferences: [],
         finalBranchIds,
         transaction,
       });
@@ -525,17 +405,22 @@ const VehicleService = {
       await applyPreferenceOperations({
         vehicleId: vehicle.id,
         operations: preferenceOperations,
-        preferenceById,
         transaction,
       });
 
-      const savedBranchVehicles = await BranchVehicleRepository.findByVehicle(
-        vehicle.id,
+      const savedBranchVehicles = await BranchVehicleRepository.findByVehicles(
+        [vehicle.id],
         { transaction }
       );
+      const branchRoutes = await getBranchRoutes(savedBranchVehicles, transaction);
       const preferences = await getVehiclePreferences(vehicle.id, transaction);
 
-      return { vehicle, branchVehicles: savedBranchVehicles, preferences };
+      return {
+        vehicle,
+        branchVehicles: savedBranchVehicles,
+        branchRoutes,
+        preferences,
+      };
     });
   },
 
@@ -549,7 +434,7 @@ const VehicleService = {
         throw new Error('VehicleNotFound');
       }
 
-      await ensureBranchesExist(operations);
+      await ensureBranchesExist(operations, transaction);
 
       const existingRelations = await BranchVehicleRepository.findByVehicle(
         vehicle.id,
@@ -563,21 +448,13 @@ const VehicleService = {
         vehicle.id,
         transaction
       );
-      const { preferenceById } = await validatePreferenceOperations({
+      await validatePreferenceOperations({
         vehicleId: Number(vehicle.id),
         operations: preferenceOperations,
         existingPreferences,
         finalBranchIds,
         transaction,
       });
-
-      for (const operation of operations.filter((item) => item.action === 'delete')) {
-        await VehicleRoutePreferenceRepository.deleteByVehicleBranch(
-          vehicle.id,
-          operation.branchId,
-          { transaction }
-        );
-      }
 
       await applyUpdateOperations({
         vehicleId: vehicle.id,
@@ -589,7 +466,6 @@ const VehicleService = {
       await applyPreferenceOperations({
         vehicleId: vehicle.id,
         operations: preferenceOperations,
-        preferenceById,
         transaction,
       });
 
@@ -599,13 +475,14 @@ const VehicleService = {
         file,
         { transaction }
       );
-      const branchVehicles = await BranchVehicleRepository.findByVehicle(
-        vehicle.id,
+      const branchVehicles = await BranchVehicleRepository.findByVehicles(
+        [vehicle.id],
         { transaction }
       );
+      const branchRoutes = await getBranchRoutes(branchVehicles, transaction);
       const preferences = await getVehiclePreferences(vehicle.id, transaction);
 
-      return { vehicle: updatedVehicle, branchVehicles, preferences };
+      return { vehicle: updatedVehicle, branchVehicles, branchRoutes, preferences };
     });
   },
 };

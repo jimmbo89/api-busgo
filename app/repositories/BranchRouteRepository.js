@@ -179,7 +179,7 @@ const BranchRouteRepository = {
         };
     },
 
-    async findByBranches(branchIds) {
+    async findByBranches(branchIds, options = {}) {
         const normalizedBranchIds = Array.from(
             new Set(
                 (Array.isArray(branchIds) ? branchIds : [])
@@ -193,6 +193,7 @@ const BranchRouteRepository = {
         }
 
         return await BranchRoute.findAll({
+            ...options,
             where: {
                 branch_id: { [Op.in]: normalizedBranchIds }
             },

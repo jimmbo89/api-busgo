@@ -6,16 +6,18 @@ const OnBoardRoutePreferenceService = require('../services/OnBoardRoutePreferenc
 const errorDetails = {
   VehicleNotFound: 'El vehículo indicado no existe.',
   BranchNotFound: 'La sucursal indicada no existe.',
-  BranchRequired: 'La sucursal es obligatoria para gestionar las preferencias.',
+  BranchRequired: 'La sucursal indicada no es válida.',
   VehicleNotAssociatedWithBranch:
     'El vehículo no está asociado a la sucursal indicada.',
   RouteNotFound: 'Una o más rutas indicadas no existen.',
   RouteNotAvailableForBranch:
     'Una o más rutas no están asociadas a la sucursal indicada.',
+  RouteNotAvailableForVehicleBranches:
+    'Una o más rutas no están asociadas a las sucursales del vehículo.',
   OnBoardRoutePreferencesInvalid:
     'Debe enviar una lista válida de preferencias para el vehículo.',
   OnBoardRoutePreferenceInvalid:
-    'Cada preferencia debe indicar una ruta y una prioridad mayor que cero.',
+    'Cada preferencia debe indicar una ruta válida.',
   OnBoardRoutePreferenceDuplicateRoute:
     'No se puede repetir una ruta dentro de las preferencias del mismo vehículo.',
 };
@@ -29,7 +31,12 @@ const getErrorStatus = (error) => {
 
   if (
     error.message.startsWith('OnBoardRoutePreference') ||
-    ['BranchRequired', 'VehicleNotAssociatedWithBranch', 'RouteNotAvailableForBranch']
+    [
+      'BranchRequired',
+      'VehicleNotAssociatedWithBranch',
+      'RouteNotAvailableForBranch',
+      'RouteNotAvailableForVehicleBranches',
+    ]
       .includes(error.message)
   ) {
     return 400;
@@ -70,9 +77,7 @@ const mapRoute = (route) => (route
 const mapPreference = (preference) => ({
   id: preference.id,
   vehicle_id: preference.vehicle_id,
-  branch_id: preference.branch_id,
   route_id: preference.route_id,
-  priority: preference.priority,
   route: mapRoute(preference.route),
 });
 

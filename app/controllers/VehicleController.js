@@ -7,23 +7,10 @@ const {
     VehicleRepository,
     StructureRepository,
     BranchVehicleRepository,
+    BranchRouteRepository,
     VehicleRoutePreferenceRepository,
 } = require('../repositories');
 const VehicleService = require('../services/VehicleService');
-
-const mapBranch = (relation) => ({
-    id: relation.branch?.id,
-    branch_id: relation.branch_id,
-    name: relation.branch?.name,
-    image: relation.branch?.image,
-    address: relation.branch?.address,
-    rut: relation.branch?.rut,
-    phone: relation.branch?.phone,
-    company_id: relation.branch?.company_id,
-    companyName: relation.branch?.company?.name,
-    companyImage: relation.branch?.company?.image,
-    association_id: relation.id,
-});
 
 const mapRoute = (route) => (route
     ? {
@@ -54,25 +41,59 @@ const mapRoute = (route) => (route
     }
     : null);
 
+const mapRoutesByBranch = (branchRoutes = []) => {
+    const routesByBranch = new Map();
+
+    branchRoutes.forEach((branchRoute) => {
+        if (!branchRoute.route) {
+            return;
+        }
+
+        const branchId = Number(branchRoute.branch_id);
+        const routes = routesByBranch.get(branchId) || new Map();
+        routes.set(Number(branchRoute.route.id), mapRoute(branchRoute.route));
+        routesByBranch.set(branchId, routes);
+    });
+
+    return new Map(
+        [...routesByBranch.entries()].map(([branchId, routes]) => [
+            branchId,
+            [...routes.values()],
+        ])
+    );
+};
+
+const mapBranch = (relation, routesByBranch = new Map()) => ({
+    id: relation.branch?.id,
+    branch_id: relation.branch_id,
+    name: relation.branch?.name,
+    image: relation.branch?.image,
+    address: relation.branch?.address,
+    rut: relation.branch?.rut,
+    phone: relation.branch?.phone,
+    company_id: relation.branch?.company_id,
+    companyName: relation.branch?.company?.name,
+    companyImage: relation.branch?.company?.image,
+    association_id: relation.id,
+    routes: routesByBranch.get(Number(relation.branch_id)) || [],
+});
+
 const mapRoutePreference = (preference) => ({
     id: preference.id,
     vehicle_id: preference.vehicle_id,
-    branch_id: preference.branch_id,
     route_id: preference.route_id,
-    priority: preference.priority,
-    branch: preference.branch
-        ? {
-            id: preference.branch.id,
-            name: preference.branch.name,
-            image: preference.branch.image,
-            address: preference.branch.address,
-            company_id: preference.branch.company_id,
-        }
-        : null,
     route: mapRoute(preference.route),
 });
 
-const mapVehicle = ({ vehicle, branchVehicles = [], preferences = [] }) => ({
+const mapVehicle = ({
+    vehicle,
+    branchVehicles = [],
+    branchRoutes = [],
+    preferences = [],
+}) => {
+    const routesByBranch = mapRoutesByBranch(branchRoutes);
+
+    return {
     id: vehicle.id,
     brand: vehicle.brand,
     model: vehicle.model,
@@ -85,9 +106,10 @@ const mapVehicle = ({ vehicle, branchVehicles = [], preferences = [] }) => ({
     image: vehicle.image,
     structure_id: vehicle.structure_id,
     structureId: vehicle.structure_id,
-    branches: branchVehicles.map(mapBranch),
+    branches: branchVehicles.map((branch) => mapBranch(branch, routesByBranch)),
     route_preferences: preferences.map(mapRoutePreference),
-});
+    };
+};
 
 const vehicleAssociationErrorDetails = {
     VehicleNotFound: 'El vehículo indicado no existe.',
@@ -113,13 +135,13 @@ const vehicleAssociationErrorDetails = {
     VehicleRoutePreferenceActionsInvalid:
         'El campo route_preferences debe contener una lista válida de preferencias.',
     VehicleRoutePreferenceActionInvalid:
-        'Cada preferencia debe indicar sucursal, ruta, prioridad entre 1 y 3 y una acción válida.',
+        'Cada preferencia debe indicar una ruta y una acción válida: associate o delete.',
     VehicleRoutePreferenceCreateActionInvalid:
         'Al crear un vehículo solo se permite la acción associate para las preferencias.',
     VehicleRoutePreferenceAssociationIdNotAllowed:
         'La acción associate no debe incluir association_id.',
     VehicleRoutePreferenceAssociationIdRequired:
-        'Las acciones update y delete requieren association_id.',
+        'La acción delete requiere association_id.',
     VehicleRoutePreferenceDuplicateOperation:
         'No se puede procesar más de una acción para la misma preferencia en una solicitud.',
     VehicleRoutePreferenceVehicleIdMismatch:
@@ -127,19 +149,11 @@ const vehicleAssociationErrorDetails = {
     VehicleRoutePreferenceAssociationNotFound:
         'La preferencia indicada no pertenece al vehículo que se está editando.',
     VehicleRoutePreferenceAssociationMismatch:
-        'La preferencia indicada no corresponde a la sucursal o ruta enviada.',
-    VehicleRoutePreferenceBranchNotAssociated:
-        'La sucursal de la preferencia no está asociada al vehículo.',
+        'La preferencia indicada no corresponde a la ruta enviada.',
     VehicleRoutePreferenceRouteNotFound:
         'La ruta indicada no existe.',
     VehicleRoutePreferenceRouteNotAvailableForBranch:
-        'La ruta indicada no está asociada a la sucursal seleccionada.',
-    VehicleRoutePreferenceAlreadyAssociated:
-        'La ruta ya está configurada como preferente para la sucursal indicada.',
-    VehicleRoutePreferencePriorityDuplicate:
-        'La prioridad ya está utilizada para esa sucursal.',
-    VehicleRoutePreferenceMaxRoutesExceeded:
-        'El vehículo no puede tener más de tres rutas preferentes por sucursal.',
+        'La ruta indicada no está asociada a ninguna sucursal actualmente asociada al vehículo.',
 };
 
 const isRoutePreferenceError = (message) =>
@@ -154,10 +168,6 @@ const getVehicleMutationStatus = (error) => {
     }
 
     if (error.message === 'VehicleBranchAlreadyAssociated') {
-        return 409;
-    }
-
-    if (error.message === 'VehicleRoutePreferenceAlreadyAssociated') {
         return 409;
     }
 
@@ -193,6 +203,9 @@ const VehicleController = {
                 BranchVehicleRepository.findByVehicles(vehicleIds),
                 VehicleRoutePreferenceRepository.findByVehicles(vehicleIds),
             ]);
+            const branchRoutes = await BranchRouteRepository.findByBranches(
+                [...new Set(branchVehicles.map((relation) => Number(relation.branch_id)))]
+            );
 
             const preferencesByVehicle = new Map();
             routePreferences.forEach((preference) => {
@@ -202,27 +215,17 @@ const VehicleController = {
                 preferencesByVehicle.set(vehicleId, preferences);
             });
 
-            const mappedVehicles = vehicles.map(vehicle => ({
-                id: vehicle.id,
-                brand: vehicle.brand,
-                model: vehicle.model,
-                plate: vehicle.plate,
-                internal_number: vehicle.internal_number,
-                internalNumber: vehicle.internal_number,
-                rut: vehicle.rut,
-                seats: vehicle.seats,
-                state: vehicle.state,
-                image: vehicle.image,
-                structure_id: vehicle.structure_id,
-                structureId: vehicle.structure_id,
-                branches: branchVehicles
-                    .filter(
+            const mappedVehicles = vehicles.map((vehicle) =>
+                mapVehicle({
+                    vehicle,
+                    branchVehicles: branchVehicles.filter(
                         (branchVehicle) =>
                             Number(branchVehicle.vehicle_id) === Number(vehicle.id)
-                    )
-                    .map(mapBranch),
-                route_preferences: preferencesByVehicle.get(Number(vehicle.id)) || [],
-            }));
+                    ),
+                    branchRoutes,
+                    preferences: preferencesByVehicle.get(Number(vehicle.id)) || [],
+                })
+            );
 
             res.status(200).json({ vehicles: mappedVehicles });
         } catch (error) {
@@ -310,20 +313,19 @@ const VehicleController = {
                 return res.status(404).json({ msg: 'VehicleNotFound' });
             }
 
-            const mappedVehicle = {
-                id: vehicle.id,
-                brand: vehicle.brand,
-                model: vehicle.model,
-                plate: vehicle.plate,
-                internal_number: vehicle.internal_number,
-                internalNumber: vehicle.internal_number,
-                rut: vehicle.rut,
-                seats: vehicle.seats,
-                state: vehicle.state,
-                image: vehicle.image,
-                structure_id: vehicle.structure_id,
-                structureId: vehicle.structure_id,
-            };
+            const [branchVehicles, preferences] = await Promise.all([
+                BranchVehicleRepository.findByVehicles([vehicle.id]),
+                VehicleRoutePreferenceRepository.findByVehicle(vehicle.id),
+            ]);
+            const branchRoutes = await BranchRouteRepository.findByBranches(
+                [...new Set(branchVehicles.map((relation) => Number(relation.branch_id)))]
+            );
+            const mappedVehicle = mapVehicle({
+                vehicle,
+                branchVehicles,
+                branchRoutes,
+                preferences,
+            });
 
             res.status(200).json({ vehicle: mappedVehicle });
         } catch (error) {

@@ -65,18 +65,10 @@ const buildAvailableRoutes = async ({ context, branchIds = null }) => {
       }
     }
 
-    const [branchRoutes, preferencesByBranch] = await Promise.all([
+    const [branchRoutes, preferences] = await Promise.all([
       BranchRouteRepository.findByBranches(Array.from(branchesById.keys())),
-      Promise.all(
-        Array.from(branchesById.keys()).map((branchId) =>
-          VehicleRoutePreferenceRepository.findByVehicle(
-            context.vehicle.id,
-            branchId
-          )
-        )
-      ),
+      VehicleRoutePreferenceRepository.findByVehicle(context.vehicle.id),
     ]);
-    const preferences = preferencesByBranch.flat();
     const routesById = new Map();
 
     for (const branchRoute of branchRoutes) {
@@ -92,7 +84,6 @@ const buildAvailableRoutes = async ({ context, branchIds = null }) => {
           ...mapRoute(route),
           compatible_branch_ids: [],
           branches: [],
-          priority: null,
           preferred: false,
         };
         routesById.set(routeId, availableRoute);
@@ -114,49 +105,25 @@ const buildAvailableRoutes = async ({ context, branchIds = null }) => {
 
     }
 
-    const preferenceByBranchAndRoute = new Map(
-      preferences.map((preference) => [
-        `${Number(preference.branch_id)}:${Number(preference.route_id)}`,
-        Number(preference.priority),
-      ])
+    const preferredRouteIds = new Set(
+      preferences.map((preference) => Number(preference.route_id))
     );
     const originalOrder = new Map(
       Array.from(routesById.keys()).map((routeId, index) => [routeId, index])
     );
 
     for (const route of routesById.values()) {
-      const priorities = route.compatible_branch_ids
-        .map((branchId) =>
-          preferenceByBranchAndRoute.get(
-            `${Number(branchId)}:${Number(route.route_id)}`
-          )
-        )
-        .filter((priority) => Number.isFinite(priority));
-
-      if (priorities.length > 0) {
-        route.priority = Math.min(...priorities);
+      if (preferredRouteIds.has(Number(route.route_id))) {
         route.preferred = true;
       }
     }
 
     const orderedRoutes = Array.from(routesById.values()).sort((left, right) => {
-      const leftPriority = left.priority;
-      const rightPriority = right.priority;
-
-      if (leftPriority === null && rightPriority === null) {
-        return originalOrder.get(left.route_id) - originalOrder.get(right.route_id);
+      if (left.preferred !== right.preferred) {
+        return left.preferred ? -1 : 1;
       }
 
-      if (leftPriority === null) {
-        return 1;
-      }
-
-      if (rightPriority === null) {
-        return -1;
-      }
-
-      return leftPriority - rightPriority ||
-        originalOrder.get(left.route_id) - originalOrder.get(right.route_id);
+      return originalOrder.get(left.route_id) - originalOrder.get(right.route_id);
     });
 
     const routesWithCommercialData = await Promise.all(

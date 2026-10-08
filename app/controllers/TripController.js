@@ -3593,7 +3593,7 @@ const TripController = {
       }
 
       const reassignedSeatsByTicket = [];
-      const reassignedPassengersByTicket = [];
+      let passengersMoved = 0;
       let seatCursor = 0;
       const availableSeatNumbers = Array.from(
         { length: targetVehicleSeats },
@@ -3620,6 +3620,7 @@ const TripController = {
           ? parsedSeats.length
           : Number(ticket.quantity || 0);
         const passengerCount = Number(ticket.quantity || 0);
+        passengersMoved += passengerCount;
 
         const reassignedSeats = availableSeatNumbers.slice(
           seatCursor,
@@ -3628,12 +3629,7 @@ const TripController = {
 
         seatCursor += currentSeatCount;
         reassignedSeatsByTicket.push({
-          sequenceNumber: ticket.sequenceNumber ?? null,
           seats: reassignedSeats,
-        });
-        reassignedPassengersByTicket.push({
-          sequenceNumber: ticket.sequenceNumber ?? null,
-          quantity: passengerCount,
         });
 
         if (isNormalTrip) {
@@ -3660,6 +3656,9 @@ const TripController = {
       const tripSchedule = trip.schedule;
       const tripCode = trip.code ?? null;
       const routeCode = trip.route?.code ?? null;
+      const incidentReassignmentDetails = isNormalTrip
+        ? { reassignedSeats: reassignedSeatsByTicket }
+        : { reassignedSeats: passengersMoved };
 
       await sequelize.transaction(async (transaction) => {
         logger.info(`TripController->changeTrip: eliminando choferes actuales del viaje ${trip.id}`);
@@ -3706,11 +3705,7 @@ const TripController = {
               destination: trip.route?.destination?.address ?? null,
               old_vehicle: oldVehicleLabel,
               new_vehicle: newVehicleLabel,
-              reassignedPassengers: reassignedPassengersByTicket,
-              passengersMoved: reassignedPassengersByTicket.reduce(
-                (total, item) => total + item.quantity,
-                0
-              ),
+              ...incidentReassignmentDetails,
             }),
             date: new Date(),
           },

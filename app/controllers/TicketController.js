@@ -1267,6 +1267,13 @@ const TicketController = {
         return res.status(400).json({ msg: "TripNotFound" });
       }
 
+      if (
+        req.device_branch_id &&
+        Number(trip.branch_id) !== Number(req.device_branch_id)
+      ) {
+        return res.status(403).json({ msg: "DeviceBranchTripMismatch" });
+      }
+
       const normalizedSeats = normalizeSeatNumbers(seats);
       const hasFareSegment =
         fare_segment_id !== undefined &&
@@ -1361,6 +1368,22 @@ const TicketController = {
         `TicketController->store: Viaje no encontrado con ID ${trip_id}`
       );
       return res.status(400).json({ msg: "TripNotFound" });
+    }
+
+    if (Number(trip.branch_id) !== Number(branch_id)) {
+      return res.status(400).json({
+        msg: "TripBranchMismatch",
+        details: "El ticket debe conservar la sucursal registrada en el viaje.",
+      });
+    }
+
+    req.body.branch_id = trip.branch_id;
+
+    if (
+      req.device_branch_id &&
+      Number(trip.branch_id) !== Number(req.device_branch_id)
+    ) {
+      return res.status(403).json({ msg: "DeviceBranchTripMismatch" });
     }
 
     if (normalizeSaleMode(trip.saleMode ?? trip.sale_mode) === "express") {
@@ -1546,6 +1569,18 @@ const TicketController = {
       );
       return res.status(400).json(ticketWebErrorBody("TripNotFound"));
     }
+
+    if (Number(trip.branch_id) !== Number(req.body.branch_id)) {
+      return res.status(400).json(
+        ticketWebErrorBody("TripBranchMismatch", {
+          trip_id: trip.id,
+          branch_id: req.body.branch_id,
+          trip_branch_id: trip.branch_id,
+        })
+      );
+    }
+
+    req.body.branch_id = trip.branch_id;
 
     const branch = await BranchRepository.findById(req.body.branch_id);
     if (!branch) {
@@ -1835,6 +1870,7 @@ const TicketController = {
       }
 
       let trip = tripResolution.trip;
+      req.body.branch_id = trip.branch_id;
       req.body.trip_id = trip.id;
       req.body.date = String(req.body.date || trip.date).slice(0, 10);
       const shouldValidateCapacity = isTruthyFlag(
@@ -2138,6 +2174,21 @@ async verifyEncryptedQR(req, res) {
       });
     }
 
+    const ticketBranchId = ticket.branch_id ?? ticket.trip?.branch_id;
+    if (
+      req.device_branch_id &&
+      Number(ticketBranchId) !== Number(req.device_branch_id)
+    ) {
+      return res.status(403).json({
+        success: false,
+        belongsToTrip: null,
+        alreadyScanned: null,
+        ticket_id: ticket.id,
+        seats: [],
+        message: "El ticket no corresponde a la sucursal del dispositivo",
+      });
+    }
+
     // 4. Verificar si pertenece al viaje especificado
     const belongsToTrip = Number(ticket.trip_id) === Number(trip_id);
 
@@ -2263,9 +2314,26 @@ async verifyEncryptedQR(req, res) {
       return res.status(400).json({ msg: "TripNotFound" });
     }
 
-    const branchForValidation = branch_id
-      ? await BranchRepository.findById(branch_id)
-      : ticket.branch;
+    if (
+      branch_id !== undefined &&
+      branch_id !== null &&
+      Number(branch_id) !== Number(tripForValidation.branch_id)
+    ) {
+      return res.status(400).json({
+        msg: "TripBranchMismatch",
+        details: "El ticket debe conservar la sucursal registrada en el viaje.",
+      });
+    }
+
+    const operationBranchId =
+      tripForValidation.branch_id ?? ticket.branch?.id ?? ticket.branch_id ?? null;
+    req.body.branch_id = operationBranchId;
+
+    const branchForValidation =
+      tripForValidation.branch_id !== undefined &&
+      tripForValidation.branch_id !== null
+        ? await BranchRepository.findById(operationBranchId)
+        : ticket.branch;
     if (!branchForValidation) {
       return res.status(400).json({ msg: "BranchNotFound" });
     }

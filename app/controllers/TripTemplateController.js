@@ -11,7 +11,7 @@ const {
 } = require("../models");
 const moment = require('moment');
 const logger = require("../../config/logger");
-const { VehicleRepository, RouteRepository, BranchRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, RouteStopRepository, TripFareRepository, FareSegmentTicketTypeRepository } = require("../repositories");
+const { VehicleRepository, RouteRepository, BranchRepository, BranchVehicleRepository, BranchRouteRepository, VehicleWorkerRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, RouteStopRepository, TripFareRepository, FareSegmentTicketTypeRepository } = require("../repositories");
 
 const parseJsonArray = (value) => {
   if (Array.isArray(value)) return value;
@@ -25,6 +25,14 @@ const parseJsonArray = (value) => {
   }
   return [];
 };
+
+const getTemplateWorkerIds = (workers = []) => Array.from(
+  new Set(
+    (Array.isArray(workers) ? workers : [])
+      .map((worker) => Number(worker?.worker_id ?? worker?.id))
+      .filter((workerId) => Number.isInteger(workerId) && workerId > 0)
+  )
+);
 
 const mapTripStops = (template) =>
   parseJsonArray(template.trip_stops).map((tripStop, index) => ({
@@ -285,18 +293,32 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
 
         if (Array.isArray(workersArray) && workersArray.length > 0) {
           const workerIds = workersArray
-            .map((worker) => Number(worker?.id))
+            .map((worker) => Number(worker?.id ?? worker?.worker_id))
             .filter((workerId) => Number.isInteger(workerId) && workerId > 0);
           const foundWorkers = workerIds.length
             ? await Worker.findAll({ where: { id: workerIds } })
             : [];
           const foundWorkerIds = new Set(foundWorkers.map((worker) => Number(worker.id)));
+          const unassignedWorkerIds =
+            await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+              template.vehicle_id,
+              workerIds,
+              { transaction }
+            );
+          const unassignedWorkerIdSet = new Set(unassignedWorkerIds);
 
           await Promise.all(workersArray.map(async (worker) => {
-            const workerId = Number(worker?.id);
+            const workerId = Number(worker?.id ?? worker?.worker_id);
             if (!foundWorkerIds.has(workerId)) {
               logger.warn(
                 `TripTemplateController->processTemplateGeneration: trabajador ignorado; WorkerNotFound:${worker?.id}`
+              );
+              return;
+            }
+
+            if (unassignedWorkerIdSet.has(workerId)) {
+              logger.warn(
+                `TripTemplateController->processTemplateGeneration: trabajador ignorado; WorkerNotAssignedToVehicle:${workerId}`
               );
               return;
             }
@@ -500,6 +522,41 @@ const TripTemplateController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
+      const branchRoute = await BranchRouteRepository.existsBranchRoute(
+        branch_id,
+        route_id
+      );
+      if (!branchRoute) {
+        return res.status(400).json({
+          msg: "RouteNotInBranch",
+          details: "La ruta seleccionada no está asociada a la sucursal de la plantilla.",
+        });
+      }
+
+      const branchVehicle = await BranchVehicleRepository.existsBranchVehicle(
+        branch_id,
+        vehicle_id
+      );
+      if (!branchVehicle) {
+        return res.status(400).json({
+          msg: "VehicleNotInBranch",
+          details: "El vehículo seleccionado no está asociado a la sucursal de la plantilla.",
+        });
+      }
+
+      const unassignedWorkerIds =
+        await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+          vehicle_id,
+          getTemplateWorkerIds(workers)
+        );
+      if (unassignedWorkerIds.length) {
+        return res.status(400).json({
+          msg: "WorkerNotAssignedToVehicle",
+          details: `Los siguientes trabajadores no están asociados al vehículo de la plantilla: ${unassignedWorkerIds.join(", ")}.`,
+          worker_ids: unassignedWorkerIds,
+        });
+      }
+
       const missingExpressFields = validateExpressTemplateMinimum(req.body);
       if (missingExpressFields) {
         return res.status(400).json({
@@ -622,19 +679,61 @@ const TripTemplateController = {
         });
       }
 
-      if (req.body.vehicle_id) {
-        const vehicle = await VehicleRepository.findById(req.body.vehicle_id);
-        if (!vehicle) {
-          return res.status(404).json({ msg: "VehicleNotFound" });
-        }
+      const effectiveBranchId = req.body.branch_id ?? existingTemplate.branch_id;
+      const effectiveVehicleId = req.body.vehicle_id ?? existingTemplate.vehicle_id;
+      const effectiveRouteId = req.body.route_id ?? existingTemplate.route_id;
+
+      const branch = await BranchRepository.findById(effectiveBranchId);
+      if (!branch) {
+        return res.status(404).json({ msg: "BranchNotFound" });
       }
 
-      // Validar route si se está actualizando
-      if (req.body.route_id) {
-        const route = await RouteRepository.findById(req.body.route_id);
-        if (!route) {
-          return res.status(404).json({ msg: "RouteNotFound" });
-        }
+      const vehicle = await VehicleRepository.findById(effectiveVehicleId);
+      if (!vehicle) {
+        return res.status(404).json({ msg: "VehicleNotFound" });
+      }
+
+      const route = await RouteRepository.findById(effectiveRouteId);
+      if (!route) {
+        return res.status(404).json({ msg: "RouteNotFound" });
+      }
+
+      const branchRoute = await BranchRouteRepository.existsBranchRoute(
+        effectiveBranchId,
+        effectiveRouteId
+      );
+      if (!branchRoute) {
+        return res.status(400).json({
+          msg: "RouteNotInBranch",
+          details: "La ruta seleccionada no está asociada a la sucursal de la plantilla.",
+        });
+      }
+
+      const branchVehicle = await BranchVehicleRepository.existsBranchVehicle(
+        effectiveBranchId,
+        effectiveVehicleId
+      );
+      if (!branchVehicle) {
+        return res.status(400).json({
+          msg: "VehicleNotInBranch",
+          details: "El vehículo seleccionado no está asociado a la sucursal de la plantilla.",
+        });
+      }
+
+      const effectiveWorkers = hasOwn(req.body, "workers")
+        ? req.body.workers
+        : parseJsonArray(existingTemplate.workers);
+      const unassignedWorkerIds =
+        await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+          effectiveVehicleId,
+          getTemplateWorkerIds(effectiveWorkers)
+        );
+      if (unassignedWorkerIds.length) {
+        return res.status(400).json({
+          msg: "WorkerNotAssignedToVehicle",
+          details: `Los siguientes trabajadores no están asociados al vehículo de la plantilla: ${unassignedWorkerIds.join(", ")}.`,
+          worker_ids: unassignedWorkerIds,
+        });
       }
 
       // Actualizar la plantilla

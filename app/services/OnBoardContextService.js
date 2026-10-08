@@ -3,7 +3,6 @@
 const {
   DeviceRepository,
   DeviceVehicleRepository,
-  BranchWorkerRepository,
   BranchVehicleRepository,
   VehicleWorkerRepository,
 } = require('../repositories');
@@ -51,16 +50,13 @@ const OnBoardContextService = {
       throw new Error('WorkerCannotOperateVehicle');
     }
 
-    const [vehicleBranches, workerBranches] = await Promise.all([
-      BranchVehicleRepository.findByVehicle(vehicle.id, options),
-      BranchWorkerRepository.findByWorker(workerId, options),
-    ]);
-    const vehicleBranchIds = new Set(
-      vehicleBranches.map((branchVehicle) => normalizeId(branchVehicle.branch_id))
+    const vehicleBranches = await BranchVehicleRepository.findByVehicle(
+      vehicle.id,
+      options
     );
-    const authorizedBranchIds = workerBranches
-      .map((branchWorker) => normalizeId(branchWorker.branch_id))
-      .filter((branchId) => branchId && vehicleBranchIds.has(branchId));
+    const authorizedBranchIds = vehicleBranches
+      .map((branchVehicle) => normalizeId(branchVehicle.branch_id))
+      .filter(Boolean);
 
     if (authorizedBranchIds.length === 0) {
       throw new Error('WorkerNotAuthorizedForBranch');
@@ -88,23 +84,15 @@ const OnBoardContextService = {
       throw new Error('OnBoardWebContextDataInvalid');
     }
 
-    const [workerBranches, branchVehicles] = await Promise.all([
-      BranchWorkerRepository.findByWorker(workerId, options),
-      BranchVehicleRepository.findByVehicle(vehicleId, options),
-    ]);
-
-    const vehicleBranchIds = new Set(
-      branchVehicles.map((branchVehicle) => Number(branchVehicle.branch_id))
+    const branchVehicles = await BranchVehicleRepository.findByVehicle(
+      vehicleId,
+      options
     );
-    const workerCanOperateVehicle = workerBranches.some((branchWorker) =>
-      vehicleBranchIds.has(Number(branchWorker.branch_id))
-    );
-    if (!workerCanOperateVehicle) {
-      throw new Error('WorkerNotAuthorizedForBranch');
-    }
 
     const branchVehicle = branchVehicles.find(
-      (item) => Number(item.vehicle_id) === vehicleId
+      (item) =>
+        Number(item.vehicle_id) === vehicleId &&
+        Number(item.branch_id) === branchId
     );
     if (!branchVehicle || !branchVehicle.vehicle) {
       throw new Error('BranchNotCompatibleWithVehicle');
@@ -155,9 +143,7 @@ const OnBoardContextService = {
 
     return {
       worker,
-      branch: branchVehicle.branch || workerBranches.find(
-        (branchWorker) => Number(branchWorker.branch_id) === branchId
-      )?.branch,
+      branch: branchVehicle.branch || null,
       vehicle,
       device,
       deviceVehicle,

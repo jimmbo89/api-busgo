@@ -121,6 +121,16 @@ const BranchRouteRepository = {
         });
     },
 
+    async existsBranchRoute(branchId, routeId, options = {}) {
+        return await BranchRoute.findOne({
+            ...options,
+            where: {
+                branch_id: branchId,
+                route_id: routeId,
+            },
+        });
+    },
+
     async findByRoutes(routeIds) {
         const normalizedRouteIds = (Array.isArray(routeIds) ? routeIds : [])
             .map((routeId) => Number(routeId))

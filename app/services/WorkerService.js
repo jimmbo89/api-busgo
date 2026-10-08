@@ -5,6 +5,7 @@ const {
   BranchWorkerRepository,
   WorkerRepository,
 } = require('../repositories');
+const { ROLE_TYPES } = require('../constants/roleTypes');
 
 const normalizeId = (value) => {
   const id = Number(value);
@@ -31,7 +32,6 @@ const normalizeOperations = (branches) => {
 
   return parsedBranches.map((item) => {
     const branchId = normalizeId(item?.branch_id);
-    const roleId = normalizeId(item?.role_id);
     const associationId =
       item?.association_id === undefined ||
       item?.association_id === null ||
@@ -40,7 +40,7 @@ const normalizeOperations = (branches) => {
         : normalizeId(item.association_id);
     const action = String(item?.action || '').trim().toLowerCase();
 
-    if (!branchId || !roleId || !['associate', 'update', 'delete'].includes(action)) {
+    if (!branchId || !['associate', 'update', 'delete'].includes(action)) {
       throw new Error('WorkerBranchActionInvalid');
     }
 
@@ -52,7 +52,7 @@ const normalizeOperations = (branches) => {
       throw new Error('WorkerBranchAssociationIdRequired');
     }
 
-    return { branchId, roleId, associationId, action };
+    return { branchId, associationId, action };
   });
 };
 
@@ -61,46 +61,115 @@ const ensureRoleExists = async (roleId, transaction) => {
   if (!role) {
     throw new Error('RoleNotFound');
   }
+
+  return role;
 };
 
-const ensureBranchesExist = async (operations, transaction) => {
+const ensureBranchesExist = async (
+  operations,
+  existingRelations,
+  transaction,
+  allowedCompanyIds = []
+) => {
   const branchIds = [...new Set(operations.map((operation) => operation.branchId))];
   if (branchIds.length === 0) {
     return;
   }
 
+  const authorizedCompanyIds = new Set(
+    (allowedCompanyIds || []).map(normalizeId).filter(Boolean)
+  );
+
+  if (authorizedCompanyIds.size === 0) {
+    throw new Error('WorkerBranchCompanyMismatch');
+  }
+
   const branches = await Branch.findAll({
     where: { id: branchIds },
-    attributes: ['id'],
+    attributes: ['id', 'company_id'],
     transaction,
   });
 
   if (branches.length !== branchIds.length) {
     throw new Error('BranchNotFound');
   }
+
+  const existingCompanyIds = new Set(
+    (existingRelations || [])
+      .map((relation) => relation.branch?.company_id ?? relation.company_id)
+      .map(normalizeId)
+      .filter(Boolean)
+  );
+  const operationCompanyIds = new Set(
+    branches.map((branch) => normalizeId(branch.company_id)).filter(Boolean)
+  );
+
+  if (branches.some((branch) => !normalizeId(branch.company_id))) {
+    throw new Error('WorkerBranchCompanyMismatch');
+  }
+
+  const workerCompanyIds = new Set(
+    authorizedCompanyIds
+  );
+  const scopedCompanyIds = existingCompanyIds.size > 0
+    ? existingCompanyIds
+    : workerCompanyIds.size > 0
+      ? workerCompanyIds
+      : operationCompanyIds;
+
+  if (workerCompanyIds.size > 0 && branches.some((branch) => {
+    const companyId = normalizeId(branch.company_id);
+    return companyId && !workerCompanyIds.has(companyId);
+  })) {
+    throw new Error('WorkerBranchCompanyMismatch');
+  }
+
+  if (existingCompanyIds.size === 0 && workerCompanyIds.size === 0 && operationCompanyIds.size > 1) {
+    throw new Error('WorkerBranchCompanyMismatch');
+  }
+
+  if (scopedCompanyIds.size > 0 && branches.some((branch) => {
+    const companyId = normalizeId(branch.company_id);
+    return companyId && !scopedCompanyIds.has(companyId);
+  })) {
+    throw new Error('WorkerBranchCompanyMismatch');
+  }
 };
 
-const validateCreateOperations = (operations, roleId) => {
-  if (operations.length > 1) {
-    throw new Error('WorkerMultipleActiveBranches');
-  }
+const validateCreateOperations = (operations, roleType) => {
+  const branchIds = new Set();
 
   operations.forEach((operation) => {
     if (operation.action !== 'associate') {
       throw new Error('WorkerBranchCreateActionInvalid');
     }
 
-    if (operation.roleId !== roleId) {
-      throw new Error('WorkerBranchRoleMismatch');
+    if (branchIds.has(operation.branchId)) {
+      throw new Error('WorkerBranchDuplicateBranch');
     }
+    branchIds.add(operation.branchId);
   });
+
+  if (roleType === ROLE_TYPES.BRANCH && operations.length === 0) {
+    throw new Error('WorkerBranchRequiredForBranchRole');
+  }
+
+  if (roleType === ROLE_TYPES.COMPANY && operations.length > 0) {
+    throw new Error('WorkerBranchNotAllowedForCompanyRole');
+  }
 };
 
-const validateUpdateOperations = ({ operations, existingRelations, finalRoleId }) => {
+const validateUpdateOperations = ({ operations, existingRelations, roleType }) => {
   const relationById = new Map(
     existingRelations.map((relation) => [Number(relation.id), relation])
   );
   const operationAssociationIds = new Set();
+  const deletedAssociationIds = new Set(
+    operations
+      .filter((operation) => operation.action === 'delete' && operation.associationId)
+      .map((operation) => operation.associationId)
+  );
+  const associatedBranchIds = new Set();
 
   operations.forEach((operation) => {
     if (operation.associationId) {
@@ -111,9 +180,27 @@ const validateUpdateOperations = ({ operations, existingRelations, finalRoleId }
     }
 
     if (operation.action === 'associate') {
-      if (operation.roleId !== finalRoleId) {
-        throw new Error('WorkerBranchRoleMismatch');
+      if (roleType === ROLE_TYPES.COMPANY) {
+        throw new Error('WorkerBranchNotAllowedForCompanyRole');
       }
+
+      if (associatedBranchIds.has(operation.branchId)) {
+        throw new Error('WorkerBranchDuplicateBranch');
+      }
+
+      const existingRelation = existingRelations.find(
+        (relation) => Number(relation.branch_id) === operation.branchId
+      );
+      const activeRelationForBranch = existingRelations.some(
+        (relation) =>
+          Number(relation.branch_id) === operation.branchId &&
+          !deletedAssociationIds.has(Number(relation.id))
+      );
+      if (existingRelation && activeRelationForBranch) {
+        throw new Error('WorkerBranchAlreadyAssociated');
+      }
+
+      associatedBranchIds.add(operation.branchId);
       return;
     }
 
@@ -126,45 +213,26 @@ const validateUpdateOperations = ({ operations, existingRelations, finalRoleId }
       throw new Error('WorkerBranchAssociationBranchMismatch');
     }
 
-    if (
-      operation.action === 'delete' &&
-      Number(relation.role_id) !== operation.roleId
-    ) {
-      throw new Error('WorkerBranchAssociationRoleMismatch');
-    }
-
-    if (
-      operation.action === 'update' &&
-      operation.roleId !== finalRoleId
-    ) {
-      throw new Error('WorkerBranchRoleMismatch');
-    }
   });
 
-  const deletedAssociationIds = new Set(
-    operations
-      .filter((operation) => operation.action === 'delete')
-      .map((operation) => operation.associationId)
-  );
   const remainingRelations = existingRelations.filter(
     (relation) => !deletedAssociationIds.has(Number(relation.id))
   );
-  const associationCount = operations.filter(
-    (operation) => operation.action === 'associate'
-  ).length;
+  const resultingRelationCount = remainingRelations.length + associatedBranchIds.size;
 
-  if (remainingRelations.length + associationCount > 1) {
-    throw new Error('WorkerMultipleActiveBranches');
+  if (roleType === ROLE_TYPES.BRANCH && resultingRelationCount === 0) {
+    throw new Error('WorkerBranchRequiredForBranchRole');
   }
+
 };
 
-const applyCreateOperations = async ({ workerId, operations, transaction }) => {
+const applyCreateOperations = async ({ workerId, roleId, operations, transaction }) => {
   for (const operation of operations) {
     await BranchWorkerRepository.create(
       {
         worker_id: workerId,
         branch_id: operation.branchId,
-        role_id: operation.roleId,
+        role_id: roleId,
       },
       { transaction }
     );
@@ -193,7 +261,7 @@ const applyUpdateOperations = async ({
   for (const operation of operations.filter((item) => item.action === 'update')) {
     await BranchWorkerRepository.update(
       relationById.get(operation.associationId),
-      { role_id: operation.roleId },
+      { role_id: finalRoleId },
       { transaction }
     );
   }
@@ -203,7 +271,7 @@ const applyUpdateOperations = async ({
       {
         worker_id: workerId,
         branch_id: operation.branchId,
-        role_id: operation.roleId,
+        role_id: finalRoleId,
       },
       { transaction }
     );
@@ -219,18 +287,19 @@ const applyUpdateOperations = async ({
 };
 
 const WorkerService = {
-  async create({ body, file }) {
+  async create({ body, file, allowedCompanyIds = [] }) {
     const roleId = normalizeId(body.role_id);
     const operations = normalizeOperations(body.branches);
-    validateCreateOperations(operations, roleId);
 
     return sequelize.transaction(async (transaction) => {
-      await ensureRoleExists(roleId, transaction);
-      await ensureBranchesExist(operations, transaction);
+      const role = await ensureRoleExists(roleId, transaction);
+      validateCreateOperations(operations, role.type);
+      await ensureBranchesExist(operations, [], transaction, allowedCompanyIds);
 
       const worker = await WorkerRepository.create(body, file, transaction);
       await applyCreateOperations({
         workerId: worker.id,
+        roleId,
         operations,
         transaction,
       });
@@ -244,7 +313,7 @@ const WorkerService = {
     });
   },
 
-  async update({ id, body, file }) {
+  async update({ id, body, file, allowedCompanyIds = [] }) {
     const operations = normalizeOperations(body.branches);
 
     return sequelize.transaction(async (transaction) => {
@@ -255,18 +324,24 @@ const WorkerService = {
 
       const finalRoleId = normalizeId(body.role_id) || Number(worker.role_id);
       const roleChanged = finalRoleId !== Number(worker.role_id);
-      await ensureRoleExists(finalRoleId, transaction);
-      await ensureBranchesExist(operations, transaction);
+      const role = await ensureRoleExists(finalRoleId, transaction);
 
       const existingRelations = await BranchWorkerRepository.findByWorker(
         worker.id,
         { transaction, lock: transaction.LOCK.UPDATE }
       );
 
+      await ensureBranchesExist(
+        operations,
+        existingRelations,
+        transaction,
+        allowedCompanyIds
+      );
+
       validateUpdateOperations({
         operations,
         existingRelations,
-        finalRoleId,
+        roleType: role.type,
       });
 
       const updatedWorker = await WorkerRepository.update(

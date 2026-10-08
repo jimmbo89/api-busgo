@@ -1,6 +1,66 @@
-const { BranchWorker, Branch, Worker, Role, sequelize } = require('../models');
+const { BranchWorker, Branch, Worker, Role, Company, sequelize } = require('../models');
 const logger = require('../../config/logger');
 const { BranchWorkerRepository, BranchRepository, WorkerRepository, RoleRepository, TicketTypeRepository } = require('../repositories');
+const { ROLE_TYPES } = require('../constants/roleTypes');
+
+const branchWorkerErrorDetails = {
+    WorkerBranchAlreadyAssociated: 'El trabajador ya está asociado a la sucursal indicada.',
+    WorkerBranchCompanyMismatch: 'Las sucursales asociadas deben pertenecer a la misma empresa del trabajador.',
+    WorkerBranchNotAllowedForCompanyRole: 'Un trabajador con rol de tipo Empresa no debe tener sucursales autorizadas.',
+};
+
+const workerCompanyIds = async (workerId) => {
+    const relations = await BranchWorkerRepository.findByWorker(workerId);
+    return new Set(
+        relations
+            .map((relation) => Number(relation.branch?.company_id))
+            .filter((companyId) => Number.isInteger(companyId) && companyId > 0)
+    );
+};
+
+const userCompanyIds = async (userId) => {
+    if (!userId) {
+        return [];
+    }
+
+    const companies = await Company.findAll({
+        where: { user_id: userId },
+        attributes: ['id'],
+    });
+
+    return companies.map((company) => company.id);
+};
+
+const ensureBranchBelongsToWorkerCompany = async (workerId, branch, allowedCompanyIds = []) => {
+    const companyIds = await workerCompanyIds(workerId);
+    const branchCompanyId = Number(branch.company_id);
+    const userCompanies = new Set(
+        (allowedCompanyIds || [])
+            .map((companyId) => Number(companyId))
+            .filter((companyId) => Number.isInteger(companyId) && companyId > 0)
+    );
+
+    if (
+        userCompanies.size === 0 ||
+        !Number.isInteger(branchCompanyId) ||
+        branchCompanyId <= 0
+    ) {
+        throw new Error('WorkerBranchCompanyMismatch');
+    }
+
+    if (
+        !userCompanies.has(branchCompanyId)
+    ) {
+        throw new Error('WorkerBranchCompanyMismatch');
+    }
+
+    if (
+        companyIds.size > 0 &&
+        !companyIds.has(branchCompanyId)
+    ) {
+        throw new Error('WorkerBranchCompanyMismatch');
+    }
+};
 
 const BranchWorkerController = {
     // Obtener todas las relaciones Branch-Worker
@@ -16,8 +76,8 @@ const BranchWorkerController = {
                 branchName: branchWorker.branch.name,
                 workerId: branchWorker.worker.id,
                 workerName: branchWorker.worker.name,
-                roleId: branchWorker.role.id,
-                roleName: branchWorker.role.name
+                roleId: branchWorker.worker.role_id,
+                roleName: branchWorker.worker.role?.name
             }));
 
             res.status(200).json({ 'branchWorkers': mappedBranchWorkers });
@@ -51,9 +111,9 @@ const BranchWorkerController = {
                 worker_id: branchWorker.worker_id,
                 workerName: branchWorker.worker.name,
                 workerImage: branchWorker.worker.image,
-                roleId: branchWorker.role_id,
-                role_id: branchWorker.role_id,
-                roleName: branchWorker.role.name
+                roleId: branchWorker.worker.role_id,
+                role_id: branchWorker.worker.role_id,
+                roleName: branchWorker.worker.role?.name
             }));
 
             res.status(200).json({ 'branchWorkers': mappedBranchWorkers });
@@ -84,9 +144,9 @@ const BranchWorkerController = {
             const mappedBranches = workerBranches.map(branchWorker => ({
                 id: branchWorker.branch.id,
                 name: branchWorker.branch.name,
-                role: branchWorker.role.name,
-                role_id: branchWorker.role_id,
-                roleId: branchWorker.role_id,
+                role: branchWorker.worker.role?.name,
+                role_id: branchWorker.worker.role_id,
+                roleId: branchWorker.worker.role_id,
                 image: branchWorker.branch.image,
             }));
     
@@ -168,20 +228,33 @@ const BranchWorkerController = {
             }
 
         try {
-          const workers = await BranchWorkerRepository.findWorkersWithoutBranch();
+          const allowedCompanyIds = await userCompanyIds(req.user?.id);
+          const workers = await BranchWorkerRepository.findWorkersWithoutBranch(
+              branch_id,
+              type,
+              allowedCompanyIds
+          );
      
           // Mapeamos los resultados para obtener solo los IDs y nombres
-          const mappedWorkers = workers.map((worker) => ({
-            id: worker.id,
-            worker_id: worker.id,
-            name: worker.name,
-            image: worker.image,
-            email: worker.email,
-            role_id: worker.role_id,
-            roleName: worker.role.name
-          }));
+          const mappedWorkers = workers.map((worker) => {
+            const relation = (worker.branchWorkers || []).find(
+              (branchWorker) => Number(branchWorker.branch_id) === Number(branch_id)
+            );
 
-          const roles = await RoleRepository.findByType(null);
+            return {
+              id: worker.id,
+              worker_id: worker.id,
+              name: worker.name,
+              image: worker.image,
+              email: worker.email,
+              role_id: worker.role_id,
+              roleName: worker.role.name,
+              associated: Boolean(relation),
+              association_id: relation?.id || null,
+            };
+          });
+
+          const roles = await RoleRepository.findByType(type);
       
           if (!roles || roles.length === 0) {
             return res.status(404).json({ message: 'No se encontraron roles para el tipo especificado.' });
@@ -205,7 +278,7 @@ const BranchWorkerController = {
     async store(req, res) {
         logger.info(`${req.user.name} - Crea una nueva relación Branch-Worker`);
 
-        const { branch_id, worker_id, role_id } = req.body;
+        const { branch_id, worker_id } = req.body;
 
         const branch = await Branch.findByPk(branch_id);
         if (!branch) {
@@ -219,23 +292,42 @@ const BranchWorkerController = {
             return res.status(404).json({ msg: 'WorkerNotFound' });
         }
 
-        const role = await Role.findByPk(role_id);
-        if (!role) {
-            logger.error(`BranchWorkerController->store: Rol no encontrada con ID ${role_id}`);
-            return res.status(404).json({ msg: 'RoleNotFound' });
-        }
-            
         try {
-            const branchWorker = await BranchWorker.create({
+            const role = await Role.findByPk(worker.role_id);
+            if (role?.type === ROLE_TYPES.COMPANY) {
+                return res.status(400).json({
+                    error: 'WorkerBranchNotAllowedForCompanyRole',
+                    details: branchWorkerErrorDetails.WorkerBranchNotAllowedForCompanyRole,
+                });
+            }
+
+            const allowedCompanyIds = await userCompanyIds(req.user?.id);
+            await ensureBranchBelongsToWorkerCompany(worker_id, branch, allowedCompanyIds);
+
+            const existingRelation = await BranchWorker.findOne({
+                where: { worker_id, branch_id },
+            });
+            if (existingRelation) {
+                return res.status(409).json({
+                    error: 'WorkerBranchAlreadyAssociated',
+                    details: branchWorkerErrorDetails.WorkerBranchAlreadyAssociated,
+                });
+            }
+
+            const branchWorker = await BranchWorkerRepository.create({
                 branch_id: branch_id,
                 worker_id: worker_id,
-                role_id: role_id
             });
             res.status(201).json({ msg: 'BranchWorkerCreated', branchWorker });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
             logger.error('BranchWorkerController->store: ' + errorMsg);
-            res.status(500).json({ error: 'ServerError', details: errorMsg });
+            const status = error.message === 'WorkerBranchAlreadyAssociated' ? 409 :
+                error.message.startsWith('WorkerBranch') ? 400 : 500;
+            res.status(status).json({
+                error: status === 500 ? 'ServerError' : error.message,
+                details: branchWorkerErrorDetails[error.message] || errorMsg,
+            });
         }
     },
 
@@ -246,9 +338,13 @@ const BranchWorkerController = {
         try {
             const branchWorker = await BranchWorker.findByPk(req.body.id, {
                 include: [
-                    { model: Branch, as: 'branch', atributes: ['id', 'name'] },
-                    { model: Worker, as: 'worker', atributes: ['id', 'name'] },
-                    { model: Role, as: 'role', atributes: ['id', 'name'] }
+                    { model: Branch, as: 'branch', attributes: ['id', 'name'] },
+                    {
+                        model: Worker,
+                        as: 'worker',
+                        attributes: ['id', 'name', 'role_id'],
+                        include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'type'] }]
+                    }
                 ]
             });
             if (!branchWorker) {
@@ -262,8 +358,8 @@ const BranchWorkerController = {
                 branchName: branchWorker.branch.name,
                 workerId: branchWorker.worker.id,
                 workerName: branchWorker.worker.name,
-                roleId: branchWorker.role.id,
-                roleName: branchWorker.role.name
+                roleId: branchWorker.worker.role_id,
+                roleName: branchWorker.worker.role?.name
             };
             res.status(200).json({ 'branchWorker': mappedBranchWorker });
         } catch (error) {
@@ -277,7 +373,7 @@ const BranchWorkerController = {
     async update(req, res) {
         logger.info(`${req.user.name} - Editando una relación Branch-Worker`);
 
-        const { id, branch_id, worker_id, role_id } = req.body;
+        const { id, branch_id, worker_id } = req.body;
         try {
             const branchWorker = await BranchWorker.findByPk(id);
             if (!branchWorker) {
@@ -285,50 +381,90 @@ const BranchWorkerController = {
                 return res.status(404).json({ msg: 'BranchWorkerNotFound' });
             }
 
-            if (worker_id) {
-                const worker = await Worker.findByPk(worker_id);
-                if (!worker) {
-                    logger.error(`BranchWorkerController->update: Trabajador no encontrado con ID ${worker_id}`);
-                    return res.status(404).json({ msg: 'WorkerNotFound' });
-                }
-            }
-    
-            if (role_id) {
-                const role = await Role.findByPk(role_id);
-                if (!role) {
-                    logger.error(`BranchWorkerController->update: Rol no encontrado con ID ${role_id}`);
-                    return res.status(404).json({ msg: 'RoleNotFound' });
-                }
+            const targetWorkerId = worker_id || branchWorker.worker_id;
+            const worker = await Worker.findByPk(targetWorkerId);
+            if (!worker) {
+                logger.error(`BranchWorkerController->update: Trabajador no encontrado con ID ${targetWorkerId}`);
+                return res.status(404).json({ msg: 'WorkerNotFound' });
             }
 
-            if (branch_id) {
-                const branch = await branch.findByPk(branch_id);
+            let targetBranch = null;
+            const hasBranchChange = branch_id !== undefined && branch_id !== null && branch_id !== '';
+            const hasWorkerChange = worker_id !== undefined && worker_id !== null && worker_id !== '';
+
+            if (hasBranchChange) {
+                const branch = await Branch.findByPk(branch_id);
                 if (!branch) {
                     logger.error(`BranchWorkerController->update: Sucursal no encontrada con ID ${branch_id}`);
                     return res.status(404).json({ msg: 'BranchNotFound' });
                 }
+                targetBranch = branch;
+            } else if (hasWorkerChange) {
+                targetBranch = await Branch.findByPk(branchWorker.branch_id);
             }
 
-            const fieldsToUpdate = [ 'branch_id', 'role_id', 'worker_id' ];
+            const relationChanged =
+                (hasBranchChange && Number(branch_id) !== Number(branchWorker.branch_id)) ||
+                (hasWorkerChange && Number(worker_id) !== Number(branchWorker.worker_id));
+            const role = await Role.findByPk(worker.role_id);
 
-            // Filtrar campos en req.body y construir el objeto updatedData
-            const updatedData = Object.keys(req.body)
-                .filter(key => fieldsToUpdate.includes(key) && req.body[key] !== undefined)
-                .reduce((obj, key) => {
-                    obj[key] = req.body[key];
-                    return obj;
-                }, {});
+            if (relationChanged && role?.type === ROLE_TYPES.COMPANY) {
+                return res.status(400).json({
+                    error: 'WorkerBranchNotAllowedForCompanyRole',
+                    details: branchWorkerErrorDetails.WorkerBranchNotAllowedForCompanyRole,
+                });
+            }
+
+            if (targetBranch) {
+                const allowedCompanyIds = await userCompanyIds(req.user?.id);
+                await ensureBranchBelongsToWorkerCompany(
+                    targetWorkerId,
+                    targetBranch,
+                    allowedCompanyIds
+                );
+            }
+
+            if (relationChanged) {
+                const existingRelation = await BranchWorker.findOne({
+                    where: {
+                        worker_id: targetWorkerId,
+                        branch_id: targetBranch?.id || branchWorker.branch_id,
+                    },
+                });
+                if (existingRelation && Number(existingRelation.id) !== Number(branchWorker.id)) {
+                    return res.status(409).json({
+                        error: 'WorkerBranchAlreadyAssociated',
+                        details: branchWorkerErrorDetails.WorkerBranchAlreadyAssociated,
+                    });
+                }
+            }
+
+            const updatedData = {
+                role_id: worker.role_id,
+            };
+
+            if (branch_id !== undefined && branch_id !== null && branch_id !== '') {
+                updatedData.branch_id = branch_id;
+            }
+            if (worker_id !== undefined && worker_id !== null && worker_id !== '') {
+                updatedData.worker_id = worker_id;
+            }
 
              // Actualizar la tarea solo si hay datos para cambiar
              if (Object.keys(updatedData).length > 0) {
-                await branchWorker.update(updatedData);
+                await BranchWorkerRepository.update(branchWorker, updatedData);
                 logger.info(`Relacion trabajador-sucursal actualizada exitosamente (ID: ${branchWorker.id})`);
             }
             res.status(200).json({ msg: 'BranchWorkerUpdated', branchWorker });
         } catch (error) {
             const errorMsg = error.message || 'Error desconocido';
             logger.error('BranchWorkerController->update: ' + errorMsg);
-            res.status(500).json({ error: 'ServerError', details: errorMsg });
+            const status = error.message === 'WorkerBranchAlreadyAssociated' ? 409 :
+                error.message.startsWith('WorkerBranch') ? 400 : 500;
+            res.status(status).json({
+                error: status === 500 ? 'ServerError' : error.message,
+                details: branchWorkerErrorDetails[error.message] || errorMsg,
+            });
         }
     },
 
@@ -341,6 +477,20 @@ const BranchWorkerController = {
             if (!branchWorker) {
                 logger.error(`BranchWorkerController->destroy: Relación no encontrada con ID ${req.body.id}`);
                 return res.status(404).json({ msg: 'BranchWorkerNotFound' });
+            }
+
+            const worker = await Worker.findByPk(branchWorker.worker_id);
+            const role = worker ? await Role.findByPk(worker.role_id) : null;
+            if (role?.type === ROLE_TYPES.BRANCH) {
+                const relationCount = await BranchWorker.count({
+                    where: { worker_id: branchWorker.worker_id },
+                });
+                if (relationCount <= 1) {
+                    return res.status(400).json({
+                        error: 'WorkerBranchRequiredForBranchRole',
+                        details: 'Un trabajador con rol de tipo Sucursal debe tener al menos una sucursal autorizada.',
+                    });
+                }
             }
 
             await branchWorker.destroy();

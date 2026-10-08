@@ -15,7 +15,12 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const authConfig = require("../../config/auth");
 const logger = require("../../config/logger");
-const { RoleRepository } = require("../repositories");
+const {
+  RoleRepository,
+  DeviceVehicleRepository,
+  VehicleWorkerRepository,
+} = require("../repositories");
+const { ROLE_TYPES } = require('../constants/roleTypes');
 
 const AuthController = {
   //registro
@@ -42,7 +47,7 @@ const AuthController = {
         { transaction: t }
       );
 
-      const roles = await RoleRepository.findByType("Sistema");
+      const roles = await RoleRepository.findByType(ROLE_TYPES.COMPANY);
       // Filtrar el rol con name igual a 'Usuario'
       const role = roles.find((r) => r.name === "Usuario");
 
@@ -139,7 +144,7 @@ const AuthController = {
               {
                 model: Role,
                 as: "role",
-                attributes: ["id", "name"],
+                attributes: ["id", "name", "type"],
                 include: [
                   {
                     model: Permission,
@@ -160,18 +165,6 @@ const AuthController = {
                       model: Company,
                       as: "company",
                     },
-                  },
-                  {
-                    model: Role,
-                    as: "role", // Asumiendo que la relación se llama "permissions"
-                    include: [
-                      {
-                        model: Permission,
-                        as: "permissions", // Asumiendo que la relación se llama "permissions"
-                        attributes: ["name", "module"], // Incluir el nombre y la descripción del permiso
-                        through: { attributes: [] }, // Excluir la tabla intermedia si no necesitas sus atributos
-                      },
-                    ],
                   },
                 ],
               },
@@ -198,35 +191,43 @@ const AuthController = {
       }
       let branchData = [];
       let companyData = [];
-      let systemRolePermissions = [];
-      let branchRolePermissions = [];
+      let systemRolePermissions = user.worker.role?.permissions?.map(
+        (permission) => `${permission.name}, ${permission.module}`
+      ) || [];
       let roleName = "";
       let role_id = "";
       if (req.body.branch_id) {
-        const branchWorker = user.worker.branchWorkers.find(
-          (branchWorker) => branchWorker.branch.id === req.body.branch_id
-        );
-      
-        // Verificar si se encontró el branchWorker
-        if (!branchWorker) {
-          return res.status(400).json({ msg: "No es usuario de esta Sucursal" });
-        }
-      
-        // Obtener branchData desde branchWorker
-        branchData = branchWorker.branch;
-      
-        // Obtener roleName y role_id desde branchWorker
-        roleName = branchWorker.role.name;
-        role_id = branchWorker.role_id;
-        companyData = branchData.company;
-              // Obtener los permisos del rol en la relación con las branches
-      branchRolePermissions = user.worker.branchWorkers.flatMap(
-        (branchWorker) => {
-          return branchWorker.role.permissions.map((permission) => {
-            return `${permission.name}, ${permission.module}`;
+        const isCompanyRole = user.worker.role?.type === ROLE_TYPES.COMPANY;
+        if (isCompanyRole) {
+          const selectedBranch = await Branch.findByPk(req.body.branch_id, {
+            include: [{ model: Company, as: "company" }],
           });
+          const belongsToUserCompany = selectedBranch && (user.companies || []).some(
+            (company) => Number(company.id) === Number(selectedBranch.company_id)
+          );
+
+          if (!belongsToUserCompany) {
+            return res.status(400).json({ msg: "No es usuario de esta Sucursal" });
+          }
+
+          branchData = selectedBranch;
+          companyData = selectedBranch.company;
+        } else {
+          const branchWorker = user.worker.branchWorkers.find(
+            (branchWorker) => Number(branchWorker.branch.id) === Number(req.body.branch_id)
+          );
+
+          if (!branchWorker) {
+            return res.status(400).json({ msg: "No es usuario de esta Sucursal" });
+          }
+
+          branchData = branchWorker.branch;
+          companyData = branchData.company;
         }
-      );
+
+        // Obtener roleName y role_id desde el rol principal del trabajador
+        roleName = user.worker.role.name;
+        role_id = user.worker.role_id;
       } else {
         // Asignar la primera compañía a companyData
         companyData = user.companies ? user.companies[0] : [];
@@ -255,9 +256,7 @@ const AuthController = {
               
       // Obtener los permisos del rol del sistema
       systemRolePermissions = user.worker.role.permissions.map(
-        (permission) => {
-          return `${permission.name}, ${permission.module}`;
-        }
+        (permission) => `${permission.name}, ${permission.module}`
       );
       }
       // Construimos el objeto del usuario con la estructura deseada
@@ -294,7 +293,7 @@ const AuthController = {
 
       // Combinar los permisos y eliminar duplicados usando un Set
       const allPermissions = [
-        ...new Set([...systemRolePermissions, ...branchRolePermissions]),
+        ...new Set(systemRolePermissions),
       ];
 
       // Respuesta exitosa
@@ -351,7 +350,7 @@ const AuthController = {
               {
                 model: Role,
                 as: "role",
-                attributes: ["id", "name"],
+                attributes: ["id", "name", "type"],
                 include: [
                   {
                     model: Permission,
@@ -373,19 +372,6 @@ const AuthController = {
                       as: "company",
                     },
                   },
-                  {
-                    model: Role,
-                    as: "role", // Asumiendo que la relación se llama "permissions"
-                    attributes: ["id", "name"],
-                     include: [
-                      {
-                        model: Permission,
-                        as: "permissions", // Asumiendo que la relación se llama "permissions"
-                        attributes: ["name", "module"], // Incluir el nombre y la descripción del permiso
-                        through: { attributes: [] }, // Excluir la tabla intermedia si no necesitas sus atributos
-                      },
-                    ],
-                  },
                 ],
               },
             ],
@@ -405,20 +391,22 @@ const AuthController = {
         return res.status(400).json({ msg: "Credenciales inválidas" });
       }
 
-      if (!user.worker || !user.worker.branchWorkers || user.worker.branchWorkers.length === 0) {
+      const isCompanyRole = user.worker?.role?.type === ROLE_TYPES.COMPANY;
+      const requiresBranchAssociation = !req.loginApkSerial;
+      if (
+        !user.worker ||
+        (!isCompanyRole &&
+          requiresBranchAssociation &&
+          (!user.worker.branchWorkers || user.worker.branchWorkers.length === 0))
+      ) {
         return res.status(400).json({
           msg: "El usuario no está asociado a ninguna sucursal."
         });
       }
       
-      // Extraer todos los nombres de permisos del usuario (rol global + roles por sucursal)
+      // Los permisos siempre provienen del rol principal del trabajador.
       const userPermissionNames = new Set([
-        // Permisos del rol global del trabajador
         ...(user.worker.role?.permissions?.map(p => p.name) || []),
-        // Permisos de roles en cada sucursal asignada
-        ...user.worker.branchWorkers.flatMap(bw => 
-          bw.role?.permissions?.map(p => p.name) || []
-        )
       ]);
 
       // Validar según la plataforma
@@ -466,7 +454,17 @@ const AuthController = {
       if (req.loginApkSerial) {
         device = await Device.findOne({
           where: { serial },
-          attributes: ["id", "serial", "status"],
+          attributes: ["id", "serial", "status", "branch_id"],
+          include: [
+            {
+              model: Branch,
+              as: "branch",
+              include: {
+                model: Company,
+                as: "company",
+              },
+            },
+          ],
         });
 
         if (!device) {
@@ -477,6 +475,34 @@ const AuthController = {
         if (device.status !== 1) {
           logger.info(`AuthController->${loginSource}: dispositivo desactivado | serial=${serial}`);
           return res.status(400).json({ msg: "Dispositivo desactivado" });
+        }
+
+        if (!device.branch_id || !device.branch) {
+          logger.info(`AuthController->${loginSource}: dispositivo sin sucursal | serial=${serial}`);
+          return res.status(400).json({ msg: "El dispositivo no tiene sucursal asociada" });
+        }
+
+        const deviceVehicle = await DeviceVehicleRepository.findActiveByDevice(
+          device.id
+        );
+        if (!deviceVehicle || !deviceVehicle.vehicle) {
+          logger.info(
+            `AuthController->${loginSource}: dispositivo sin vehículo activo | serial=${serial}`
+          );
+          return res.status(400).json({ msg: "El dispositivo no tiene un vehículo activo asociado" });
+        }
+
+        const workerVehicle = await VehicleWorkerRepository.existsVehicleWorker(
+          user.worker.id,
+          deviceVehicle.vehicle_id
+        );
+        if (!workerVehicle) {
+          logger.info(
+            `AuthController->${loginSource}: trabajador no autorizado para el vehículo del dispositivo | serial=${serial}`
+          );
+          return res.status(400).json({
+            msg: "El trabajador no está asociado al vehículo del dispositivo",
+          });
         }
 
         sessionTransaction = await sequelize.transaction();
@@ -497,20 +523,12 @@ const AuthController = {
       }
 
       let systemRolePermissions = [];
-      let branchRolePermissions = [];
       systemRolePermissions = user.worker.role.permissions.map(
         (permission) => {
           return `${permission.name}`;
         }
       );
 
-      branchRolePermissions = user.worker.branchWorkers.flatMap(
-        (branchWorker) => {
-          return branchWorker.role.permissions.map((permission) => {
-            return `${permission.name}`;
-          });
-        }
-      );
       // Construimos el objeto del usuario con la estructura deseada
       const userNew = {
         id: user.id, // ID del usuario
@@ -551,21 +569,21 @@ const AuthController = {
 
       let branchData = [];
       let roleData = [];
-      if (user.worker.branchWorkers && user.worker.branchWorkers.length > 0) {
+      if (req.loginApkSerial) {
+        branchData = { ...device.branch.get({ plain: true }) };
+        branchData.rut = device.branch.company?.rut || null;
+        roleData = user.worker.role;
+      } else if (user.worker.branchWorkers && user.worker.branchWorkers.length > 0) {
         const branchWorker = user.worker.branchWorkers[0];
         branchData = { ...branchWorker.branch.get({ plain: true }) }; // Clonamos el branch (evita mutaciones inesperadas)
         branchData.rut = branchWorker.branch.company?.rut || null;   // Añadimos el rut de la company
-        roleData = branchWorker.role;
+        roleData = user.worker.role;
       }
 
       const allPermissions = [
-        ...new Set([...systemRolePermissions, ...branchRolePermissions]),
+        ...new Set(systemRolePermissions),
       ];
 
-      const allPermissionNames = new Set([
-        ...user.worker.role.permissions.map(p => p.name),
-        ...user.worker.branchWorkers.flatMap(bw => bw.role.permissions.map(p => p.name))
-      ]);
       // Respuesta exitosa
       res.status(201).json({
         id: user.id,

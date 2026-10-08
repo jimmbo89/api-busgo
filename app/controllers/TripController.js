@@ -28,6 +28,13 @@ const {
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
 const toPlainObject = (item) =>
   item && typeof item.toJSON === "function" ? item.toJSON() : item;
+const getTripWorkerIds = (workers = []) => Array.from(
+  new Set(
+    (Array.isArray(workers) ? workers : [])
+      .map((worker) => Number(worker?.worker_id))
+      .filter((workerId) => Number.isInteger(workerId) && workerId > 0)
+  )
+);
 const getChileDate = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Santiago",
@@ -2796,6 +2803,42 @@ const TripController = {
         return res.status(400).json({ msg: "BranchNotFound" });
       }
 
+      const branchRoute = await BranchRouteRepository.existsBranchRoute(
+        branch_id,
+        route_id
+      );
+      if (!branchRoute) {
+        return res.status(400).json({
+          msg: "RouteNotInBranch",
+          details: "La ruta seleccionada no está asociada a la sucursal del viaje.",
+        });
+      }
+
+      const branchVehicle = await BranchVehicleRepository.existsBranchVehicle(
+        branch_id,
+        vehicle_id
+      );
+      if (!branchVehicle) {
+        return res.status(400).json({
+          msg: "VehicleNotInBranch",
+          details: "El vehículo seleccionado no está asociado a la sucursal del viaje.",
+        });
+      }
+
+      const workerIdsForVehicleValidation = getTripWorkerIds(workers);
+      const unassignedWorkerIds =
+        await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+          vehicle_id,
+          workerIdsForVehicleValidation
+        );
+      if (unassignedWorkerIds.length) {
+        return res.status(400).json({
+          msg: "WorkerNotAssignedToVehicle",
+          details: `Los siguientes trabajadores no están asociados al vehículo del viaje: ${unassignedWorkerIds.join(", ")}.`,
+          worker_ids: unassignedWorkerIds,
+        });
+      }
+
       if (isTemplateTrip) {
         if (!Array.isArray(tripStops)) {
           tripStopsForTrip = [];
@@ -3248,6 +3291,46 @@ const TripController = {
         currentBranch = await BranchRepository.findById(trip.branch_id);
       }
 
+      const effectiveBranchId = branch_id ?? trip.branch_id;
+      const effectiveRouteId = route_id ?? trip.route_id;
+      const effectiveVehicleId = vehicle_id ?? trip.vehicle_id;
+
+      const branchRoute = await BranchRouteRepository.existsBranchRoute(
+        effectiveBranchId,
+        effectiveRouteId
+      );
+      if (!branchRoute) {
+        return res.status(400).json({
+          msg: "RouteNotInBranch",
+          details: "La ruta seleccionada no está asociada a la sucursal del viaje.",
+        });
+      }
+
+      const branchVehicle = await BranchVehicleRepository.existsBranchVehicle(
+        effectiveBranchId,
+        effectiveVehicleId
+      );
+      if (!branchVehicle) {
+        return res.status(400).json({
+          msg: "VehicleNotInBranch",
+          details: "El vehículo seleccionado no está asociado a la sucursal del viaje.",
+        });
+      }
+
+      let workerIdsForVehicleValidation = getTripWorkerIds(workers);
+      const vehicleChanged =
+        hasOwn(req.body, "vehicle_id") &&
+        Number(effectiveVehicleId) !== Number(trip.vehicle_id);
+      if (!workerIdsForVehicleValidation.length && vehicleChanged) {
+        const currentTripWorkers = await TripWorker.findAll({
+          where: { trip_id: trip.id },
+          attributes: ["worker_id"],
+        });
+        workerIdsForVehicleValidation = currentTripWorkers.map(
+          (tripWorker) => Number(tripWorker.worker_id)
+        );
+      }
+
       if (Array.isArray(workers) && workers.length > 0) {
         const workerIds = workers.map((worker) => parseInt(worker.worker_id));
 
@@ -3266,6 +3349,20 @@ const TripController = {
             .status(400)
             .json({ msg: "Datos no encontrados para algunas asociaciones." });
         }
+
+      }
+
+      const unassignedWorkerIds =
+        await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+          effectiveVehicleId,
+          workerIdsForVehicleValidation
+        );
+      if (unassignedWorkerIds.length) {
+        return res.status(400).json({
+          msg: "WorkerNotAssignedToVehicle",
+          details: `Los siguientes trabajadores no están asociados al vehículo del viaje: ${unassignedWorkerIds.join(", ")}.`,
+          worker_ids: unassignedWorkerIds,
+        });
       }
 
       let actualStart = null;
@@ -3578,15 +3675,9 @@ const TripController = {
       }
 
       const vehicleWorkers = await VehicleWorkerRepository.findByVehicle(newVehicle.id);
-      const branchWorkers = await BranchWorkerRepository.findByBranch(trip.branch_id);
-      const branchWorkerIds = new Set(
-        branchWorkers.map((branchWorker) => Number(branchWorker.worker_id))
-      );
-
       const eligibleWorkers = [
         ...new Set(
           vehicleWorkers
-            .filter((vehicleWorker) => branchWorkerIds.has(Number(vehicleWorker.worker_id)))
             .map((vehicleWorker) => Number(vehicleWorker.worker_id))
         ),
       ];
@@ -3594,7 +3685,7 @@ const TripController = {
       if (!eligibleWorkers.length) {
         return res.status(400).json({
           msg: "VehicleWithoutBranchWorkers",
-          details: "El vehiculo no tiene choferes asociados en la sucursal del viaje.",
+          details: "El vehiculo no tiene trabajadores asociados.",
         });
       }
 
@@ -3864,16 +3955,8 @@ const TripController = {
         const routeFareSegments = await FareSegmentRepository.findByRoute(mappedRoute.id);
         mappedRoute.fareSegments = mapRouteFareSegments(routeFareSegments);
       }
-      const branchWorkersById = new Map(
-        branchWorkers.map((branchWorker) => [
-          Number(branchWorker.worker_id),
-          branchWorker,
-        ])
-      );
-
       const mapVehicleWorker = (worker) => {
-        const branchWorker = branchWorkersById.get(Number(worker.id));
-        const role = branchWorker?.role || worker.role;
+        const role = worker.role;
 
         return {
           id: worker.id,
@@ -3906,9 +3989,9 @@ const TripController = {
         worker_id: branchWorker.worker.id,
         workerName: branchWorker.worker.name,
         workerImage: branchWorker.worker.image,
-        roleId: branchWorker.role.id,
-        role_id: branchWorker.role.id,
-        roleName: branchWorker.role.name,
+        roleId: branchWorker.worker.role?.id ?? branchWorker.worker.role_id,
+        role_id: branchWorker.worker.role?.id ?? branchWorker.worker.role_id,
+        roleName: branchWorker.worker.role?.name,
         vehicles: branchWorker.worker.vehicles,
       }));
 

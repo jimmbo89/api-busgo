@@ -1,5 +1,4 @@
 const { BranchWorker, Branch, Worker, Role, Vehicle, Company } = require('../models');
-const { Op } = require('sequelize');
 const BranchRepository = require('./BranchRepository');
 
 const BranchWorkerRepository = {
@@ -8,7 +7,12 @@ const BranchWorkerRepository = {
         return await await BranchWorker.findAll({
             include: [
                 { model: Branch, as: 'branch', atributes: ['id', 'name'] },
-                { model: Worker, as: 'worker', atributes: ['id', 'name', 'name'] },
+                {
+                    model: Worker,
+                    as: 'worker',
+                    attributes: ['id', 'name', 'role_id'],
+                    include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'type'] }]
+                },
                 { model: Role, as: 'role', atributes: ['id', 'name'] }
             ]
         });
@@ -28,8 +32,8 @@ const BranchWorkerRepository = {
                 { 
                     model: Worker, 
                     as: 'worker', 
-                    attributes: ['id', 'name', 'image'],  // Trae los atributos del worker
-                    include: [{
+                    attributes: ['id', 'name', 'image', 'role_id'],  // Trae los atributos del worker
+                    include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'type'] }, {
                         model: Vehicle,  // El modelo Vehicle
                         as: 'vehicles',  // El alias para la relación (asegúrate de que este sea el correcto)
                         attributes: ['id'],  // Solo traemos el ID de los vehículos
@@ -63,17 +67,52 @@ const BranchWorkerRepository = {
                             attributes: ['id', 'name', 'image'],
                         },
                     ],
+                },
+                {
+                    model: Worker,
+                    as: 'worker',
+                    attributes: ['id', 'name', 'role_id'],
+                    include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'type'] }],
                 }
             ]
         });
     },
 
     async create(body, options = {}) {
-        return await BranchWorker.create(body, options);
+        const worker = await Worker.findByPk(body.worker_id, {
+            transaction: options.transaction,
+        });
+
+        if (!worker) {
+            throw new Error('WorkerNotFound');
+        }
+
+        return await BranchWorker.create(
+            {
+                ...body,
+                role_id: worker.role_id,
+            },
+            options
+        );
     },
 
     async update(branchWorker, body, options = {}) {
-        return await branchWorker.update(body, options);
+        const workerId = body.worker_id || branchWorker.worker_id;
+        const worker = await Worker.findByPk(workerId, {
+            transaction: options.transaction,
+        });
+
+        if (!worker) {
+            throw new Error('WorkerNotFound');
+        }
+
+        return await branchWorker.update(
+            {
+                ...body,
+                role_id: worker.role_id,
+            },
+            options
+        );
     },
 
     async delete(branchWorker, options = {}) {
@@ -99,7 +138,8 @@ const BranchWorkerRepository = {
         {
           model: Worker,
           as: 'worker',
-          attributes: ['id', 'user_id', 'name', 'image']
+          attributes: ['id', 'user_id', 'name', 'image', 'role_id'],
+          include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'type'] }]
         },
         {
           model: Role,
@@ -132,8 +172,8 @@ const BranchWorkerRepository = {
         user_id: bw.worker.user_id,
         name: bw.worker.name,
         image: bw.worker.image,
-        role_id: bw.role_id,
-        role: bw.role ? { id: bw.role.id, name: bw.role.name } : null
+          role_id: bw.worker.role_id,
+          role: bw.worker.role ? { id: bw.worker.role.id, name: bw.worker.role.name, type: bw.worker.role.type } : null
       }));
 
       const isTargetIncluded = associatedWorkers.some(w => w.id === targetWorkerId);
@@ -178,7 +218,8 @@ const BranchWorkerRepository = {
         {
           model: Worker,
           as: 'worker',
-          attributes: ['id', 'user_id', 'name', 'image']
+          attributes: ['id', 'user_id', 'name', 'image', 'role_id'],
+          include: [{ model: Role, as: 'role', attributes: ['id', 'name', 'type'] }]
         },
         {
           model: Role,
@@ -196,8 +237,8 @@ const BranchWorkerRepository = {
         user_id: bw.worker.user_id,
         name: bw.worker.name,
         image: bw.worker.image,
-        role_id: bw.role_id,
-        role: bw.role ? { id: bw.role.id, name: bw.role.name } : null
+        role_id: bw.worker.role_id,
+        role: bw.worker.role ? { id: bw.worker.role.id, name: bw.worker.role.name, type: bw.worker.role.type } : null
       }));
 
       return {
@@ -209,8 +250,12 @@ const BranchWorkerRepository = {
     });
   },
 
-    async findWorkersWithoutBranch() {
-    return await Worker.findAll({
+    async findWorkersWithoutBranch(branchId = null, roleType = null, allowedCompanyIds = []) {
+    const targetBranch = branchId
+      ? await Branch.findByPk(branchId, { attributes: ['id', 'company_id'] })
+      : null;
+
+    const workers = await Worker.findAll({
         attributes: [
         'id',
         'user_id',
@@ -226,21 +271,50 @@ const BranchWorkerRepository = {
         {
             model: Role,
             as: 'role',
-            attributes: ['id', 'name'],
+            attributes: ['id', 'name', 'type'],
         },
         {
             model: BranchWorker,
-            as: 'branchWorkers', // Asegúrate de que este alias esté bien definido en el modelo Worker
-            required: false, // Esto hace un LEFT JOIN
-            where: {
-            worker_id: { [Op.col]: 'Worker.id' }, // Relación manual si es necesario
-            },
-            attributes: [], // No queremos datos de BranchWorker
+            as: 'branchWorkers',
+            required: false,
+            attributes: ['id', 'branch_id', 'worker_id'],
+            include: [{
+              model: Branch,
+              as: 'branch',
+              attributes: ['id', 'company_id'],
+            }],
         },
         ],
-        where: {
-        '$branchWorkers.worker_id$': { [Op.is]: null }, // Donde no existe relación
-        },
+    });
+
+    return workers.filter((worker) => {
+      if (roleType && worker.role?.type !== roleType) {
+        return false;
+      }
+
+      const relations = worker.branchWorkers || [];
+      if (!targetBranch) {
+        return relations.length === 0;
+      }
+
+      const targetCompanyId = Number(targetBranch.company_id);
+      const userCompanies = new Set(
+        (allowedCompanyIds || [])
+          .map((companyId) => Number(companyId))
+          .filter((companyId) => Number.isInteger(companyId) && companyId > 0)
+      );
+      if (
+        userCompanies.size > 0 &&
+        Number.isInteger(targetCompanyId) &&
+        !userCompanies.has(targetCompanyId)
+      ) {
+        return false;
+      }
+
+      return relations.every((relation) => {
+        const companyId = Number(relation.branch?.company_id);
+        return !targetCompanyId || !companyId || companyId === targetCompanyId;
+      });
     });
     },
 

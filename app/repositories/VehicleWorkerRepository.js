@@ -27,6 +27,64 @@ const VehicleWorkerRepository = {
         });
     },
 
+    async findUnassignedWorkerIdsByVehicle(vehicleId, workerIds, options = {}) {
+        const normalizedWorkerIds = Array.from(
+            new Set(
+                (Array.isArray(workerIds) ? workerIds : [])
+                    .map((workerId) => Number(workerId))
+                    .filter((workerId) => Number.isInteger(workerId) && workerId > 0)
+            )
+        );
+
+        if (!normalizedWorkerIds.length) {
+            return [];
+        }
+
+        const assignedWorkers = await VehicleWorker.findAll({
+            ...options,
+            where: {
+                vehicle_id: vehicleId,
+                worker_id: { [Op.in]: normalizedWorkerIds },
+            },
+            attributes: ['worker_id'],
+            raw: true,
+        });
+
+        const assignedWorkerIds = new Set(
+            assignedWorkers.map((vehicleWorker) => Number(vehicleWorker.worker_id))
+        );
+
+        return normalizedWorkerIds.filter(
+            (workerId) => !assignedWorkerIds.has(workerId)
+        );
+    },
+
+    async findByWorker(workerId, options = {}) {
+        return await VehicleWorker.findAll({
+            ...options,
+            where: {
+                ...(options.where || {}),
+                worker_id: workerId,
+            },
+            include: options.include || [
+                {
+                    model: Vehicle,
+                    as: 'vehicle',
+                    attributes: [
+                        'id',
+                        'plate',
+                        'internal_number',
+                        'brand',
+                        'model',
+                        'image',
+                        'state',
+                        'seats',
+                    ],
+                },
+            ],
+        });
+    },
+
     // Crear una nueva relación Branch-Vehicle
     async create(body) {      
 

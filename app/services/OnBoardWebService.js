@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  BranchWorkerRepository,
   BranchVehicleRepository,
   DeviceVehicleRepository,
   VehicleWorkerRepository,
@@ -57,12 +56,45 @@ const OnBoardWebService = {
       throw new Error('WorkerNotAuthenticated');
     }
 
-    const workerBranches = await BranchWorkerRepository.findByWorker(workerId);
+    const workerVehicles = await VehicleWorkerRepository.findByWorker(workerId);
     const branchesById = new Map();
 
-    for (const branchWorker of workerBranches) {
-      if (branchWorker.branch) {
-        branchesById.set(Number(branchWorker.branch.id), branchWorker.branch);
+    for (const workerVehicle of workerVehicles) {
+      const vehicleId = normalizeId(workerVehicle.vehicle_id || workerVehicle.vehicle?.id);
+      if (!vehicleId) {
+        continue;
+      }
+
+      const branchVehicles = await BranchVehicleRepository.findByVehicle(vehicleId);
+      const deviceVehicles = await DeviceVehicleRepository.findByVehicle(vehicleId);
+
+      for (const branchVehicle of branchVehicles) {
+        const branch = branchVehicle.branch;
+        const vehicle = branchVehicle.vehicle || workerVehicle.vehicle;
+        if (!branch || !vehicle) {
+          continue;
+        }
+
+        const branchId = Number(branch.id);
+        let branchContext = branchesById.get(branchId);
+        if (!branchContext) {
+          branchContext = {
+            branch,
+            vehiclesById: new Map(),
+          };
+          branchesById.set(branchId, branchContext);
+        }
+
+        if (!branchContext.vehiclesById.has(vehicleId)) {
+          const branchDevices = deviceVehicles.filter(
+            (deviceVehicle) => Number(deviceVehicle.branch_id) === branchId
+          );
+
+          branchContext.vehiclesById.set(
+            vehicleId,
+            mapVehicle(vehicle, branchDevices)
+          );
+        }
       }
     }
 
@@ -70,41 +102,10 @@ const OnBoardWebService = {
       throw new Error('WorkerNotAuthorizedForBranch');
     }
 
-    const branches = await Promise.all(
-      Array.from(branchesById.values()).map(async (branch) => {
-        const branchVehicles = await BranchVehicleRepository.findByBranch(branch.id);
-        const vehicles = await Promise.all(
-          branchVehicles
-            .filter((branchVehicle) => branchVehicle.vehicle)
-            .map(async (branchVehicle) => {
-              const canOperate = await VehicleWorkerRepository.existsVehicleWorker(
-                workerId,
-                branchVehicle.vehicle_id
-              );
-
-              if (!canOperate) {
-                return null;
-              }
-
-              const deviceVehicles = await DeviceVehicleRepository.findByVehicle(
-                branchVehicle.vehicle_id
-              );
-
-              const branchDevices = deviceVehicles.filter(
-                (deviceVehicle) =>
-                  Number(deviceVehicle.branch_id) === Number(branch.id)
-              );
-
-              return mapVehicle(branchVehicle.vehicle, branchDevices);
-            })
-        ).then((items) => items.filter(Boolean));
-
-        return {
-          ...mapBranch(branch),
-          vehicles,
-        };
-      })
-    );
+    const branches = Array.from(branchesById.values()).map((branchContext) => ({
+      ...mapBranch(branchContext.branch),
+      vehicles: Array.from(branchContext.vehiclesById.values()),
+    }));
 
     return { branches };
   },

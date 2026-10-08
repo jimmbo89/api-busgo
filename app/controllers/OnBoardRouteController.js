@@ -33,7 +33,7 @@ const errorDetails = {
   WorkerCannotOperateVehicle:
     'El trabajador autenticado no está autorizado para operar el vehículo asociado al dispositivo.',
   WorkerNotAuthorizedForBranch:
-    'El trabajador autenticado no está relacionado con ninguna de las sucursales asociadas al vehículo seleccionado.',
+    'El vehículo seleccionado no tiene sucursales operativas configuradas.',
   OnBoardWebContextDataInvalid:
     'Debe indicar una sucursal y un vehículo válidos para consultar la operación web.',
   BranchNotCompatibleWithVehicle:
@@ -58,7 +58,7 @@ const humanizedErrors = {
   WorkerCannotOperateVehicle:
     'El trabajador no está autorizado para operar el vehículo seleccionado.',
   WorkerNotAuthorizedForBranch:
-    'El trabajador no está autorizado para operar en la sucursal seleccionada.',
+    'El vehículo seleccionado no tiene sucursales operativas configuradas.',
   OnBoardWebContextDataInvalid:
     'La sucursal o el vehículo seleccionado no son válidos.',
   BranchNotCompatibleWithVehicle:

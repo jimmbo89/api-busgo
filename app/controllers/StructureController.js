@@ -1,5 +1,59 @@
 const logger = require("../../config/logger"); // Importa el logger
-const { StructureRepository, BranchRepository } = require("../repositories");
+const { Worker, Role, Company } = require("../models");
+const {
+  StructureRepository,
+  BranchRepository,
+  BranchWorkerRepository,
+} = require("../repositories");
+const { ROLE_TYPES } = require("../constants/roleTypes");
+
+const findAuthenticatedWorker = async (userId) => {
+  if (!userId) {
+    return null;
+  }
+
+  return Worker.findOne({
+    where: { user_id: userId },
+    attributes: ['id', 'role_id'],
+    include: [{
+      model: Role,
+      as: 'role',
+      attributes: ['type'],
+    }],
+  });
+};
+
+const findAuthorizedBranches = async (req) => {
+  const userId = req.user?.id;
+  const worker = await findAuthenticatedWorker(userId);
+
+  if (!worker) {
+    return [];
+  }
+
+  if (worker.role?.type === ROLE_TYPES.BRANCH) {
+    const relations = await BranchWorkerRepository.findByWorker(worker.id);
+    const branchIds = relations
+      .map((relation) => relation.branch_id ?? relation.branch?.id)
+      .filter(Boolean);
+
+    return BranchRepository.findByIds(branchIds, { includeRoutes: true });
+  }
+
+  if (worker.role?.type === ROLE_TYPES.COMPANY) {
+    const companies = await Company.findAll({
+      where: { user_id: userId },
+      attributes: ['id'],
+    });
+
+    return BranchRepository.findByCompanyIds(
+      companies.map((company) => company.id),
+      { includeRoutes: true }
+    );
+  }
+
+  return [];
+};
 
 const mapRoute = (route) => ({
   id: route.id,
@@ -79,7 +133,7 @@ const StructureController = {
     try {
       const [structures, branches] = await Promise.all([
         StructureRepository.findAll(),
-        BranchRepository.findAll({ includeRoutes: true }),
+        findAuthorizedBranches(req),
       ]);
 
       const mappedStructures = structures.map((structure) => {

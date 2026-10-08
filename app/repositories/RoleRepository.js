@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const { Role } = require('../models'); // Aquí usamos el modelo Role
 const logger = require('../../config/logger'); // Logger para seguimiento
+const { ROLE_TYPES } = require('../constants/roleTypes');
 
 const RoleRepository = {
   // Obtener todos los roles
@@ -30,7 +31,7 @@ const RoleRepository = {
     const role = await Role.create({
       name,
       description,
-      type,
+      type: type ?? ROLE_TYPES.COMPANY,
     });
 
     return role;
@@ -41,7 +42,9 @@ const RoleRepository = {
     const fieldsToUpdate = ['name', 'description', 'type'];
 
     const updatedData = Object.keys(body)
-      .filter(key => fieldsToUpdate.includes(key) && body[key] !== undefined)
+      .filter(key => fieldsToUpdate.includes(key)
+        && body[key] !== undefined
+        && !(key === 'type' && body[key] === null))
       .reduce((obj, key) => {
         obj[key] = body[key];
         return obj;

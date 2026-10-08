@@ -40,6 +40,7 @@ const TicketTypeController = require("./controllers/TicketTypeController");
 
 //Middlewares
 const auth = require("./middlewares/auth");
+const deviceBranchContext = require("./middlewares/deviceBranchContext");
 const multerImage = require("./middlewares/multerImage");
 const validateSchema = require("./middlewares/validateSchema");
 const {
@@ -753,12 +754,12 @@ router.post(
 
 //Rutas Trip
 router.get("/trip", TripController.index);
-router.post("/get-trip-date", validateSchema(branchTicketTripSchema), TripController.getTripDate );// endpoint movil ver viajes
-router.post("/get-trip-date-segment", validateSchema(branchOriginDestinationTripSchema), TripController.getTripDateBySegment); //endpoint movil y web ver viajes por origen y destino
-router.post("/get-trip-date-segment-all", validateSchema(branchTripDateSegmentAllSchema), TripController.getTripDateBySegmentAll);
+router.post("/get-trip-date", deviceBranchContext({ assignBranchId: true }), validateSchema(branchTicketTripSchema), TripController.getTripDate );// endpoint movil ver viajes
+router.post("/get-trip-date-segment", deviceBranchContext({ assignBranchId: true }), validateSchema(branchOriginDestinationTripSchema), TripController.getTripDateBySegment); //endpoint movil y web ver viajes por origen y destino
+router.post("/get-trip-date-segment-all", deviceBranchContext({ assignBranchId: true }), validateSchema(branchTripDateSegmentAllSchema), TripController.getTripDateBySegmentAll);
 router.post("/get-trip-vehicle", validateSchema(branch_idTripSchema), TripController.getTripVehicle );
-router.post("/get-trip-branch-date", validateSchema(branchTicketTripSchema), TripController.index_branch_date );
-router.post("/get-trip-branch-worker", validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
+router.post("/get-trip-branch-date", deviceBranchContext({ assignBranchId: true }), validateSchema(branchTicketTripSchema), TripController.index_branch_date );
+router.post("/get-trip-branch-worker", deviceBranchContext({ assignBranchId: true }), validateSchema(branchTicketTripSchema),TripController.getTripWorkerDate);
 router.post("/trip", validateSchema(storeTripSchema), TripController.store);
 router.post("/mobile-trip", validateSchema(storeMobileTripSchema), TripController.mobileStore); // endpoint movil para creacion de viajes desde la app movil
 router.post("/trip-show", validateSchema(idTripSchema), TripController.show);
@@ -810,9 +811,10 @@ router.post(
   validateSchema(ticketWebPaymentStatusSchema),
   TicketController.ticket_web_payment_status
 );
-router.post("/express-sales-ticket", validateSchema(storeExpressTicketSchema), TicketController.store_express); //ventas express de tickets
+router.post("/express-sales-ticket", deviceBranchContext({ assignBranchId: true }), validateSchema(storeExpressTicketSchema), TicketController.store_express); //ventas express de tickets
 router.post(
   "/ticket",
+  deviceBranchContext({ assignBranchId: true }),
   validateSchema(storeTicketSchema),
   TicketController.store
 );
@@ -838,6 +840,7 @@ router.post(
 );
 router.post(
   "/check-reserved-seats",
+  deviceBranchContext(),
   validateSchema(checkReservedSeatsSchema),
   TicketController.checkReservedSeats
 );
@@ -859,7 +862,7 @@ router.post(
 
 router.post("/ticket-sold-date-worker", validateSchema(ticketSoldDateWorkerSchema), TicketController.getTicketsSoldDateWorker);
 
-router.post("/verify-qr-ticket", validateSchema(qrEncryptedSchema),TicketController.verifyEncryptedQR);
+router.post("/verify-qr-ticket", deviceBranchContext(), validateSchema(qrEncryptedSchema),TicketController.verifyEncryptedQR);
 router.post("/get-tickets-print-report", validateSchema(ticketReportSchema), TicketController.getTicketsPrintReport);
 
 //Api Tuu

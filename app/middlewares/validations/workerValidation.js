@@ -13,11 +13,12 @@ const workerBranchActionSchema = Joi.object({
         'number.positive': 'El campo branch_id debe ser mayor que cero',
         'any.required': 'El campo branch_id es obligatorio',
     }),
-    role_id: Joi.number().integer().positive().required().messages({
+    // Se conserva por compatibilidad con clientes anteriores, pero Backend
+    // siempre lo reemplaza por Worker.role_id.
+    role_id: Joi.number().integer().positive().allow(null).optional().messages({
         'number.base': 'El campo role_id debe ser un número entero',
         'number.integer': 'El campo role_id debe ser un número entero',
         'number.positive': 'El campo role_id debe ser mayor que cero',
-        'any.required': 'El campo role_id es obligatorio',
     }),
     action: Joi.string()
         .valid('associate', 'update', 'delete')

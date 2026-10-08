@@ -2,6 +2,7 @@
 const {
   Model
 } = require('sequelize');
+const { ROLE_TYPES, ROLE_TYPE_VALUES } = require('../constants/roleTypes');
 module.exports = (sequelize, DataTypes) => {
   class Role extends Model {
     /**
@@ -59,7 +60,13 @@ module.exports = (sequelize, DataTypes) => {
     type: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'Sistema',
+      defaultValue: ROLE_TYPES.COMPANY,
+      validate: {
+        isIn: {
+          args: [ROLE_TYPE_VALUES],
+          msg: 'El tipo de rol debe ser Empresa o Sucursal',
+        },
+      },
     }
   }, {
     sequelize,

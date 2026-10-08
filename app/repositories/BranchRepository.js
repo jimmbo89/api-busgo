@@ -7,7 +7,7 @@ const logger = require('../../config/logger'); // Logger para seguimiento
 
 const BranchRepository = {
   // Obtener todas las sucursales
-  async findAll({ includeRoutes = false } = {}) {
+  async findAll({ includeRoutes = false, where } = {}) {
     const include = [{
       model: Company,
       as: 'company',
@@ -45,6 +45,7 @@ const BranchRepository = {
     }
 
     return await Branch.findAll({
+      where,
       attributes: ['id', 'name', 'address', 'image', 'rut', 'phone', 'company_id'],
       include,
     });
@@ -82,6 +83,40 @@ const BranchRepository = {
         attributes: ['id', 'name', 'image'],
       },
       order: [['id', 'ASC']],
+    });
+  },
+
+  async findByCompanyIds(company_ids = [], { includeRoutes = false } = {}) {
+    const companyIds = [...new Set(
+      (company_ids || [])
+        .map((companyId) => Number(companyId))
+        .filter((companyId) => Number.isInteger(companyId) && companyId > 0)
+    )];
+
+    if (companyIds.length === 0) {
+      return [];
+    }
+
+    return await this.findAll({
+      includeRoutes,
+      where: { company_id: { [Op.in]: companyIds } },
+    });
+  },
+
+  async findByIds(branch_ids = [], { includeRoutes = false } = {}) {
+    const branchIds = [...new Set(
+      (branch_ids || [])
+        .map((branchId) => Number(branchId))
+        .filter((branchId) => Number.isInteger(branchId) && branchId > 0)
+    )];
+
+    if (branchIds.length === 0) {
+      return [];
+    }
+
+    return await this.findAll({
+      includeRoutes,
+      where: { id: { [Op.in]: branchIds } },
     });
   },
 

@@ -1,5 +1,5 @@
 const logger = require('../../config/logger'); // Logger para seguimiento
-const { TripWorkerRepository, TripRepository, WorkerRepository, BranchRepository } = require('../repositories');
+const { TripWorkerRepository, TripRepository, WorkerRepository, BranchRepository, VehicleWorkerRepository } = require('../repositories');
 
 const TripWorkerController = {
     // Obtener todos los trip workers
@@ -60,10 +60,30 @@ const TripWorkerController = {
                 return res.status(400).json({ msg: 'TripNotFound' });
             }
 
+            if (Number(branch_id) !== Number(trip.branch_id)) {
+                return res.status(400).json({
+                    msg: 'TripBranchMismatch',
+                    details: 'La relación histórica debe utilizar la sucursal registrada en el viaje.',
+                });
+            }
+
             const worker = await WorkerRepository.findById(worker_id);
             if (!worker) {
                 logger.error(`TripWorkerController->store: Trabajador no encontrado con ID ${worker_id}`);
                 return res.status(400).json({ msg: 'WorkerNotFound' });
+            }
+
+            const unassignedWorkerIds =
+                await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+                    trip.vehicle_id,
+                    [worker_id]
+                );
+            if (unassignedWorkerIds.length) {
+                return res.status(400).json({
+                    msg: 'WorkerNotAssignedToVehicle',
+                    details: 'El trabajador no está asociado al vehículo del viaje.',
+                    worker_ids: unassignedWorkerIds,
+                });
             }
 
             const branch = await BranchRepository.findById(branch_id);
@@ -72,7 +92,11 @@ const TripWorkerController = {
                 return res.status(400).json({ msg: 'BranchNotFound' });
             }
 
-            tripWorker = await TripWorkerRepository.create(req.body);
+            tripWorker = await TripWorkerRepository.create({
+                ...req.body,
+                branch_id: trip.branch_id,
+                trip_id: trip.id,
+            });
 
             res.status(201).json({ 'tripWorker': tripWorker });
         } catch (error) {
@@ -152,19 +176,47 @@ const TripWorkerController = {
                 return res.status(400).json({ msg: 'TripNotFound' });
             }
 
+            if (
+                branch_id !== undefined &&
+                branch_id !== null &&
+                Number(branch_id) !== Number(trip.branch_id)
+            ) {
+                return res.status(400).json({
+                    msg: 'TripBranchMismatch',
+                    details: 'La relación histórica debe utilizar la sucursal registrada en el viaje.',
+                });
+            }
+
             const worker = await WorkerRepository.findById(worker_id);
             if (!worker) {
                 logger.error(`TripWorkerController->update: Trabajador no encontrado con ID ${worker_id}`);
                 return res.status(400).json({ msg: 'WorkerNotFound' });
             }
 
-            const branch = await BranchRepository.findById(branch_id);
+            const unassignedWorkerIds =
+                await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+                    trip.vehicle_id,
+                    [worker_id]
+                );
+            if (unassignedWorkerIds.length) {
+                return res.status(400).json({
+                    msg: 'WorkerNotAssignedToVehicle',
+                    details: 'El trabajador no está asociado al vehículo del viaje.',
+                    worker_ids: unassignedWorkerIds,
+                });
+            }
+
+            const branch = await BranchRepository.findById(trip.branch_id);
             if (!branch) {
-                logger.error(`TripWorkerController->update: Sucursal no encontrada con ID ${branch_id}`);
+                logger.error(`TripWorkerController->update: Sucursal no encontrada con ID ${trip.branch_id}`);
                 return res.status(400).json({ msg: 'BranchNotFound' });
             }
 
-            const updatedTripWorker = await TripWorkerRepository.update(tripWorker, req.body);
+            const updatedTripWorker = await TripWorkerRepository.update(tripWorker, {
+                ...req.body,
+                branch_id: trip.branch_id,
+                trip_id: trip.id,
+            });
 
             res.status(200).json({ 'tripWorker': updatedTripWorker });
         } catch (error) {
@@ -214,6 +266,37 @@ const TripWorkerController = {
                 return res.status(400).json({ msg: 'TripNotFound' });
             }
 
+        if (
+            branch_id !== undefined &&
+            branch_id !== null &&
+            Number(branch_id) !== Number(trip.branch_id)
+        ) {
+            return res.status(400).json({
+                msg: 'TripBranchMismatch',
+                details: 'La relación histórica debe utilizar la sucursal registrada en el viaje.',
+            });
+        }
+
+        const effectiveBranchId = trip.branch_id;
+        const effectiveTripId = trip.id;
+        const effectiveDate = date ?? trip.date;
+
+        const workerIds = (Array.isArray(workers) ? workers : [])
+            .map((worker) => Number(worker?.worker_id))
+            .filter((workerId) => Number.isInteger(workerId) && workerId > 0);
+        const unassignedWorkerIds =
+            await VehicleWorkerRepository.findUnassignedWorkerIdsByVehicle(
+                trip.vehicle_id,
+                workerIds
+            );
+        if (unassignedWorkerIds.length) {
+            return res.status(400).json({
+                msg: 'WorkerNotAssignedToVehicle',
+                details: 'Uno o más trabajadores no están asociados al vehículo del viaje.',
+                worker_ids: unassignedWorkerIds,
+            });
+        }
+
         // Creamos un array vacío para los trabajadores que no tienen duplicados
         const validWorkers = [];
         const errors = [];
@@ -231,7 +314,12 @@ const TripWorkerController = {
                 return ;
             }
 
-            const existingAssociation = await TripWorkerRepository.existsByUpdatedFields({branch_id, trip_id, worker_id, date });
+            const existingAssociation = await TripWorkerRepository.existsByUpdatedFields({
+                branch_id: effectiveBranchId,
+                trip_id: effectiveTripId,
+                worker_id,
+                date: effectiveDate,
+            });
             if (!existingAssociation) {
                 // Si no existe, lo agregamos al array de trabajadores válidos
                 validWorkers.push(worker_id);
@@ -261,9 +349,9 @@ const TripWorkerController = {
         // Si no hay duplicados, asociamos los trabajadores al viaje
         const result = await TripWorkerRepository.associateWorkersToTrip({
             workers: validWorkers,  // Solo pasamos los trabajadores sin duplicados
-            trip_id,
-            branch_id,
-            date
+            trip_id: effectiveTripId,
+            branch_id: effectiveBranchId,
+            date: effectiveDate,
         });
         
 

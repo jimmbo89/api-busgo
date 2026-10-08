@@ -63,11 +63,10 @@ module.exports = (sequelize, DataTypes) => {
     },
     role_id: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      // Es un espejo informativo de Worker.role_id; no participa en
+      // autorización y puede quedar vacío durante una transición.
+      allowNull: true,
       validate: {
-        notNull: {
-          msg: 'El campo role_id es obligatorio'
-        },
         isInt: {
           msg: 'El campo role_id debe ser un número entero'
         }

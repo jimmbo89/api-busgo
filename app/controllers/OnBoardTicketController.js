@@ -48,7 +48,7 @@ const errorDetails = {
   WorkerCannotOperateVehicle:
     'El trabajador autenticado no está autorizado para operar el vehículo.',
   WorkerNotAuthorizedForBranch:
-    'El trabajador autenticado no está relacionado con ninguna de las sucursales asociadas al vehículo identificado por el dispositivo.',
+    'El vehículo identificado por el dispositivo no tiene sucursales operativas configuradas.',
   OnBoardTicketTripNotFound: 'El viaje indicado no existe.',
   OnBoardTicketRouteRequired:
     'Debe indicar la ruta cuando no se proporciona un viaje existente.',
@@ -118,7 +118,7 @@ const errorDetails = {
 
 const humanizedErrors = {
   WorkerNotAuthorizedForBranch:
-    'El trabajador no está autorizado para operar en las sucursales del vehículo.',
+    'El vehículo identificado por el dispositivo no tiene sucursales operativas configuradas.',
   OnBoardTicketSegmentRegression:
     'No se puede vender desde una parada anterior al avance ya registrado en el viaje.',
   OnBoardTicketStopsUnavailable:

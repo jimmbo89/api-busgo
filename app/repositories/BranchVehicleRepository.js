@@ -57,6 +57,20 @@ const BranchVehicleRepository = {
                     model: Branch,
                     as: 'branch',
                     attributes: ['id', 'name', 'image', 'address']
+                },
+                {
+                    model: Vehicle,
+                    as: 'vehicle',
+                    attributes: [
+                        'id',
+                        'plate',
+                        'internal_number',
+                        'brand',
+                        'model',
+                        'image',
+                        'state',
+                        'seats',
+                    ],
                 }
             ],
             order: [['branch_id', 'ASC']]
@@ -141,11 +155,11 @@ const BranchVehicleRepository = {
     },
 
     // Verificar si existe una relación por ID de sucursal y vehículo
-    async existsBranchVehicle(branchId, vehicleId, excludeId = null) {
+    async existsBranchVehicle(branchId, vehicleId, excludeId = null, options = {}) {
         const whereCondition = excludeId
             ? { branch_id: branchId, vehicle_id: vehicleId, id: { [Op.ne]: excludeId } }
             : { branch_id: branchId, vehicle_id: vehicleId };
-        return await BranchVehicle.findOne({ where: whereCondition });
+        return await BranchVehicle.findOne({ ...options, where: whereCondition });
     }
 };
 

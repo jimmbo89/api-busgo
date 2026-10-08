@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const authConfig = require('../../config/auth');
-const { Worker, User, Role, sequelize } = require('../models'); // Importar los modelos necesarios
+const { Worker, User, Role, Company, sequelize } = require('../models'); // Importar los modelos necesarios
 const logger = require('../../config/logger'); // Logger para seguimiento
 const { RoleRepository, WorkerRepository } = require('../repositories');
 const WorkerService = require('../services/WorkerService');
@@ -39,7 +39,7 @@ const workerBranchErrorDetails = {
     RoleNotFound: 'El rol indicado no existe.',
     BranchNotFound: 'La sucursal indicada no existe.',
     WorkerBranchActionsInvalid: 'El campo branches debe contener un JSON válido con las asociaciones.',
-    WorkerBranchActionInvalid: 'Cada asociación debe indicar branch_id, role_id y una acción válida.',
+    WorkerBranchActionInvalid: 'Cada asociación debe indicar branch_id y una acción válida; role_id es opcional y no determina el rol.',
     WorkerBranchAssociationIdNotAllowed: 'La acción associate no debe incluir association_id.',
     WorkerBranchAssociationIdRequired: 'Las acciones update y delete requieren association_id.',
     WorkerBranchCreateActionInvalid: 'Al crear un trabajador solo se permite la acción associate.',
@@ -48,16 +48,29 @@ const workerBranchErrorDetails = {
     WorkerBranchAssociationBranchMismatch: 'La sucursal no corresponde a la relación indicada.',
     WorkerBranchAssociationRoleMismatch: 'El role_id no corresponde al rol actual de la relación que se desea eliminar.',
     WorkerBranchDuplicateOperation: 'No se puede procesar más de una acción sobre la misma relación.',
-    WorkerMultipleActiveBranches: 'El trabajador solo puede tener una sucursal activa asociada.',
+    WorkerBranchDuplicateBranch: 'El trabajador ya está asociado a una de las sucursales indicadas.',
+    WorkerBranchAlreadyAssociated: 'El trabajador ya está asociado a la sucursal indicada.',
+    WorkerBranchCompanyMismatch: 'Las sucursales asociadas deben pertenecer a la misma empresa del trabajador.',
+    WorkerBranchRequiredForBranchRole: 'Un trabajador con rol de tipo Sucursal debe tener al menos una sucursal autorizada.',
+    WorkerBranchNotAllowedForCompanyRole: 'Un trabajador con rol de tipo Empresa no debe tener sucursales autorizadas.',
+};
+
+const findUserCompanyIds = async (userId) => {
+    if (!userId) {
+        return [];
+    }
+
+    const companies = await Company.findAll({
+        where: { user_id: userId },
+        attributes: ['id'],
+    });
+
+    return companies.map((company) => company.id);
 };
 
 const getWorkerMutationStatus = (error) => {
     if (['WorkerNotFound', 'RoleNotFound', 'BranchNotFound', 'WorkerBranchAssociationNotFound'].includes(error.message)) {
         return 404;
-    }
-
-    if (error.message === 'WorkerMultipleActiveBranches') {
-        return 409;
     }
 
     if (error.message.startsWith('WorkerBranch')) {
@@ -67,7 +80,7 @@ const getWorkerMutationStatus = (error) => {
     return 500;
 };
 
-const mapBranchWorkers = (branchWorkers = []) => branchWorkers.map((branchWorker) => ({
+const mapBranchWorkers = (branchWorkers = [], workerRoleId = null) => branchWorkers.map((branchWorker) => ({
     id: branchWorker.branch?.id,
     branch_id: branchWorker.branch_id,
     name: branchWorker.branch?.name,
@@ -79,7 +92,7 @@ const mapBranchWorkers = (branchWorkers = []) => branchWorkers.map((branchWorker
     companyName: branchWorker.branch?.company?.name,
     companyImage: branchWorker.branch?.company?.image,
     association_id: branchWorker.id,
-    role_id: branchWorker.role_id,
+    role_id: workerRoleId ?? branchWorker.role_id,
 }));
 
 const WorkerController = {
@@ -95,9 +108,7 @@ const WorkerController = {
             }
 
             const mappedWorkers = workers.map(worker => ({
-                branches: (worker.branchWorkers || [])
-                    .filter(branchWorker => Number(branchWorker.role_id) === Number(worker.role_id))
-                    .map(branchWorker => ({
+                branches: (worker.branchWorkers || []).map(branchWorker => ({
                         id: branchWorker.branch?.id,
                         branch_id: branchWorker.branch_id,
                         name: branchWorker.branch?.name,
@@ -109,7 +120,7 @@ const WorkerController = {
                         companyName: branchWorker.branch?.company?.name,
                         companyImage: branchWorker.branch?.company?.image,
                         association_id: branchWorker.id,
-                        role_id: branchWorker.role_id,
+                        role_id: worker.role_id,
                     })),
                 id: worker.id,
                 userId: worker.user_id,
@@ -165,14 +176,16 @@ const WorkerController = {
             }
 
         try {
+            const allowedCompanyIds = await findUserCompanyIds(req.user?.id);
             const result = await WorkerService.create({
                 body: req.body,
                 file: req.file,
+                allowedCompanyIds,
             });
 
             res.status(201).json({
                 worker: result.worker,
-                branches: mapBranchWorkers(result.branchWorkers),
+                branches: mapBranchWorkers(result.branchWorkers, result.worker.role_id),
             });
         } catch (error) {
             const persistenceError = error.cause || error;
@@ -281,16 +294,18 @@ const WorkerController = {
             }
 
         try {
+            const allowedCompanyIds = await findUserCompanyIds(req.user?.id);
 
             const result = await WorkerService.update({
                 id,
                 body: req.body,
                 file: req.file,
+                allowedCompanyIds,
             });
 
             res.status(200).json({
                 worker: result.worker,
-                branches: mapBranchWorkers(result.branchWorkers),
+                branches: mapBranchWorkers(result.branchWorkers, result.worker.role_id),
             });
         } catch (error) {
             const persistenceError = error.cause || error;

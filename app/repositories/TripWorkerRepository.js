@@ -1,5 +1,5 @@
 const { Op } = require("sequelize");
-const { TripWorker, Branch, Trip, Worker, Route, BranchWorker, Role} = require("../models");
+const { TripWorker, Branch, Trip, Worker, Route, Role} = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
 
 const TripWorkerRepository = {
@@ -149,18 +149,12 @@ const TripWorkerRepository = {
         {
           model: Worker,
           as: "worker",
+          attributes: ["id", "name", "image", "role_id"],
           include: [
             {
-              model: BranchWorker,
-              as: "branchWorkers", // El alias de la relación entre Worker y BranchWorker
-              where: { branch_id: trip.branch_id }, // Filtramos por el branch_id que necesitamos
-              include: [
-                {
-                  model: Role,
-                  as: "role", // El alias de la relación entre BranchWorker y Role
-                  attributes: ["id", "name"], // Asegúrate de seleccionar los atributos relevantes del modelo Role
-                },
-              ],
+              model: Role,
+              as: "role",
+              attributes: ["id", "name", "type"],
             },
           ],
         },
@@ -170,14 +164,14 @@ const TripWorkerRepository = {
     // Devolver las personas mapeadas
     let worker = workersTrip.map((workerTrip) => {
         // Asegúrate de que 'branchWorkers' no sea undefined
-        const branchWorker = workerTrip.worker.branchWorkers ? workerTrip.worker.branchWorkers[0] : null;
-    
+        const role = workerTrip.worker.role;
+
         return {
           id: workerTrip.worker_id,
           name: workerTrip.worker.name,
           image: workerTrip.worker.image,
-          roleId: branchWorker ? branchWorker.role_id : null,  // Comprobación de null
-          roleName: branchWorker ? branchWorker.role.name : null, // Comprobación de null
+          roleId: role?.id ?? workerTrip.worker.role_id ?? null,
+          roleName: role?.name ?? null,
         };
       });
 
@@ -185,6 +179,7 @@ const TripWorkerRepository = {
   },
 
   async workersByTripIds(tripIds, branchId) {
+    const normalizedBranchId = Number(branchId);
     const normalizedTripIds = Array.from(
       new Set(
         (Array.isArray(tripIds) ? tripIds : [])
@@ -200,27 +195,21 @@ const TripWorkerRepository = {
     const workersTrip = await TripWorker.findAll({
       where: {
         trip_id: { [Op.in]: normalizedTripIds },
+        ...(Number.isInteger(normalizedBranchId) && normalizedBranchId > 0
+          ? { branch_id: normalizedBranchId }
+          : {}),
       },
       attributes: ["id", "trip_id", "worker_id"],
       include: [
         {
           model: Worker,
           as: "worker",
-          attributes: ["id", "name", "image"],
+          attributes: ["id", "name", "image", "role_id"],
           include: [
             {
-              model: BranchWorker,
-              as: "branchWorkers",
-              attributes: ["id", "branch_id", "worker_id", "role_id"],
-              where: { branch_id: branchId },
-              required: true,
-              include: [
-                {
-                  model: Role,
-                  as: "role",
-                  attributes: ["id", "name"],
-                },
-              ],
+              model: Role,
+              as: "role",
+              attributes: ["id", "name", "type"],
             },
           ],
         },
@@ -233,7 +222,6 @@ const TripWorkerRepository = {
 
     for (const workerTrip of workersTrip) {
       const tripId = Number(workerTrip.trip_id);
-      const branchWorker = workerTrip.worker?.branchWorkers?.[0] || null;
       if (!workersByTripId.has(tripId)) {
         workersByTripId.set(tripId, []);
       }
@@ -242,8 +230,8 @@ const TripWorkerRepository = {
         id: workerTrip.worker_id,
         name: workerTrip.worker?.name,
         image: workerTrip.worker?.image,
-        roleId: branchWorker ? branchWorker.role_id : null,
-        roleName: branchWorker?.role?.name || null,
+        roleId: workerTrip.worker?.role?.id ?? workerTrip.worker?.role_id ?? null,
+        roleName: workerTrip.worker?.role?.name || null,
       });
     }
 

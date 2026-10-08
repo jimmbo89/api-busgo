@@ -43,7 +43,7 @@ const errorDetails = {
   WorkerCannotOperateVehicle:
     'El trabajador autenticado no está autorizado para operar el vehículo asociado al dispositivo.',
   WorkerNotAuthorizedForBranch:
-    'El trabajador autenticado no está relacionado con ninguna de las sucursales asociadas al vehículo identificado por el dispositivo.',
+    'El vehículo identificado por el dispositivo no tiene sucursales operativas configuradas.',
   OnBoardTripDataInvalid:
     'Debe indicar una sucursal y una ruta válidas para crear el viaje.',
   OnBoardActiveTripDataInvalid:
@@ -79,7 +79,7 @@ const errorDetails = {
 
 const humanizedErrors = {
   WorkerNotAuthorizedForBranch:
-    'El trabajador no está autorizado para operar en las sucursales del vehículo.',
+    'El vehículo identificado por el dispositivo no tiene sucursales operativas configuradas.',
   OnBoardActiveTripDataInvalid:
     'Debes indicar una ruta válida para consultar los viajes iniciados.',
   OnBoardWebContextDataInvalid:

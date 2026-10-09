@@ -1,7 +1,7 @@
 const logger = require("../../config/logger");
 const Joi = require('joi'); // Asegúrate de usar Joi para validaciones
 
-const validateSchema = (schema) => {
+const validateSchema = (schema, options = {}) => {
   return (req, res, next) => {
     // Normalización de valores en req.body
     const normalizeValue = (value) => {
@@ -30,7 +30,7 @@ const validateSchema = (schema) => {
     }
 
     // Normaliza req.body antes de la validación
-    if (req.body) {
+    if (req.body && options.normalize !== false) {
       normalizeObject(req.body);
     }
 

@@ -186,6 +186,13 @@ const { incidentDateSchema } = require("./middlewares/validations/incidentValida
 const { storeTicketTypeSchema, updateTicketTypeSchema, idTicketTypeSchema, activeTicketTypeSchema } = require("./middlewares/validations/tickettypeValidation");
 const TripTemplateController = require("./controllers/TripTemplateController");
 const { storeTripTemplateSchema, updateTripTemplateSchema, idTripTemplateSchema, branchTripTemplateSchema } = require("./middlewares/validations/triptemplateValidation");
+const TicketTemplateController = require("./controllers/TicketTemplateController");
+const {
+  storeTicketTemplateSchema,
+  updateTicketTemplateSchema,
+  idTicketTemplateSchema,
+  ticketTemplateCompanySchema,
+} = require("./middlewares/validations/ticketTemplateValidation");
 
 router.get("/", (req, res) => res.json({ hello: "World" }));
 router.get("/health", (req, res) => res.status(200).json(true));
@@ -786,6 +793,28 @@ router.post("/trip-template-show", validateSchema(idTripTemplateSchema), TripTem
 router.put("/trip-template", validateSchema(updateTripTemplateSchema), TripTemplateController.update);
 router.post("/trip-template-destroy", validateSchema(idTripTemplateSchema),TripTemplateController.destroy);
 router.post("/get-trip-template-avtive", validateSchema(branchTripTemplateSchema), TripTemplateController.getActiveByBranch);
+
+//Rutas TicketTemplate
+router.post(
+  "/get-ticket-templates",
+  validateSchema(ticketTemplateCompanySchema, { normalize: false }),
+  TicketTemplateController.index
+);
+router.post(
+  "/ticket-templates",
+  validateSchema(storeTicketTemplateSchema, { normalize: false }),
+  TicketTemplateController.store
+);
+router.put(
+  "/ticket-templates",
+  validateSchema(updateTicketTemplateSchema, { normalize: false }),
+  TicketTemplateController.update
+);
+router.post(
+  "/ticket-templates-destroy",
+  validateSchema(idTicketTemplateSchema, { normalize: false }),
+  TicketTemplateController.destroy
+);
 
 //Rutas Incidents
 router.post("/incident-date", validateSchema(incidentDateSchema),IncidentController.getIncidents);

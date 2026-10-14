@@ -48,6 +48,63 @@ const templateAttributes = [
   'updatedAt',
 ];
 
+const getTemplateIds = (templates) => templates
+  .map((template) => template?.id)
+  .filter((id) => id !== undefined && id !== null);
+
+const getAssociationIds = (rows = []) => new Set(
+  rows.map((row) => row?.ticket_template_id ?? row?.get?.('ticket_template_id'))
+    .filter((id) => id !== undefined && id !== null)
+    .map((id) => String(id))
+);
+
+const setTemplateValue = (template, key, value) => {
+  if (typeof template?.setDataValue === 'function') {
+    template.setDataValue(key, value);
+  } else if (template) {
+    template[key] = value;
+  }
+};
+
+const attachUsageToTemplates = async (templates) => {
+  const templateIds = getTemplateIds(templates);
+  if (templateIds.length === 0) return templates;
+
+  const [tripRows, tripTemplateRows] = await Promise.all([
+    typeof Trip?.findAll === 'function'
+      ? Trip.findAll({
+          attributes: ['ticket_template_id'],
+          where: { ticket_template_id: templateIds },
+          group: ['ticket_template_id'],
+          raw: true,
+        })
+      : [],
+    typeof TripTemplate?.findAll === 'function'
+      ? TripTemplate.findAll({
+          attributes: ['ticket_template_id'],
+          where: { ticket_template_id: templateIds },
+          group: ['ticket_template_id'],
+          raw: true,
+        })
+      : [],
+  ]);
+
+  const tripTemplateIds = getAssociationIds(tripRows);
+  const tripTemplateAssociationIds = getAssociationIds(tripTemplateRows);
+
+  templates.forEach((template) => {
+    const templateId = String(template.id);
+    const hasTrips = tripTemplateIds.has(templateId);
+    const hasTripTemplates = tripTemplateAssociationIds.has(templateId);
+
+    setTemplateValue(template, 'has_trips', hasTrips);
+    setTemplateValue(template, 'has_trip_templates', hasTripTemplates);
+    setTemplateValue(template, 'is_in_use', hasTrips || hasTripTemplates);
+  });
+
+  return templates;
+};
+
 const TicketTemplateRepository = {
   async findAll(filters = {}) {
     const where = {};
@@ -63,9 +120,12 @@ const TicketTemplateRepository = {
       attributes: templateAttributes,
       order: [['createdAt', 'DESC']],
     });
-    return TicketTemplateDefaultRepository.attachToTemplates(
-      ticketTemplates.filter((template) => template.status !== 'deleted')
+    const activeTicketTemplates = ticketTemplates.filter(
+      (template) => template.status !== 'deleted'
     );
+
+    await TicketTemplateDefaultRepository.attachToTemplates(activeTicketTemplates);
+    return attachUsageToTemplates(activeTicketTemplates);
   },
 
   async findById(id) {

@@ -25,6 +25,7 @@ const ticketTemplateRuleErrors = new Set([
   'TicketTemplateMustBeActiveForDefault',
   'TicketTemplateCompanyChangeNotAllowed',
   'TicketTemplateInUse',
+  'TicketTemplateDefaultNotConfigured',
 ]);
 
 const sendTicketTemplateError = (res, error) => {
@@ -33,6 +34,7 @@ const sendTicketTemplateError = (res, error) => {
   return res.status(409).json({
     error: error.code,
     msg: error.code,
+    ...(error.details ? { details: error.details } : {}),
   });
 };
 
@@ -128,8 +130,16 @@ const TicketTemplateController = {
         return res.status(404).json({ msg: 'TicketTemplateNotFound' });
       }
 
-      await TicketTemplateRepository.delete(ticketTemplate);
-      return res.status(200).json({ msg: 'TicketTemplateDeleted' });
+      const deletion = await TicketTemplateRepository.delete(ticketTemplate);
+      return res.status(200).json({
+        msg: 'TicketTemplateDeleted',
+        ...(deletion?.softDeleted
+          ? {
+              details:
+                'La plantilla fue retirada de los listados operativos porque mantiene viajes históricos asociados.',
+            }
+          : {}),
+      });
     } catch (error) {
       if (sendTicketTemplateError(res, error)) return;
       const errorMsg = error.message || 'Error desconocido';

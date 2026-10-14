@@ -123,6 +123,19 @@ const resolveTripTemplateInstance = async (triptemplateOrId) => {
   return await TripTemplate.findByPk(triptemplateOrId);
 };
 
+const hideDeletedTicketTemplateAssociation = (template) => {
+  if (
+    template?.ticket_template_id !== null &&
+    template?.ticket_template_id !== undefined &&
+    !template.ticketTemplate &&
+    typeof template.setDataValue === 'function'
+  ) {
+    template.setDataValue('ticket_template_id', null);
+  }
+
+  return template;
+};
+
 const TripTemplateRepository = {
   async findAll(filters = {}) {
     const whereClause = {};
@@ -148,7 +161,7 @@ const TripTemplateRepository = {
       branchInclude.required = true;
     }
 
-    return await TripTemplate.findAll({
+    const templates = await TripTemplate.findAll({
       attributes: [
         "id",
         "branch_id",
@@ -196,14 +209,18 @@ const TripTemplateRepository = {
           model: TicketTemplate,
           as: "ticketTemplate",
           attributes: ["id", "name", "trip_type", "status"],
+          where: { status: { [Op.ne]: "deleted" } },
+          required: false,
         },
       ],
       order: [["schedule", "ASC"]],
     });
+
+    return templates.map(hideDeletedTicketTemplateAssociation);
   },
 
   async findById(id) {
-    return await TripTemplate.findByPk(id, {
+    const template = await TripTemplate.findByPk(id, {
       attributes: [
         "id",
         "branch_id",
@@ -256,9 +273,13 @@ const TripTemplateRepository = {
           model: TicketTemplate,
           as: "ticketTemplate",
           attributes: ["id", "name", "trip_type", "status"],
+          where: { status: { [Op.ne]: "deleted" } },
+          required: false,
         },
       ],
     });
+
+    return hideDeletedTicketTemplateAssociation(template);
   },
 
   async create(templateData) {

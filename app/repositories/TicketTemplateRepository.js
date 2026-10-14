@@ -1,4 +1,10 @@
-const { TicketTemplate, Trip, sequelize } = require('../models');
+const {
+  TicketTemplate,
+  Trip,
+  TripTemplate,
+  Branch,
+  sequelize,
+} = require('../models');
 const logger = require('../../config/logger');
 const TicketTemplateDefaultRepository = require('./TicketTemplateDefaultRepository');
 
@@ -57,13 +63,16 @@ const TicketTemplateRepository = {
       attributes: templateAttributes,
       order: [['createdAt', 'DESC']],
     });
-
-    return TicketTemplateDefaultRepository.attachToTemplates(ticketTemplates);
+    return TicketTemplateDefaultRepository.attachToTemplates(
+      ticketTemplates.filter((template) => template.status !== 'deleted')
+    );
   },
 
   async findById(id) {
-    const ticketTemplate = await TicketTemplate.findByPk(id, { attributes: templateAttributes });
-    if (!ticketTemplate) return null;
+    const ticketTemplate = await TicketTemplate.findByPk(id, {
+      attributes: templateAttributes,
+    });
+    if (!ticketTemplate || ticketTemplate.status === 'deleted') return null;
 
     return TicketTemplateDefaultRepository.attachToTemplates(ticketTemplate);
   },
@@ -157,14 +166,50 @@ const TicketTemplateRepository = {
         throw error;
       }
 
+      if (TripTemplate) {
+        const tripTemplatesUsingTemplate = await TripTemplate.findAll({
+          where: { ticket_template_id: ticketTemplate.id },
+          attributes: ['id', 'saleMode', 'branch_id'],
+          include: [
+            {
+              model: Branch,
+              as: 'branch',
+              attributes: ['company_id'],
+              required: true,
+            },
+          ],
+          transaction,
+        });
+
+        for (const tripTemplate of tripTemplatesUsingTemplate) {
+          const replacementId = await TicketTemplateDefaultRepository.resolveForTrip({
+            companyId: tripTemplate.branch.company_id,
+            tripType: tripTemplate.saleMode,
+            transaction,
+          });
+
+          await tripTemplate.update(
+            { ticket_template_id: replacementId },
+            { transaction }
+          );
+        }
+      }
+
       const tripsUsingTemplate = await Trip.count({
         where: { ticket_template_id: ticketTemplate.id },
         transaction,
       });
       if (tripsUsingTemplate > 0) {
-        const error = new Error('TicketTemplateInUse');
-        error.code = 'TicketTemplateInUse';
-        throw error;
+        await ticketTemplate.update({ status: 'deleted' }, { transaction });
+        await transaction.commit();
+        logger.info(
+          `TicketTemplate marcado como eliminado lógicamente (ID: ${ticketTemplate.id})`
+        );
+        return {
+          softDeleted: true,
+          status: 'deleted',
+          tripsUsingTemplate,
+        };
       }
 
       await ticketTemplate.destroy({ transaction });

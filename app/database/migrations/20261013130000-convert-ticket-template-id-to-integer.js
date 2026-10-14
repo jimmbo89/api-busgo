@@ -162,14 +162,12 @@ module.exports = {
       await queryInterface.changeColumn('ticket_templates', 'id', {
         type: Sequelize.INTEGER,
         allowNull: false,
-        primaryKey: true,
         autoIncrement: true,
       });
     } else if (!ticketTemplates.id.autoIncrement) {
       await queryInterface.changeColumn('ticket_templates', 'id', {
         type: Sequelize.INTEGER,
         allowNull: false,
-        primaryKey: true,
         autoIncrement: true,
       });
     }

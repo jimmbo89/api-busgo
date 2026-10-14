@@ -6,6 +6,7 @@ const {
   Vehicle,
   Route,
   Location,
+  TicketTemplate,
   sequelize
 } = require("../models");
 const logger = require("../../config/logger");
@@ -55,6 +56,9 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
   const hasTripFares =
     Object.prototype.hasOwnProperty.call(templateData, "trip_fares") ||
     Object.prototype.hasOwnProperty.call(templateData, "tripFares");
+  const hasTicketTemplate =
+    Object.prototype.hasOwnProperty.call(templateData, "ticket_template_id") ||
+    Object.prototype.hasOwnProperty.call(templateData, "ticketTemplateId");
 
   if (hasWorkers) {
     payload.workers = normalizeJsonArray(templateData.workers) ?? [];
@@ -77,6 +81,13 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
     payload.trip_fares = normalizeJsonArray(
       templateData.trip_fares ?? templateData.tripFares
     );
+  }
+
+  if (hasTicketTemplate) {
+    payload.ticket_template_id = templateData.ticket_template_id !== undefined
+      ? templateData.ticket_template_id
+      : templateData.ticketTemplateId;
+    delete payload.ticketTemplateId;
   }
 
   if (options.forceDefaults) {
@@ -115,6 +126,7 @@ const resolveTripTemplateInstance = async (triptemplateOrId) => {
 const TripTemplateRepository = {
   async findAll(filters = {}) {
     const whereClause = {};
+    const companyId = filters.company_id ?? filters.companyId;
     
     // Aplicar filtros si existen
     if (filters.branch_id) whereClause.branch_id = filters.branch_id;
@@ -123,6 +135,17 @@ const TripTemplateRepository = {
     if (filters.vehicle_id) whereClause.vehicle_id = filters.vehicle_id;
     if (filters.saleMode || filters.sale_mode) {
       whereClause.saleMode = normalizeSaleMode(filters.saleMode ?? filters.sale_mode);
+    }
+
+    const branchInclude = {
+      model: Branch,
+      as: "branch",
+      attributes: ["id", "name", "address", "company_id"],
+    };
+
+    if (companyId !== undefined && companyId !== null) {
+      branchInclude.where = { company_id: companyId };
+      branchInclude.required = true;
     }
 
     return await TripTemplate.findAll({
@@ -136,6 +159,7 @@ const TripTemplateRepository = {
         "duration",
         "price",
         "saleMode",
+        "ticket_template_id",
         "recurrence_pattern",
         "days_of_week",
         "active",
@@ -145,11 +169,7 @@ const TripTemplateRepository = {
       ],
       where: whereClause,
       include: [
-        {
-          model: Branch,
-          as: "branch",
-          attributes: ["id", "name", "address", "company_id"],
-        },
+        branchInclude,
         {
           model: Vehicle,
           as: "vehicle",
@@ -172,6 +192,11 @@ const TripTemplateRepository = {
             },
           ],
         },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "name", "trip_type", "status"],
+        },
       ],
       order: [["schedule", "ASC"]],
     });
@@ -189,6 +214,7 @@ const TripTemplateRepository = {
         "duration",
         "price",
         "saleMode",
+        "ticket_template_id",
         "recurrence_pattern",
         "days_of_week",
         "active",
@@ -225,6 +251,11 @@ const TripTemplateRepository = {
               attributes: ["id", "address", "image"], // Atributos a incluir de la tabla de destino
             },
           ],
+        },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "name", "trip_type", "status"],
         },
       ],
     });
@@ -264,6 +295,7 @@ const TripTemplateRepository = {
         "duration",
         "price",
         "saleMode",
+        "ticket_template_id",
         "recurrence_pattern",
         "days_of_week",
         "active",

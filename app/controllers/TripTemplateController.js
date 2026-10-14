@@ -173,6 +173,7 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
       price: template.price,
       saleMode: getTemplateSaleMode(template),
       trip_template_id: template.id,
+      ticket_template_id: template.ticket_template_id ?? null,
     };
 
     const trip = await TripRepository.create(tripData, { transaction });
@@ -353,6 +354,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         route_code: template.route?.code ?? null,
         schedule: template.schedule,
@@ -418,6 +420,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         schedule: template.schedule,
         duration: template.duration,
@@ -560,6 +563,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         route_code: template.route?.code ?? null,
         schedule: template.schedule,
@@ -661,6 +665,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         route_code: template.route?.code ?? null,
         schedule: template.schedule,
@@ -861,6 +866,7 @@ const TripTemplateController = {
               price: template.price,
               saleMode: getTemplateSaleMode(template),
               trip_template_id: template.id,
+              ticket_template_id: template.ticket_template_id ?? null,
             };
 
             const trip = await TripRepository.create(tripData, { transaction });

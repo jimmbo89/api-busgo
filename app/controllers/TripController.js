@@ -1,5 +1,6 @@
 const { Worker, TripWorker, Incident, sequelize } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
+const saleModes = require("../constants/saleModes");
 const {
   TripRepository,
   VehicleRepository,
@@ -23,9 +24,18 @@ const {
   FareSegmentRepository,
   FareSegmentTicketTypeRepository,
   TripTemplateRepository,
+  TicketTemplateRepository,
+  TicketTemplateDefaultRepository,
 } = require("../repositories");
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const ticketTemplateTripErrors = new Set([
+  "TicketTemplateNotFound",
+  "TicketTemplateInactive",
+  "TicketTemplateCompanyMismatch",
+  "TicketTemplateDefaultNotConfigured",
+  "TicketTemplateTripTypeNotSupported",
+]);
 const toPlainObject = (item) =>
   item && typeof item.toJSON === "function" ? item.toJSON() : item;
 const getChileDate = (date = new Date()) => {
@@ -257,10 +267,6 @@ const addDestinationFromFareSegment = (destinations, fareSegment, origin_id, dat
     destinationName: destinationLocation?.address ?? null,
   });
 };
-const saleModes = [
-  { id: "normal", name: "Venta Normal" },
-  { id: "express", name: "Venta Express" },
-];
 const tripHasOriginDestinationSegment = (
   trip,
   originRouteStopId,
@@ -2981,6 +2987,13 @@ const TripController = {
         });
       }
 
+      if (ticketTemplateTripErrors.has(error.code)) {
+        return res.status(400).json({
+          error: error.code,
+          msg: error.code,
+        });
+      }
+
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
@@ -3011,6 +3024,7 @@ const TripController = {
         route_id: trip.route_id,
         saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
         trip_template_id: trip.trip_template_id ?? null,
+        ticket_template_id: trip.ticket_template_id ?? null,
         date: trip.date,
         schedule: trip.schedule,
         arrival: trip.arrival,
@@ -3422,6 +3436,13 @@ const TripController = {
         });
       }
 
+      if (ticketTemplateTripErrors.has(error.code)) {
+        return res.status(400).json({
+          error: error.code,
+          msg: error.code,
+        });
+      }
+
       const errorMsg = error.details
         ? error.details.map((detail) => detail.message).join(", ")
         : error.message || "Error desconocido";
@@ -3795,15 +3816,36 @@ const TripController = {
     logger.info(`${req.user.name} - Entra a la ruta unificada de viajes`);
 
     try {
-      const branchRoutes = await BranchRouteRepository.findRoutesByBranch(
-        req.body.branch_id
-      );
-      const branchVehicles = await BranchVehicleRepository.findByBranch(
-        req.body.branch_id
-      );
-      const branchWorkers = await BranchWorkerRepository.findByBranch(
-        req.body.branch_id
-      );
+      const branch = await BranchRepository.findById(req.body.branch_id);
+      if (!branch) {
+        return res.status(400).json({ msg: "BranchNotFound" });
+      }
+
+      const [
+        branchRoutes,
+        branchVehicles,
+        branchWorkers,
+        activeTripTemplates,
+        activeTicketTemplates,
+      ] =
+        await Promise.all([
+          BranchRouteRepository.findRoutesByBranch(req.body.branch_id),
+          BranchVehicleRepository.findByBranch(req.body.branch_id),
+          BranchWorkerRepository.findByBranch(req.body.branch_id),
+          TripTemplateRepository.findAll({
+            company_id: branch.company_id,
+            active: true,
+          }),
+          TicketTemplateRepository.findAll({
+            company_id: branch.company_id,
+            status: "active",
+          }),
+        ]);
+
+      const ticketTemplates = activeTripTemplates
+        .map((template) => template.ticketTemplate)
+        .filter(Boolean);
+      await TicketTemplateDefaultRepository.attachToTemplates(ticketTemplates);
 
       // Mapeamos los resultados para obtener solo los IDs y nombres
       const mappedRoutes = branchRoutes.map((branchRoute) => {
@@ -3896,10 +3938,63 @@ const TripController = {
         vehicles: branchWorker.worker.vehicles,
       }));
 
+      const mappedTripTemplates = activeTripTemplates.map((template) => {
+        const ticketTemplate = template.ticketTemplate;
+        const defaultTripTypes = ticketTemplate?.default_trip_types ?? [];
+
+        return {
+          id: template.id,
+          branch_id: template.branch_id,
+          vehicle_id: template.vehicle_id,
+          route_id: template.route_id,
+          ticket_template_id: template.ticket_template_id ?? null,
+          schedule: template.schedule,
+          duration: template.duration,
+          price: template.price,
+          saleMode: template.saleMode ?? template.sale_mode ?? null,
+          recurrence_pattern: template.recurrence_pattern,
+          days_of_week: template.days_of_week,
+          active: template.active,
+          workers: template.workers,
+          trip_stops: template.trip_stops,
+          trip_fares: template.trip_fares,
+          ticket_template: ticketTemplate
+            ? {
+                id: ticketTemplate.id,
+                name: ticketTemplate.name,
+                trip_type: ticketTemplate.trip_type,
+                status: ticketTemplate.status,
+                default_trip_types: defaultTripTypes,
+                is_default: defaultTripTypes.length > 0,
+              }
+            : null,
+        };
+      });
+
+      const mappedTicketTemplates = activeTicketTemplates.map((template) => {
+        const data = toPlainObject(template);
+        const defaultTripTypes = data.default_trip_types ?? [];
+
+        return {
+          id: data.id,
+          company_id: data.company_id,
+          name: data.name,
+          trip_type: data.trip_type,
+          status: data.status,
+          config: data.config,
+          default_trip_types: defaultTripTypes,
+          is_default: defaultTripTypes.length > 0,
+          created_at: data.created_at ?? data.createdAt,
+          updated_at: data.updated_at ?? data.updatedAt,
+        };
+      });
+
       res.json({
         triproutes: mappedRoutes,
         tripvehicles: mappedBranchVehicles,
         tripworkers: mappedBranchWorkers,
+        triptemplates: mappedTripTemplates,
+        tickettemplates: mappedTicketTemplates,
         saleModes,
       });
     } catch (error) {

@@ -9,6 +9,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
       Trip.belongsTo(models.Route, { foreignKey: 'route_id', as: 'route' });
       Trip.belongsTo(models.TripTemplate, { foreignKey: 'trip_template_id', as: 'tripTemplate' });
+      Trip.belongsTo(models.TicketTemplate, { foreignKey: 'ticket_template_id', as: 'ticketTemplate' });
 
       // Relación de muchos a muchos con workers
       Trip.belongsToMany(models.Worker, {
@@ -111,6 +112,10 @@ module.exports = (sequelize, DataTypes) => {
       },
     },
     trip_template_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    ticket_template_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },

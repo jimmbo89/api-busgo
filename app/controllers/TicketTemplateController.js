@@ -2,11 +2,11 @@ const logger = require('../../config/logger');
 const { TicketTemplateRepository } = require('../repositories');
 const saleModes = require('../constants/saleModes');
 
-const mapTicketTemplate = (ticketTemplate) => {
+const mapTicketTemplate = (ticketTemplate, { includeUsage = false } = {}) => {
   const data = ticketTemplate.toJSON ? ticketTemplate.toJSON() : ticketTemplate;
   const defaultTripTypes = data.default_trip_types ?? data.defaultTripTypes ?? [];
 
-  return {
+  const mappedTemplate = {
     id: data.id,
     company_id: data.company_id,
     name: data.name,
@@ -18,6 +18,14 @@ const mapTicketTemplate = (ticketTemplate) => {
     created_at: data.created_at ?? data.createdAt,
     updated_at: data.updated_at ?? data.updatedAt,
   };
+
+  if (includeUsage) {
+    mappedTemplate.has_trips = data.has_trips === true;
+    mappedTemplate.has_trip_templates = data.has_trip_templates === true;
+    mappedTemplate.is_in_use = data.is_in_use === true;
+  }
+
+  return mappedTemplate;
 };
 
 const ticketTemplateRuleErrors = new Set([
@@ -64,7 +72,10 @@ const TicketTemplateController = {
       }
 
       const response = {
-        ticketTemplates: ticketTemplates.map(mapTicketTemplate),
+        ticketTemplates: ticketTemplates.map((ticketTemplate) => mapTicketTemplate(
+          ticketTemplate,
+          { includeUsage: true }
+        )),
       };
 
       if (includeSaleModes) response.saleModes = saleModes;

@@ -9,6 +9,17 @@ const saleModeSchema = Joi.string()
     "string.base": "El campo saleMode debe ser un texto",
   });
 
+const ticketTemplateIdSchema = Joi.number()
+  .integer()
+  .positive()
+  .allow(null)
+  .optional()
+  .messages({
+    "number.base": "El campo ticket_template_id debe ser un número entero",
+    "number.integer": "El campo ticket_template_id debe ser un número entero",
+    "number.positive": "El campo ticket_template_id debe ser positivo",
+  });
+
 // Esquema para crear un nuevo TripTemplate
 const storeTripTemplateSchema = Joi.object({
 
@@ -35,6 +46,8 @@ const storeTripTemplateSchema = Joi.object({
   }),
   saleMode: saleModeSchema,
   sale_mode: saleModeSchema,
+  ticket_template_id: ticketTemplateIdSchema,
+  ticketTemplateId: ticketTemplateIdSchema,
   recurrence_pattern: Joi.string().allow(null).optional().messages({
     "string.base": "El campo recurrence_pattern debe ser un texto",
   }),
@@ -88,6 +101,8 @@ const storeTripTemplateSchema = Joi.object({
 const updateTripTemplateSchema = Joi.object({
   saleMode: saleModeSchema,
   sale_mode: saleModeSchema,
+  ticket_template_id: ticketTemplateIdSchema,
+  ticketTemplateId: ticketTemplateIdSchema,
   branch_id: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo branch_id debe ser un número entero",
   }),

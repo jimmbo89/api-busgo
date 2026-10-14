@@ -291,6 +291,16 @@ const storeExpressTicketSchema = Joi.object({
   templateId: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo templateId debe ser un numero entero",
   }),
+  ticket_template_id: Joi.number().integer().positive().allow(null).optional().empty("").messages({
+    "number.base": "El campo ticket_template_id debe ser un numero entero",
+    "number.integer": "El campo ticket_template_id debe ser un numero entero",
+    "number.positive": "El campo ticket_template_id debe ser positivo",
+  }),
+  ticketTemplateId: Joi.number().integer().positive().allow(null).optional().empty("").messages({
+    "number.base": "El campo ticketTemplateId debe ser un numero entero",
+    "number.integer": "El campo ticketTemplateId debe ser un numero entero",
+    "number.positive": "El campo ticketTemplateId debe ser positivo",
+  }),
   fare_segment_id: Joi.number().integer().allow(null).optional().empty("").messages({
     "number.base": "El campo fare_segment_id debe ser un numero entero",
   }),

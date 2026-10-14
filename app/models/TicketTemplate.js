@@ -3,15 +3,28 @@
 const { Model } = require('sequelize');
 
 module.exports = (sequelize, DataTypes) => {
-  class TicketTemplate extends Model {}
+  class TicketTemplate extends Model {
+    static associate(models) {
+      TicketTemplate.hasMany(models.TicketTemplateDefault, {
+        foreignKey: 'ticket_template_id',
+        as: 'defaults',
+        onDelete: 'CASCADE',
+      });
+      TicketTemplate.hasMany(models.TripTemplate, {
+        foreignKey: 'ticket_template_id',
+        as: 'tripTemplates',
+        onDelete: 'SET NULL',
+      });
+    }
+  }
 
   TicketTemplate.init(
     {
       id: {
-        type: DataTypes.STRING(36),
+        type: DataTypes.INTEGER,
         primaryKey: true,
         allowNull: false,
-        defaultValue: DataTypes.UUIDV4,
+        autoIncrement: true,
       },
       company_id: {
         type: DataTypes.STRING(36),

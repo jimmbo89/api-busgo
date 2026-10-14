@@ -1,8 +1,10 @@
 const logger = require('../../config/logger');
 const { TicketTemplateRepository } = require('../repositories');
+const saleModes = require('../constants/saleModes');
 
 const mapTicketTemplate = (ticketTemplate) => {
   const data = ticketTemplate.toJSON ? ticketTemplate.toJSON() : ticketTemplate;
+  const defaultTripTypes = data.default_trip_types ?? data.defaultTripTypes ?? [];
 
   return {
     id: data.id,
@@ -11,25 +13,60 @@ const mapTicketTemplate = (ticketTemplate) => {
     trip_type: data.trip_type,
     status: data.status,
     config: data.config,
+    default_trip_types: defaultTripTypes,
+    is_default: defaultTripTypes.length > 0,
     created_at: data.created_at ?? data.createdAt,
     updated_at: data.updated_at ?? data.updatedAt,
   };
 };
 
+const ticketTemplateRuleErrors = new Set([
+  'TicketTemplateDefaultReplacementRequired',
+  'TicketTemplateMustBeActiveForDefault',
+  'TicketTemplateCompanyChangeNotAllowed',
+  'TicketTemplateInUse',
+]);
+
+const sendTicketTemplateError = (res, error) => {
+  if (!ticketTemplateRuleErrors.has(error.code)) return false;
+
+  return res.status(409).json({
+    error: error.code,
+    msg: error.code,
+  });
+};
+
 const TicketTemplateController = {
+  async getSaleModes(req, res) {
+    logger.info(`${req.user?.name ?? 'Usuario'} - Busca modos de venta para plantillas de tickets`);
+
+    return res.status(200).json({ saleModes });
+  },
   async index(req, res) {
     logger.info(`${req.user?.name ?? 'Usuario'} - Busca plantillas de tickets por empresa`);
 
     try {
       const ticketTemplates = await TicketTemplateRepository.findAll(req.body);
+      const includeSaleModes = req.body?.include_sale_modes === true;
 
       if (!ticketTemplates.length) {
+        if (includeSaleModes) {
+          return res.status(200).json({
+            ticketTemplates: [],
+            saleModes,
+          });
+        }
+
         return res.status(204).json({ msg: 'TicketTemplatesNotFound' });
       }
 
-      return res.status(200).json({
+      const response = {
         ticketTemplates: ticketTemplates.map(mapTicketTemplate),
-      });
+      };
+
+      if (includeSaleModes) response.saleModes = saleModes;
+
+      return res.status(200).json(response);
     } catch (error) {
       const errorMsg = error.message || 'Error desconocido';
       logger.error(`TicketTemplateController->index: ${errorMsg}`);
@@ -48,6 +85,7 @@ const TicketTemplateController = {
         ticketTemplate: mapTicketTemplate(ticketTemplate),
       });
     } catch (error) {
+      if (sendTicketTemplateError(res, error)) return;
       const errorMsg = error.message || 'Error desconocido';
       logger.error(`TicketTemplateController->store: ${errorMsg}`);
       return res.status(500).json({ error: 'ServerError', details: errorMsg });
@@ -73,6 +111,7 @@ const TicketTemplateController = {
         ticketTemplate: mapTicketTemplate(updatedTicketTemplate),
       });
     } catch (error) {
+      if (sendTicketTemplateError(res, error)) return;
       const errorMsg = error.message || 'Error desconocido';
       logger.error(`TicketTemplateController->update: ${errorMsg}`);
       return res.status(500).json({ error: 'ServerError', details: errorMsg });
@@ -91,6 +130,7 @@ const TicketTemplateController = {
       await TicketTemplateRepository.delete(ticketTemplate);
       return res.status(200).json({ msg: 'TicketTemplateDeleted' });
     } catch (error) {
+      if (sendTicketTemplateError(res, error)) return;
       const errorMsg = error.message || 'Error desconocido';
       logger.error(`TicketTemplateController->destroy: ${errorMsg}`);
       return res.status(500).json({ error: 'ServerError', details: errorMsg });

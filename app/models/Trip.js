@@ -10,6 +10,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.belongsTo(models.Route, { foreignKey: 'route_id', as: 'route' });
       Trip.belongsTo(models.TripTemplate, { foreignKey: 'trip_template_id', as: 'tripTemplate' });
       Trip.belongsTo(models.Device, { foreignKey: 'device_id', as: 'device' });
+      Trip.belongsTo(models.TicketTemplate, { foreignKey: 'ticket_template_id', as: 'ticketTemplate' });
 
       // Relación de muchos a muchos con workers
       Trip.belongsToMany(models.Worker, {
@@ -134,6 +135,10 @@ module.exports = (sequelize, DataTypes) => {
           msg: 'El método de finalización no es válido',
         },
       },
+    },
+    ticket_template_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
     },
   }, {
     sequelize,

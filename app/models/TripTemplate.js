@@ -14,6 +14,10 @@ module.exports = (sequelize, DataTypes) => {
       TripTemplate.belongsTo(models.Vehicle, { foreignKey: 'vehicle_id', as: 'vehicle' });
       TripTemplate.belongsTo(models.Route, { foreignKey: 'route_id', as: 'route' });
       TripTemplate.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+      TripTemplate.belongsTo(models.TicketTemplate, {
+        foreignKey: 'ticket_template_id',
+        as: 'ticketTemplate',
+      });
       TripTemplate.hasMany(models.Trip, { foreignKey: 'trip_template_id', as: 'trips' });
     }
   }
@@ -98,6 +102,10 @@ module.exports = (sequelize, DataTypes) => {
             msg: "La modalidad de venta no es valida",
           },
         },
+      },
+      ticket_template_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
       recurrence_pattern: DataTypes.STRING,
       days_of_week: DataTypes.STRING,

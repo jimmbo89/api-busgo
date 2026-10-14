@@ -260,6 +260,7 @@ const mapTicketSaleResponse = (ticket, paymentReference = null) => {
     print: ticket?.print,
     qr: ticket?.qr,
     barcode: ticket?.barcode,
+    ticket_template_config: ticket?.ticket_template_config ?? null,
     ticketItems: mapTicketItems(ticket?.ticketItems),
     branchName: branch.name ?? null,
     rut: branch.company?.rut ?? null,
@@ -921,6 +922,7 @@ async function findOrCreateExpressTripFromTemplate(body, branch, transaction) {
       price: template.price,
       saleMode: "express",
       trip_template_id: template.id,
+      ticket_template_id: body.ticket_template_id ?? body.ticketTemplateId,
     }, { transaction });
 
     const templateTripStops = parseArrayValue(template.trip_stops);
@@ -1049,6 +1051,7 @@ const TicketController = {
         minors: ticket.minors,
         qr: ticket.qr,
         barcode: ticket.barcode,
+        ticket_template_config: ticket.ticket_template_config ?? null,
         date: ticket.date,
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
         userName: ticket.user.name, // Incluir los datos del usuario asociado
@@ -1164,6 +1167,7 @@ const TicketController = {
         minors: ticket.minors ? ticket.minors : 0,
         qr: ticket.qr,
         barcode: ticket.barcode,
+        ticket_template_config: ticket.ticket_template_config ?? null,
         print: ticket.print,
         date: ticket.date,
         branchName: ticket.branch.name, // Incluir los datos de la sucursal asociada
@@ -2364,12 +2368,13 @@ async verifyEncryptedQR(req, res) {
         method: ticketMaped.method,
         status: ticketMaped.status,
         quantity: ticketMaped.quantity,
+        seats: parseArrayValue(ticketMaped.seats),
         price: ticketMaped.price,
         total: ticketMaped.total,
-        seats: ticketMaped.seats,
         adults: ticketMaped.adults,
         minors: ticketMaped.minors,
         date: ticketMaped.date,
+        ticket_template_config: ticketMaped.ticket_template_config ?? null,
         branchName: ticketMaped.branch.name, // Incluir los datos de la sucursal asociada
         userName: ticketMaped.user.name, // Incluir los datos del usuario asociado
         tripName: ticketMaped.trip.route.name, // Incluir los detalles del viaje asociado
@@ -2788,6 +2793,7 @@ async verifyEncryptedQR(req, res) {
             tripCode: ticket.trip?.code ?? null,
             saleMode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
             sale_mode: ticket.trip?.saleMode ?? ticket.trip?.sale_mode ?? "normal",
+            ticket_template_config: ticket.ticket_template_config ?? null,
             route_id: ticket.trip?.route_id ?? null,
             routeCode: route.code ?? null,
             routeName: route.name ?? null,
@@ -2798,6 +2804,7 @@ async verifyEncryptedQR(req, res) {
             ticketTypeName,
             ticketTypeDescription,
             quantity,
+            seats: parseArrayValue(ticket.seats),
             asientosVendidos: quantity,
             base_price: basePrice,
             basePrice,
@@ -3154,6 +3161,7 @@ async verifyEncryptedQR(req, res) {
           sequenceNumber: ticket.sequenceNumber, // Útil para reportes SII/Internos
           branch_id: ticket.branch_id,
           trip_id: ticket.trip_id,
+          ticket_template_config: ticket.ticket_template_config ?? null,
           
           // Datos del viaje
           code: ticket.trip?.code ?? null,
@@ -3170,6 +3178,7 @@ async verifyEncryptedQR(req, res) {
           total: Number(ticket.total),
           quantity: Number(ticket.quantity),
           method: ticket.method,
+          seats: parseArrayValue(ticket.seats),
           
           // --- CAMPOS CLAVE SOLICITADOS ---
           print_count: printCount,          // Total de veces impreso (1, 2, 3...)

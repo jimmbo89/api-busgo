@@ -930,6 +930,10 @@ router.post("/get-trip-template-avtive", validateSchema(branchTripTemplateSchema
 
 //Rutas TicketTemplate
 router.post(
+  "/get-ticket-template-sale-modes",
+  TicketTemplateController.getSaleModes
+);
+router.post(
   "/get-ticket-templates",
   validateSchema(ticketTemplateCompanySchema, { normalize: false }),
   TicketTemplateController.index

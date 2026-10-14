@@ -38,12 +38,25 @@ const configSchema = Joi.object().required().unknown(true).messages({
   'object.base': 'El campo config debe ser un objeto JSON',
 });
 
+const defaultTripTypesSchema = Joi.array()
+  .items(tripTypeSchema)
+  .unique()
+  .max(3)
+  .optional()
+  .messages({
+    'array.base': 'El campo default_trip_types debe ser un arreglo',
+    'array.max': 'El campo default_trip_types no puede superar los tipos de viaje permitidos',
+    'array.unique': 'El campo default_trip_types no puede repetir tipos de viaje',
+  });
+
 const storeTicketTemplateSchema = Joi.object({
   company_id: companyIdSchema.optional(),
   companyId: companyIdSchema.optional(),
   name: nameSchema.required(),
   trip_type: tripTypeSchema.optional(),
   tripType: tripTypeSchema.optional(),
+  default_trip_types: defaultTripTypesSchema,
+  defaultTripTypes: defaultTripTypesSchema,
   status: statusSchema.optional(),
   config: configSchema,
 }).or('company_id', 'companyId').or('trip_type', 'tripType').messages({
@@ -51,17 +64,19 @@ const storeTicketTemplateSchema = Joi.object({
 });
 
 const updateTicketTemplateSchema = Joi.object({
-  id: Joi.string().trim().min(1).max(36).required().messages({
-    'string.base': 'El campo id debe ser un texto',
-    'string.empty': 'El campo id es obligatorio',
-    'string.min': 'El campo id es obligatorio',
-    'string.max': 'El campo id no puede superar los 36 caracteres',
+  id: Joi.number().integer().positive().required().messages({
+    'number.base': 'El campo id debe ser un número entero',
+    'number.integer': 'El campo id debe ser un número entero',
+    'number.positive': 'El campo id debe ser positivo',
+    'any.required': 'El campo id es obligatorio',
   }),
   company_id: companyIdSchema.optional(),
   companyId: companyIdSchema.optional(),
   name: nameSchema.optional(),
   trip_type: tripTypeSchema.optional(),
   tripType: tripTypeSchema.optional(),
+  default_trip_types: defaultTripTypesSchema,
+  defaultTripTypes: defaultTripTypesSchema,
   status: statusSchema.optional(),
   config: configSchema.optional(),
 }).min(1).messages({
@@ -69,11 +84,11 @@ const updateTicketTemplateSchema = Joi.object({
 });
 
 const idTicketTemplateSchema = Joi.object({
-  id: Joi.string().trim().min(1).max(36).required().messages({
-    'string.base': 'El campo id debe ser un texto',
-    'string.empty': 'El campo id es obligatorio',
-    'string.min': 'El campo id es obligatorio',
-    'string.max': 'El campo id no puede superar los 36 caracteres',
+  id: Joi.number().integer().positive().required().messages({
+    'number.base': 'El campo id debe ser un número entero',
+    'number.integer': 'El campo id debe ser un número entero',
+    'number.positive': 'El campo id debe ser positivo',
+    'any.required': 'El campo id es obligatorio',
   }),
 });
 
@@ -83,6 +98,7 @@ const ticketTemplateCompanySchema = Joi.object({
   trip_type: tripTypeSchema.optional(),
   tripType: tripTypeSchema.optional(),
   status: statusSchema.optional(),
+  include_sale_modes: Joi.boolean().strict().optional(),
 }).or('company_id', 'companyId').messages({
   'object.missing': 'El campo company_id es obligatorio',
 });

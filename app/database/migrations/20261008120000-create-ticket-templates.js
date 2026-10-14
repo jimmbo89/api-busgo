@@ -5,9 +5,10 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     await queryInterface.createTable('ticket_templates', {
       id: {
-        type: Sequelize.STRING(36),
+        type: Sequelize.INTEGER,
         allowNull: false,
         primaryKey: true,
+        autoIncrement: true,
       },
       company_id: {
         type: Sequelize.STRING(36),

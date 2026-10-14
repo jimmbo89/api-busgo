@@ -128,6 +128,10 @@ module.exports = (sequelize, DataTypes) => {
       type: DataTypes.JSON,
       allowNull: true,
     },
+    ticket_template_config: {
+      type: DataTypes.JSON,
+      allowNull: true,
+    },
     transactionTip: {
       type: DataTypes.DECIMAL(16, 2),
       allowNull: true,

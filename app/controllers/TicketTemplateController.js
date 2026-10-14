@@ -33,6 +33,7 @@ const sendTicketTemplateError = (res, error) => {
   return res.status(409).json({
     error: error.code,
     msg: error.code,
+    ...(error.details ? { details: error.details } : {}),
   });
 };
 

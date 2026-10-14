@@ -163,6 +163,13 @@ const TicketTemplateRepository = {
       if (tripsUsingTemplate > 0) {
         const error = new Error('TicketTemplateInUse');
         error.code = 'TicketTemplateInUse';
+        const tripLabel = tripsUsingTemplate === 1
+          ? 'un viaje'
+          : `${tripsUsingTemplate} viajes`;
+        const tripReference = tripsUsingTemplate === 1
+          ? 'ese viaje'
+          : 'esos viajes';
+        error.details = `La plantilla de ticket no se puede eliminar porque está asociada a ${tripLabel}. Asigne otra plantilla de ticket a ${tripReference} y vuelva a intentarlo.`;
         throw error;
       }
 

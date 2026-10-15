@@ -16,6 +16,7 @@ const {
   TicketItem,
   Worker,
   Ticket,
+  TicketTemplate,
   Device,
   Structure,
   Company,
@@ -1190,6 +1191,12 @@ const TripRepository = {
               attributes: ["id", "address", "image"],
             },
           ],
+        },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
         },
       ],
     });

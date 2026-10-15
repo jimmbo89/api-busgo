@@ -1112,6 +1112,17 @@ const TripController = {
             routeCode: trip.route?.code ?? null,
             saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
             trip_template_id: trip.trip_template_id ?? null,
+            ticket_template_id: trip.ticket_template_id ?? null,
+            ticket_template: trip.ticketTemplate
+              ? {
+                  id: trip.ticketTemplate.id,
+                  company_id: trip.ticketTemplate.company_id,
+                  name: trip.ticketTemplate.name,
+                  trip_type: trip.ticketTemplate.trip_type,
+                  status: trip.ticketTemplate.status,
+                  config: trip.ticketTemplate.config,
+                }
+              : null,
             finish_method: trip.finish_method ?? null,
             date: trip.date,
             schedule: trip.schedule,

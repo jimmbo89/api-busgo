@@ -45,6 +45,7 @@ const validateSchema = (schema, options = {}) => {
       );
 
       return res.status(400).json({
+        ...(options.errorCode ? { error: options.errorCode } : {}),
         msg: "Error de validación",
         details: error.details.map((err) => err.message),
       });

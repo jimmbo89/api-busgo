@@ -22,6 +22,13 @@ const {
   } = require("../repositories");
 
 const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj, key);
+const tripCreationTemplateErrors = new Set([
+  "TicketTemplateNotFound",
+  "TicketTemplateInactive",
+  "TicketTemplateCompanyMismatch",
+  "TicketTemplateTripTypeMismatch",
+  "TicketTemplateDefaultNotConfigured",
+]);
 const ticketWebErrorBody = (code, details) => {
   const message = ticketWebErrorMessage(code);
   return {
@@ -1912,9 +1919,17 @@ const TicketController = {
       if (!t.finished) {
         await t.rollback();
       }
-      const errorMsg = error.details
+      const errorMsg = Array.isArray(error.details)
         ? error.details.map((detail) => detail.message).join(", ")
-        : error.message || "Error desconocido";
+        : error.details || error.message || "Error desconocido";
+
+      if (tripCreationTemplateErrors.has(error.code)) {
+        return res.status(400).json({
+          error: error.code,
+          msg: error.code,
+          ...(error.details ? { details: error.details } : {}),
+        });
+      }
 
       logger.error("TicketController->store_express:" + errorMsg);
       return res.status(500).json({ error: "ServerError", details: errorMsg });

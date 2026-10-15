@@ -189,6 +189,21 @@ const TicketTemplateRepository = {
         throw error;
       }
 
+      if (
+        currentDefaults.length > 0 &&
+        !hasDefaultTripTypes(body) &&
+        updatedData.trip_type !== undefined &&
+        currentDefaults.some((currentDefault) => (
+          String(currentDefault.trip_type).trim().toLowerCase() !==
+          String(updatedData.trip_type).trim().toLowerCase()
+        ))
+      ) {
+        const error = new Error('TicketTemplateDefaultTripTypeMismatch');
+        error.code = 'TicketTemplateDefaultTripTypeMismatch';
+        error.details = 'La plantilla predeterminada debe coincidir con su tipo de viaje.';
+        throw error;
+      }
+
       if (Object.keys(updatedData).length > 0) {
         await ticketTemplate.update(updatedData, { transaction });
       }

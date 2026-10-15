@@ -1,5 +1,8 @@
 const logger = require('../../config/logger');
-const { TicketTemplateRepository } = require('../repositories');
+const {
+  TicketTemplateRepository,
+  TicketTemplateDefaultRepository,
+} = require('../repositories');
 const saleModes = require('../constants/saleModes');
 
 const mapTicketTemplate = (ticketTemplate, { includeUsage = false } = {}) => {
@@ -34,15 +37,47 @@ const ticketTemplateRuleErrors = new Set([
   'TicketTemplateCompanyChangeNotAllowed',
   'TicketTemplateInUse',
   'TicketTemplateDefaultNotConfigured',
+  'TicketTemplateDefaultSingleTypeOnly',
+  'TicketTemplateDefaultTripTypeMismatch',
 ]);
+
+const ticketTemplateRuleDetails = {
+  TicketTemplateDefaultReplacementRequired:
+    'La plantilla es predeterminada para uno o más tipos de viaje. Debes asignar otra plantilla predeterminada antes de quitarla o desactivarla.',
+};
 
 const sendTicketTemplateError = (res, error) => {
   if (!ticketTemplateRuleErrors.has(error.code)) return false;
 
+  const details = error.details || ticketTemplateRuleDetails[error.code];
+
   return res.status(409).json({
     error: error.code,
     msg: error.code,
-    ...(error.details ? { details: error.details } : {}),
+    ...(details ? { details } : {}),
+  });
+};
+
+const ticketTemplateDefaultsRuleErrors = new Set([
+  'TicketTemplateNotFound',
+  'TicketTemplateInactive',
+  'TicketTemplateCompanyMismatch',
+  'TicketTemplateTripTypeMismatch',
+  'TicketTemplateTripTypeNotSupported',
+  'TicketTemplateDefaultDuplicateTripType',
+  'TicketTemplateDefaultSingleTypeOnly',
+  'TicketTemplateDefaultsValidationError',
+]);
+
+const sendTicketTemplateDefaultsError = (res, error) => {
+  if (!ticketTemplateDefaultsRuleErrors.has(error.code)) return false;
+
+  const details = error.details || ['No fue posible actualizar las plantillas predeterminadas.'];
+
+  return res.status(400).json({
+    error: error.code,
+    msg: error.code,
+    details: Array.isArray(details) ? details : [details],
   });
 };
 
@@ -83,6 +118,27 @@ const TicketTemplateController = {
     } catch (error) {
       const errorMsg = error.message || 'Error desconocido';
       logger.error(`TicketTemplateController->index: ${errorMsg}`);
+      return res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
+  },
+
+  async updateDefaults(req, res) {
+    logger.info(`${req.user?.name ?? 'Usuario'} - Actualiza plantillas predeterminadas por tipo de viaje`);
+
+    try {
+      const defaults = await TicketTemplateDefaultRepository.replaceForCompany(
+        req.body.company_id,
+        req.body.defaults
+      );
+
+      return res.status(200).json({
+        msg: 'TicketTemplateDefaultsUpdated',
+        defaults,
+      });
+    } catch (error) {
+      if (sendTicketTemplateDefaultsError(res, error)) return;
+      const errorMsg = error.message || 'Error desconocido';
+      logger.error(`TicketTemplateController->updateDefaults: ${errorMsg}`);
       return res.status(500).json({ error: 'ServerError', details: errorMsg });
     }
   },

@@ -35,9 +35,15 @@ const ticketTemplateTripErrors = new Set([
   "TicketTemplateCompanyMismatch",
   "TicketTemplateDefaultNotConfigured",
   "TicketTemplateTripTypeNotSupported",
+  "TicketTemplateTripTypeMismatch",
 ]);
 const toPlainObject = (item) =>
   item && typeof item.toJSON === "function" ? item.toJSON() : item;
+const normalizeSaleMode = (value) => String(value ?? "").trim().toLowerCase();
+const isDefaultForSaleMode = (ticketTemplate, saleMode) => (
+  (ticketTemplate.default_trip_types ?? [])
+    .some((tripType) => normalizeSaleMode(tripType) === normalizeSaleMode(saleMode.id))
+);
 const getChileDate = (date = new Date()) => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Santiago",
@@ -2995,6 +3001,7 @@ const TripController = {
         return res.status(400).json({
           error: error.code,
           msg: error.code,
+          ...(error.details ? { details: error.details } : {}),
         });
       }
 
@@ -3446,6 +3453,7 @@ const TripController = {
         return res.status(400).json({
           error: error.code,
           msg: error.code,
+          ...(error.details ? { details: error.details } : {}),
         });
       }
 
@@ -3995,13 +4003,25 @@ const TripController = {
         };
       });
 
+      const mappedSaleModes = saleModes.map((saleMode) => ({
+        ...saleMode,
+        tickettemplates: mappedTicketTemplates
+          .filter((ticketTemplate) => (
+            normalizeSaleMode(ticketTemplate.trip_type) === normalizeSaleMode(saleMode.id)
+          ))
+          .sort((left, right) => (
+            Number(isDefaultForSaleMode(right, saleMode)) -
+            Number(isDefaultForSaleMode(left, saleMode))
+          )),
+      }));
+
       res.json({
         triproutes: mappedRoutes,
         tripvehicles: mappedBranchVehicles,
         tripworkers: mappedBranchWorkers,
         triptemplates: mappedTripTemplates,
         tickettemplates: mappedTicketTemplates,
-        saleModes,
+        saleModes: mappedSaleModes,
       });
     } catch (error) {
       const errorMsg = error.details

@@ -208,7 +208,7 @@ const TripTemplateRepository = {
         {
           model: TicketTemplate,
           as: "ticketTemplate",
-          attributes: ["id", "name", "trip_type", "status"],
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
           where: { status: { [Op.ne]: "deleted" } },
           required: false,
         },

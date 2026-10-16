@@ -545,6 +545,12 @@ const TripRepository = {
           attributes: ["id", "name"],
         },
         {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
+        },
+        {
           model: Vehicle,
           as: "vehicle",
           attributes: ["id", "plate", "internal_number", "seats", "image"],
@@ -641,6 +647,12 @@ const TripRepository = {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
+        },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
         },
         {
           model: Vehicle,
@@ -1372,6 +1384,12 @@ const TripRepository = {
           },
         ],
       },
+      {
+        model: TicketTemplate,
+        as: "ticketTemplate",
+        attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+        required: false,
+      },
       ...buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate),
     ];
 
@@ -1605,6 +1623,12 @@ const TripRepository = {
       ],
       include: [
         {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
+        },
+        {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
@@ -1663,6 +1687,12 @@ const TripRepository = {
         "ticket_template_id",
       ],
       include: [
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
+        },
         {
           model: Branch,
           as: "branch",
@@ -1791,6 +1821,12 @@ const TripRepository = {
               attributes: ['id', 'name', 'image'],
             },
           ],
+        },
+        {
+          model: TicketTemplate,
+          as: 'ticketTemplate',
+          attributes: ['id', 'company_id', 'name', 'trip_type', 'status', 'config'],
+          required: false,
         },
         {
           model: Branch,

@@ -252,7 +252,16 @@ const createOnBoardTripWithContext = async ({
     transaction,
   });
 
-  return { trip, tripWorker, tripStops, tripFares };
+  const tripWithTicketTemplate = await TripRepository.findById(trip.id, {
+    transaction,
+  });
+
+  return {
+    trip: tripWithTicketTemplate || trip,
+    tripWorker,
+    tripStops,
+    tripFares,
+  };
 };
 
 const OnBoardTripService = {

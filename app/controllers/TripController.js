@@ -1786,6 +1786,17 @@ const TripController = {
               tripCode: entry.trip.code,
               saleMode: entry.trip.saleMode ?? entry.trip.sale_mode ?? "normal",
               trip_template_id: entry.trip.trip_template_id ?? null,
+              ticket_template_id: entry.trip.ticket_template_id ?? null,
+              ticket_template: entry.trip.ticketTemplate
+                ? {
+                    id: entry.trip.ticketTemplate.id,
+                    company_id: entry.trip.ticketTemplate.company_id,
+                    name: entry.trip.ticketTemplate.name,
+                    trip_type: entry.trip.ticketTemplate.trip_type,
+                    status: entry.trip.ticketTemplate.status,
+                    config: entry.trip.ticketTemplate.config,
+                  }
+                : null,
               routeCode: entry.trip.route?.code ?? null,
               route_code: entry.trip.route?.code ?? null,
               date: entry.trip.date,
@@ -2254,6 +2265,17 @@ const TripController = {
           tripCode: trip.code,
           saleMode: trip.saleMode ?? trip.sale_mode ?? "normal",
           trip_template_id: trip.trip_template_id ?? null,
+          ticket_template_id: trip.ticket_template_id ?? null,
+          ticket_template: trip.ticketTemplate
+            ? {
+                id: trip.ticketTemplate.id,
+                company_id: trip.ticketTemplate.company_id,
+                name: trip.ticketTemplate.name,
+                trip_type: trip.ticketTemplate.trip_type,
+                status: trip.ticketTemplate.status,
+                config: trip.ticketTemplate.config,
+              }
+            : null,
           routeCode: trip.route?.code ?? null,
           route_code: trip.route?.code ?? null,
           date: trip.date,
@@ -2409,6 +2431,17 @@ const TripController = {
           tripCode: null,
           saleMode: template.saleMode ?? template.sale_mode ?? "express",
           trip_template_id: template.id,
+          ticket_template_id: template.ticket_template_id ?? null,
+          ticket_template: template.ticketTemplate
+            ? {
+                id: template.ticketTemplate.id,
+                company_id: template.ticketTemplate.company_id,
+                name: template.ticketTemplate.name,
+                trip_type: template.ticketTemplate.trip_type,
+                status: template.ticketTemplate.status,
+                config: template.ticketTemplate.config,
+              }
+            : null,
           routeCode: template.route?.code ?? null,
           route_code: template.route?.code ?? null,
           date,

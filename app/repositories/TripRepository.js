@@ -232,6 +232,7 @@ const tripFareDetailInclude = [
 const segmentTicketInclude = {
   model: Ticket,
   as: "tickets",
+  separate: true,
   attributes: [
     "id",
     "branch_id",
@@ -1383,7 +1384,9 @@ const TripRepository = {
         attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
         required: false,
       },
-      ...buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate),
+      ...(options.includeFullTripFares
+        ? buildSegmentTripFareInclude(originLocationId, destinationLocationId, searchDate)
+        : buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate)),
     ];
 
     if (options.includeTickets) {
@@ -1411,6 +1414,24 @@ const TripRepository = {
       order: [['date', 'ASC'], ['schedule', 'ASC']],
       include,
     });
+  },
+
+  async findExpressTemplateIdsByBranchDate(branchId, currentDate) {
+    const searchDate = currentDate || new Date().toISOString().slice(0, 10);
+    const trips = await Trip.findAll({
+      attributes: ["trip_template_id"],
+      where: {
+        branch_id: branchId,
+        date: { [Op.eq]: searchDate },
+        saleMode: "express",
+        trip_template_id: { [Op.ne]: null },
+      },
+      raw: true,
+    });
+
+    return trips
+      .map((trip) => Number(trip.trip_template_id))
+      .filter((templateId) => Number.isFinite(templateId) && templateId > 0);
   },
 
   async getSegmentTripFaresByTripIds(tripIds, originLocationId, destinationLocationId, currentDate) {

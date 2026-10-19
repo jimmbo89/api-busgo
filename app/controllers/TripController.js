@@ -399,6 +399,66 @@ const getExactTripFareForSegment = (
     return isFareSegmentActiveForDate(fareSegment, currentDate || getChileDate());
   });
 };
+const getTripStopRouteStopId = (tripStop) => Number(
+  tripStop?.route_stop_id ?? tripStop?.routeStop?.id ?? NaN
+);
+const isActiveTripStop = (tripStop) => {
+  const routeStopId = getTripStopRouteStopId(tripStop);
+
+  return (
+    Number.isInteger(routeStopId) &&
+    routeStopId > 0 &&
+    tripStop?.active !== false &&
+    tripStop?.routeStop?.active !== false
+  );
+};
+const fareMatchesTripStops = (tripFare, tripStops = [], currentDate = null) => {
+  const fareSegmentTicketType = tripFare?.fareSegmentTicketType || {};
+  const fareSegment = fareSegmentTicketType?.fareSegment || {};
+  const originRouteStopId = Number(fareSegment.origin_route_stop_id);
+  const destinationRouteStopId = Number(fareSegment.destination_route_stop_id);
+
+  if (
+    !Number.isInteger(originRouteStopId) ||
+    !Number.isInteger(destinationRouteStopId) ||
+    originRouteStopId <= 0 ||
+    destinationRouteStopId <= 0 ||
+    tripFare?.active === false ||
+    fareSegmentTicketType?.active === false ||
+    !isFareSegmentActiveForDate(fareSegment, currentDate || getChileDate())
+  ) {
+    return false;
+  }
+
+  const activeTripStops = (Array.isArray(tripStops) ? tripStops : [])
+    .filter(isActiveTripStop);
+  const originStop = activeTripStops.find(
+    (tripStop) => getTripStopRouteStopId(tripStop) === originRouteStopId
+  );
+  const destinationStop = activeTripStops.find(
+    (tripStop) => getTripStopRouteStopId(tripStop) === destinationRouteStopId
+  );
+
+  if (!originStop || !destinationStop) {
+    return false;
+  }
+
+  const originCanBoard = originStop.can_board ?? originStop.routeStop?.allows_boarding ?? true;
+  const destinationCanAlight =
+    destinationStop.can_alight ?? destinationStop.routeStop?.allows_alighting ?? true;
+  const originOrder = Number(originStop.stop_order ?? originStop.routeStop?.stop_order);
+  const destinationOrder = Number(
+    destinationStop.stop_order ?? destinationStop.routeStop?.stop_order
+  );
+
+  return (
+    originCanBoard !== false &&
+    destinationCanAlight !== false &&
+    Number.isFinite(originOrder) &&
+    Number.isFinite(destinationOrder) &&
+    originOrder < destinationOrder
+  );
+};
 const mapTripStops = (tripStops = []) =>
   (Array.isArray(tripStops) ? tripStops : []).map((tripStop) => ({
     id: tripStop.id,
@@ -1252,7 +1312,11 @@ const TripController = {
       throw new Error("DuplicateTripStopRouteStop");
     }
 
-    const existingTripStops = await TripStopRepository.findByTrip(trip.id);
+    const transactionOptions = transaction ? { transaction } : {};
+    const existingTripStops = await TripStopRepository.findByTrip(
+      trip.id,
+      transactionOptions
+    );
     const existingById = new Map(
       existingTripStops.map((tripStop) => [Number(tripStop.id), tripStop])
     );
@@ -1270,7 +1334,6 @@ const TripController = {
         tripStop,
       ])
     );
-    const transactionOptions = transaction ? { transaction } : {};
     const tripStopsToRemove = existingTripStops.filter(
       (tripStop) => !incomingKeptIds.has(Number(tripStop.id))
     );
@@ -1328,7 +1391,7 @@ const TripController = {
       }
     }
 
-    return await TripStopRepository.findByTrip(trip.id);
+    return await TripStopRepository.findByTrip(trip.id, transactionOptions);
   },
 
   async syncTripFares(trip, branch, routeId, tripFares, transaction = null) {
@@ -1347,6 +1410,14 @@ const TripController = {
       throw new Error("DuplicateTripFareFareSegmentTicketType");
     }
 
+    const transactionOptions = transaction ? { transaction } : {};
+    const existingTripStops = await TripStopRepository.findByTrip(
+      trip.id,
+      transactionOptions
+    );
+    const tripRouteStopIds = new Set(
+      existingTripStops.map((tripStop) => Number(tripStop.route_stop_id))
+    );
     const existingTripFares = await TripFareRepository.findByTrip(trip.id);
     const existingById = new Map(
       existingTripFares.map((tripFare) => [Number(tripFare.id), tripFare])
@@ -1356,7 +1427,6 @@ const TripController = {
         .map((item) => Number(item.id))
         .filter((id) => Number.isFinite(id) && id > 0)
     );
-    const transactionOptions = transaction ? { transaction } : {};
     const tripFaresToRemove = existingTripFares.filter(
       (tripFare) => !incomingKeptIds.has(Number(tripFare.id))
     );
@@ -1402,6 +1472,20 @@ const TripController = {
         throw new Error("FareSegmentTicketTypeRouteMismatch");
       }
 
+      const originRouteStopId = Number(fareSegment.origin_route_stop_id);
+      const destinationRouteStopId = Number(
+        fareSegment.destination_route_stop_id
+      );
+      if (
+        !tripRouteStopIds.has(originRouteStopId) ||
+        !tripRouteStopIds.has(destinationRouteStopId)
+      ) {
+        logger.warn(
+          `TripController->syncTripFares: tarifa ignorada porque sus paradas no pertenecen al viaje; FareSegmentTicketTypeTripStopsMismatch:${fareSegmentTicketTypeId}`
+        );
+        continue;
+      }
+
       const payload = buildTripFarePayload(
         trip,
         branch.company_id,
@@ -1420,7 +1504,7 @@ const TripController = {
       }
     }
 
-    return await TripFareRepository.findByTrip(trip.id);
+    return await TripFareRepository.findByTrip(trip.id, transactionOptions);
   },
 
   async getTripDate(req, res) {
@@ -2161,14 +2245,17 @@ const TripController = {
       const company_id = branch.company_id;
 
       const departures = [];
-      const trips = await TripRepository.findDateBySegmentBase(
-        branch_id,
-        origin_id,
-        destination_id,
-        date,
-        null,
-        { includeTickets: true }
-      );
+      const [trips, expressTripTemplateIdsForDate] = await Promise.all([
+        TripRepository.findDateBySegmentBase(
+          branch_id,
+          origin_id,
+          destination_id,
+          date,
+          null,
+          { includeTickets: true, includeFullTripFares: true }
+        ),
+        TripRepository.findExpressTemplateIdsByBranchDate(branch_id, date),
+      ]);
       const allExpressTrips = trips.filter(
         (trip) =>
           String(trip.saleMode ?? trip.sale_mode ?? "normal").toLowerCase() === "express"
@@ -2178,15 +2265,13 @@ const TripController = {
           trip.end === null
       );
       const tripIds = expressTrips.map((trip) => trip.id);
-      const [tripStopsByTripId, matchingTripFaresByTripId] = await Promise.all([
-        TripRepository.getTripStopsByTripIds(tripIds),
-        TripRepository.getSegmentTripFaresByTripIds(
-          tripIds,
-          origin_id,
-          destination_id,
-          date
-        ),
-      ]);
+      const tripStopsByTripId = await TripRepository.getTripStopsByTripIds(tripIds);
+      const matchingTripFaresByTripId = new Map(
+        expressTrips.map((trip) => [
+          Number(trip.id),
+          Array.isArray(trip.tripFares) ? trip.tripFares : [],
+        ])
+      );
 
       for (const trip of expressTrips) {
         const tripId = Number(trip.id);
@@ -2196,7 +2281,15 @@ const TripController = {
         }
 
         const tripStopsRaw = tripStopsByTripId.get(tripId) || [];
-        const fareSegmentMap = buildFareSegmentMap(matchingTripFares);
+        const tripStopsForSegment = tripStopsRaw.filter(isActiveTripStop);
+        const validMatchingTripFares = matchingTripFares.filter((tripFare) =>
+          fareMatchesTripStops(tripFare, tripStopsForSegment, date)
+        );
+        if (!validMatchingTripFares.length) {
+          continue;
+        }
+
+        const fareSegmentMap = buildFareSegmentMap(validMatchingTripFares);
         const rawTickets = Array.isArray(trip.tickets) ? trip.tickets : [];
         const tripTickets = mapTripTickets(rawTickets).map((ticket, index) => ({
           ...ticket,
@@ -2215,8 +2308,8 @@ const TripController = {
         }
 
         const segmentOriginMinutes = getSegmentOriginMinutes(
-          tripStopsRaw,
-          matchingTripFares
+          tripStopsForSegment,
+          validMatchingTripFares
         );
         const adjustedSchedule = addMinutesToTripTime(
           trip.date,
@@ -2224,11 +2317,11 @@ const TripController = {
           segmentOriginMinutes
         );
 
-        const tripStops = mapTripStops(tripStopsRaw);
-        const tripFares = mapTripFares(matchingTripFares);
+        const tripStops = mapTripStops(tripStopsForSegment);
+        const tripFares = mapTripFares(validMatchingTripFares);
         const segmentDestinationMinutes = getSegmentDestinationMinutes(
-          tripStopsRaw,
-          matchingTripFares
+          tripStopsForSegment,
+          validMatchingTripFares
         );
         const adjustedArrival = addMinutesToTripTime(
           trip.date,
@@ -2299,8 +2392,10 @@ const TripController = {
       }
 
       const existingTripTemplateIds = new Set(
-        allExpressTrips
-          .map((trip) => Number(trip.trip_template_id))
+        [
+          ...allExpressTrips.map((trip) => Number(trip.trip_template_id)),
+          ...expressTripTemplateIdsForDate,
+        ]
           .filter((templateId) => Number.isFinite(templateId) && templateId > 0)
       );
       const templates = await TripTemplateRepository.findAll({
@@ -2309,15 +2404,32 @@ const TripController = {
         saleMode: "express",
       });
 
-      for (const template of templates) {
-        if (existingTripTemplateIds.has(Number(template.id))) {
-          continue;
-        }
+      const applicableTemplates = templates.filter(
+        (template) =>
+          !existingTripTemplateIds.has(Number(template.id)) &&
+          shouldTemplateApplyForDate(template, date)
+      );
+      const templateFareIds = Array.from(
+        new Set(
+          applicableTemplates.flatMap((template) =>
+            parseJsonArray(template.trip_fares)
+              .map((item) => Number(item?.fare_segment_ticket_type_id))
+              .filter((id) => Number.isInteger(id) && id > 0)
+          )
+        )
+      );
+      const fareSegmentTicketTypes = await FareSegmentTicketTypeRepository.findByIds(
+        templateFareIds
+      );
+      const fareSegmentTicketTypeById = new Map(
+        fareSegmentTicketTypes.map((fareSegmentTicketType) => [
+          Number(fareSegmentTicketType.id),
+          fareSegmentTicketType,
+        ])
+      );
+      const templatesWithMatchingFares = [];
 
-        if (!shouldTemplateApplyForDate(template, date)) {
-          continue;
-        }
-
+      for (const template of applicableTemplates) {
         const templateTripFares = parseJsonArray(template.trip_fares);
         const matchingTemplateFares = [];
         for (const item of templateTripFares) {
@@ -2325,8 +2437,8 @@ const TripController = {
             continue;
           }
 
-          const fareSegmentTicketType = await FareSegmentTicketTypeRepository.findById(
-            item.fare_segment_ticket_type_id
+          const fareSegmentTicketType = fareSegmentTicketTypeById.get(
+            Number(item.fare_segment_ticket_type_id)
           );
           if (!fareSegmentTicketType || fareSegmentTicketType.active === false) {
             continue;
@@ -2370,31 +2482,63 @@ const TripController = {
           continue;
         }
 
-        const routeStops = await RouteStopRepository.findByRoute(template.route_id);
-        const templateTripStops = parseJsonArray(template.trip_stops);
-        const tripStopsForSchedule = routeStops.map((routeStop) => {
-          const templateStop = templateTripStops.find(
-            (item) => Number(item.route_stop_id) === Number(routeStop.id)
-          ) || {};
+        templatesWithMatchingFares.push({ template, matchingTemplateFares });
+      }
 
-          return {
-            id: templateStop.id ?? null,
-            company_id,
-            trip_id: null,
-            route_stop_id: routeStop.id,
-            stop_order: templateStop.stop_order ?? routeStop.stop_order,
-            arrival_time: templateStop.arrival_time ?? null,
-            departure_time: templateStop.departure_time ?? null,
-            can_board: templateStop.can_board ?? routeStop.allows_boarding ?? true,
-            can_alight: templateStop.can_alight ?? routeStop.allows_alighting ?? true,
-            active: templateStop.active ?? routeStop.active,
-            source_type: templateStop.source_type ?? "auto",
-            routeStop,
-          };
-        });
+      const routeIdsForTemplates = Array.from(
+        new Set(
+          templatesWithMatchingFares
+            .map(({ template }) => Number(template.route_id))
+            .filter((routeId) => Number.isInteger(routeId) && routeId > 0)
+        )
+      );
+      const routeStopsByRouteId = await RouteStopRepository.findByRouteIds(
+        routeIdsForTemplates
+      );
+
+      for (const { template, matchingTemplateFares } of templatesWithMatchingFares) {
+        const routeStops = routeStopsByRouteId.get(Number(template.route_id)) || [];
+
+        const routeStopById = new Map(
+          routeStops.map((routeStop) => [Number(routeStop.id), routeStop])
+        );
+        const templateTripStops = parseJsonArray(template.trip_stops);
+        const tripStopsForSchedule = templateTripStops
+          .map((templateStop) => {
+            if (!templateStop || templateStop.active === false) {
+              return null;
+            }
+
+            const routeStop = routeStopById.get(Number(templateStop.route_stop_id));
+            if (!routeStop || routeStop.active === false) {
+              return null;
+            }
+
+            return {
+              id: templateStop.id ?? null,
+              company_id,
+              trip_id: null,
+              route_stop_id: routeStop.id,
+              stop_order: templateStop.stop_order ?? routeStop.stop_order,
+              arrival_time: templateStop.arrival_time ?? null,
+              departure_time: templateStop.departure_time ?? null,
+              can_board: templateStop.can_board ?? routeStop.allows_boarding ?? true,
+              can_alight: templateStop.can_alight ?? routeStop.allows_alighting ?? true,
+              active: templateStop.active ?? routeStop.active,
+              source_type: templateStop.source_type ?? "auto",
+              routeStop,
+            };
+          })
+          .filter(Boolean);
+        const validMatchingTemplateFares = matchingTemplateFares.filter((tripFare) =>
+          fareMatchesTripStops(tripFare, tripStopsForSchedule, date)
+        );
+        if (!validMatchingTemplateFares.length) {
+          continue;
+        }
         const segmentOriginMinutes = getSegmentOriginMinutes(
           tripStopsForSchedule,
-          matchingTemplateFares
+          validMatchingTemplateFares
         );
         const adjustedSchedule = addMinutesToTripTime(
           date,
@@ -2403,14 +2547,14 @@ const TripController = {
         );
         const segmentDestinationMinutes = getSegmentDestinationMinutes(
           tripStopsForSchedule,
-          matchingTemplateFares
+          validMatchingTemplateFares
         );
         const adjustedArrival = addMinutesToTripTime(
           date,
           template.schedule,
           segmentDestinationMinutes
         );
-        const tripFares = mapTripFares(matchingTemplateFares);
+        const tripFares = mapTripFares(validMatchingTemplateFares);
         const segmentPrice = tripFares.length
           ? Math.max(...tripFares.map((fare) => Number(fare.price) || 0))
           : Number(template.price ?? 0);

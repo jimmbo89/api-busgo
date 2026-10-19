@@ -180,6 +180,7 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
 
     const templateTripStops = mapTripStops(template);
     const templateTripFares = mapTripFares(template);
+    const generatedTripRouteStopIds = new Set();
 
     if (templateTripStops.length > 0) {
       for (const item of templateTripStops) {
@@ -222,6 +223,7 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
         );
 
         await TripStopRepository.create(tripStopPayload, { transaction });
+        generatedTripRouteStopIds.add(routeStopId);
       }
     }
 
@@ -263,6 +265,20 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
         if (Number(fareSegment.route_id) !== Number(template.route_id)) {
           logger.warn(
             `TripTemplateController->processTemplateGeneration: tarifa ignorada; FareSegmentTicketTypeRouteMismatch:${fareSegmentTicketTypeId}`
+          );
+          continue;
+        }
+
+        const originRouteStopId = Number(fareSegment.origin_route_stop_id);
+        const destinationRouteStopId = Number(
+          fareSegment.destination_route_stop_id
+        );
+        if (
+          !generatedTripRouteStopIds.has(originRouteStopId) ||
+          !generatedTripRouteStopIds.has(destinationRouteStopId)
+        ) {
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada porque sus paradas no pertenecen al viaje; FareSegmentTicketTypeTripStopsMismatch:${fareSegmentTicketTypeId}`
           );
           continue;
         }

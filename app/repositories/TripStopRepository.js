@@ -77,7 +77,7 @@ const TripStopRepository = {
     });
   },
 
-  async findByTrip(tripId) {
+  async findByTrip(tripId, options = {}) {
     return await TripStop.findAll({
       where: { trip_id: tripId },
       include: [
@@ -113,6 +113,7 @@ const TripStopRepository = {
         },
       ],
       order: [['stop_order', 'ASC']],
+      ...options,
     });
   },
 

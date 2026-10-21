@@ -6,6 +6,7 @@ const {
   Vehicle,
   Route,
   Location,
+  TicketTemplate,
   sequelize
 } = require("../models");
 const logger = require("../../config/logger");
@@ -55,6 +56,9 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
   const hasTripFares =
     Object.prototype.hasOwnProperty.call(templateData, "trip_fares") ||
     Object.prototype.hasOwnProperty.call(templateData, "tripFares");
+  const hasTicketTemplate =
+    Object.prototype.hasOwnProperty.call(templateData, "ticket_template_id") ||
+    Object.prototype.hasOwnProperty.call(templateData, "ticketTemplateId");
 
   if (hasWorkers) {
     payload.workers = normalizeJsonArray(templateData.workers) ?? [];
@@ -77,6 +81,13 @@ const normalizeTemplatePayload = (templateData = {}, options = {}) => {
     payload.trip_fares = normalizeJsonArray(
       templateData.trip_fares ?? templateData.tripFares
     );
+  }
+
+  if (hasTicketTemplate) {
+    payload.ticket_template_id = templateData.ticket_template_id !== undefined
+      ? templateData.ticket_template_id
+      : templateData.ticketTemplateId;
+    delete payload.ticketTemplateId;
   }
 
   if (options.forceDefaults) {
@@ -112,9 +123,23 @@ const resolveTripTemplateInstance = async (triptemplateOrId) => {
   return await TripTemplate.findByPk(triptemplateOrId);
 };
 
+const hideDeletedTicketTemplateAssociation = (template) => {
+  if (
+    template?.ticket_template_id !== null &&
+    template?.ticket_template_id !== undefined &&
+    !template.ticketTemplate &&
+    typeof template.setDataValue === 'function'
+  ) {
+    template.setDataValue('ticket_template_id', null);
+  }
+
+  return template;
+};
+
 const TripTemplateRepository = {
   async findAll(filters = {}) {
     const whereClause = {};
+    const companyId = filters.company_id ?? filters.companyId;
     
     // Aplicar filtros si existen
     if (filters.branch_id) whereClause.branch_id = filters.branch_id;
@@ -125,7 +150,18 @@ const TripTemplateRepository = {
       whereClause.saleMode = normalizeSaleMode(filters.saleMode ?? filters.sale_mode);
     }
 
-    return await TripTemplate.findAll({
+    const branchInclude = {
+      model: Branch,
+      as: "branch",
+      attributes: ["id", "name", "address", "company_id"],
+    };
+
+    if (companyId !== undefined && companyId !== null) {
+      branchInclude.where = { company_id: companyId };
+      branchInclude.required = true;
+    }
+
+    const templates = await TripTemplate.findAll({
       attributes: [
         "id",
         "branch_id",
@@ -136,6 +172,7 @@ const TripTemplateRepository = {
         "duration",
         "price",
         "saleMode",
+        "ticket_template_id",
         "recurrence_pattern",
         "days_of_week",
         "active",
@@ -145,11 +182,7 @@ const TripTemplateRepository = {
       ],
       where: whereClause,
       include: [
-        {
-          model: Branch,
-          as: "branch",
-          attributes: ["id", "name", "address", "company_id"],
-        },
+        branchInclude,
         {
           model: Vehicle,
           as: "vehicle",
@@ -172,13 +205,22 @@ const TripTemplateRepository = {
             },
           ],
         },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          where: { status: { [Op.ne]: "deleted" } },
+          required: false,
+        },
       ],
       order: [["schedule", "ASC"]],
     });
+
+    return templates.map(hideDeletedTicketTemplateAssociation);
   },
 
   async findById(id) {
-    return await TripTemplate.findByPk(id, {
+    const template = await TripTemplate.findByPk(id, {
       attributes: [
         "id",
         "branch_id",
@@ -189,6 +231,7 @@ const TripTemplateRepository = {
         "duration",
         "price",
         "saleMode",
+        "ticket_template_id",
         "recurrence_pattern",
         "days_of_week",
         "active",
@@ -226,8 +269,17 @@ const TripTemplateRepository = {
             },
           ],
         },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "name", "trip_type", "status"],
+          where: { status: { [Op.ne]: "deleted" } },
+          required: false,
+        },
       ],
     });
+
+    return hideDeletedTicketTemplateAssociation(template);
   },
 
   async create(templateData) {
@@ -264,6 +316,7 @@ const TripTemplateRepository = {
         "duration",
         "price",
         "saleMode",
+        "ticket_template_id",
         "recurrence_pattern",
         "days_of_week",
         "active",

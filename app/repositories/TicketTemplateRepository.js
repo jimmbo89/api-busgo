@@ -162,6 +162,58 @@ const TicketTemplateRepository = {
     }
   },
 
+  async createSystem(body) {
+    const transaction = await sequelize.transaction();
+
+    try {
+      const existingTemplates = await TicketTemplate.findAll({
+        where: {
+          company_id: null,
+          trip_type: 'system',
+        },
+        attributes: ['id', 'status', 'createdAt'],
+        order: [['createdAt', 'DESC']],
+        transaction,
+      });
+
+      const ticketTemplate = existingTemplates[0]
+        ? await existingTemplates[0].update(
+            {
+              company_id: null,
+              name: normalizeString(body.name),
+              trip_type: 'system',
+              status: 'active',
+              config: body.config,
+            },
+            { transaction, validate: false }
+          )
+        : await TicketTemplate.create(
+            {
+              company_id: null,
+              name: normalizeString(body.name),
+              trip_type: 'system',
+              status: 'active',
+              config: body.config,
+            },
+            { transaction, validate: false }
+          );
+
+      await transaction.commit();
+      await TicketTemplateDefaultRepository.attachToTemplates(ticketTemplate);
+      await attachUsageToTemplates([ticketTemplate]);
+      logger.info(
+        `Plantilla global del sistema ${existingTemplates[0] ? 'actualizada' : 'creada'} exitosamente (ID: ${ticketTemplate.id})`
+      );
+      return {
+        ticketTemplate,
+        created: !existingTemplates[0],
+      };
+    } catch (error) {
+      if (transaction && !transaction.finished) await transaction.rollback();
+      throw error;
+    }
+  },
+
   async update(ticketTemplate, body) {
     const transaction = await sequelize.transaction();
 

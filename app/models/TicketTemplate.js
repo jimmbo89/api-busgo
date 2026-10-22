@@ -28,7 +28,7 @@ module.exports = (sequelize, DataTypes) => {
       },
       company_id: {
         type: DataTypes.STRING(36),
-        allowNull: false,
+        allowNull: true,
       },
       name: {
         type: DataTypes.STRING(255),

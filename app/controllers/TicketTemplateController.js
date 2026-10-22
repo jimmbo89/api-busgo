@@ -3,7 +3,39 @@ const {
   TicketTemplateRepository,
   TicketTemplateDefaultRepository,
 } = require('../repositories');
+const { Worker, Role, Permission } = require('../models');
 const saleModes = require('../constants/saleModes');
+
+const SYSTEM_TICKET_TEMPLATE_PERMISSION = 'view_system_ticket_template';
+
+const hasSystemTicketTemplatePermission = async (req) => {
+  if (!req.user?.id || typeof Worker?.findOne !== 'function') return false;
+
+  const worker = await Worker.findOne({
+    where: { user_id: req.user.id },
+    attributes: ['id'],
+    include: [
+      {
+        model: Role,
+        as: 'role',
+        attributes: ['id'],
+        required: true,
+        include: [
+          {
+            model: Permission,
+            as: 'permissions',
+            attributes: ['name'],
+            where: { name: SYSTEM_TICKET_TEMPLATE_PERMISSION },
+            through: { attributes: [] },
+            required: true,
+          },
+        ],
+      },
+    ],
+  });
+
+  return Boolean(worker);
+};
 
 const mapTicketTemplate = (ticketTemplate, { includeUsage = false } = {}) => {
   const data = ticketTemplate.toJSON ? ticketTemplate.toJSON() : ticketTemplate;
@@ -92,6 +124,7 @@ const TicketTemplateController = {
 
     try {
       const ticketTemplates = await TicketTemplateRepository.findAll(req.body);
+
       const includeSaleModes = req.body?.include_sale_modes === true;
 
       if (!ticketTemplates.length) {
@@ -118,6 +151,71 @@ const TicketTemplateController = {
     } catch (error) {
       const errorMsg = error.message || 'Error desconocido';
       logger.error(`TicketTemplateController->index: ${errorMsg}`);
+      return res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
+  },
+
+  async systemDefault(req, res) {
+    logger.info(`${req.user?.name ?? 'Usuario'} - Consulta plantilla global del sistema`);
+
+    try {
+      if (!(await hasSystemTicketTemplatePermission(req))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          msg: 'Forbidden',
+          details: ['No tiene permiso para consultar la plantilla global del sistema.'],
+        });
+      }
+
+      const systemTemplates = await TicketTemplateRepository.findAll({
+        company_id: null,
+        trip_type: 'system',
+        status: 'active',
+      });
+      const ticketTemplate = systemTemplates[0] ?? null;
+
+      if (!ticketTemplate) {
+        return res.status(404).json({
+          error: 'TicketTemplateNotFound',
+          msg: 'TicketTemplateNotFound',
+          details: ['No existe una plantilla global del sistema activa.'],
+        });
+      }
+
+      return res.status(200).json({
+        ticketTemplate: mapTicketTemplate(ticketTemplate, { includeUsage: true }),
+      });
+    } catch (error) {
+      const errorMsg = error.message || 'Error desconocido';
+      logger.error(`TicketTemplateController->systemDefault: ${errorMsg}`);
+      return res.status(500).json({ error: 'ServerError', details: errorMsg });
+    }
+  },
+
+  async storeSystem(req, res) {
+    logger.info(`${req.user?.name ?? 'Usuario'} - Crea plantilla global del sistema`);
+
+    try {
+      if (!(await hasSystemTicketTemplatePermission(req))) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          msg: 'Forbidden',
+          details: ['No tiene permiso para crear la plantilla global del sistema.'],
+        });
+      }
+
+      const result = await TicketTemplateRepository.createSystem(req.body);
+      const ticketTemplate = result.ticketTemplate;
+
+      return res.status(result.created ? 201 : 200).json({
+        msg: result.created
+          ? 'SystemTicketTemplateCreated'
+          : 'SystemTicketTemplateUpdated',
+        ticketTemplate: mapTicketTemplate(ticketTemplate, { includeUsage: true }),
+      });
+    } catch (error) {
+      const errorMsg = error.message || 'Error desconocido';
+      logger.error(`TicketTemplateController->storeSystem: ${errorMsg}`);
       return res.status(500).json({ error: 'ServerError', details: errorMsg });
     }
   },

@@ -1,11 +1,11 @@
 const Joi = require("joi");
 
 const saleModeSchema = Joi.string()
-  .valid("normal", "express")
+  .valid("normal", "express", "on_board")
   .allow(null)
   .optional()
   .messages({
-    "any.only": "El campo saleMode debe ser normal o express",
+    "any.only": "El campo saleMode debe ser normal, express u on_board",
     "string.base": "El campo saleMode debe ser un texto",
   });
 

@@ -6,6 +6,7 @@ const {
 } = require('../models');
 
 const SUPPORTED_TRIP_TYPES = ['normal', 'express', 'on_board'];
+const SYSTEM_TEMPLATE_TRIP_TYPE = 'system';
 
 const normalizeCompanyId = (value) => (
   value === undefined || value === null ? value : String(value).trim()
@@ -346,7 +347,20 @@ const TicketTemplateDefaultRepository = {
     });
 
     if (!currentDefault) {
-      throw domainError('TicketTemplateDefaultNotConfigured');
+      template = await TicketTemplate.findOne({
+        where: {
+          company_id: null,
+          trip_type: SYSTEM_TEMPLATE_TRIP_TYPE,
+          status: 'active',
+        },
+        transaction,
+      });
+
+      if (!template) {
+        throw domainError('TicketTemplateDefaultNotConfigured');
+      }
+
+      return template.id;
     }
 
     template = await TicketTemplate.findByPk(currentDefault.ticket_template_id, { transaction });

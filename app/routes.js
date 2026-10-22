@@ -193,6 +193,7 @@ const {
   idTicketTemplateSchema,
   ticketTemplateCompanySchema,
   ticketTemplateDefaultsSchema,
+  systemTicketTemplateSchema,
 } = require("./middlewares/validations/ticketTemplateValidation");
 
 router.get("/", (req, res) => res.json({ hello: "World" }));
@@ -804,6 +805,15 @@ router.post(
   "/get-ticket-templates",
   validateSchema(ticketTemplateCompanySchema, { normalize: false }),
   TicketTemplateController.index
+);
+router.post(
+  "/get-system-ticket-template",
+  TicketTemplateController.systemDefault
+);
+router.post(
+  "/system-ticket-template",
+  validateSchema(systemTicketTemplateSchema, { normalize: false }),
+  TicketTemplateController.storeSystem
 );
 router.put(
   "/ticket-templates-defaults",

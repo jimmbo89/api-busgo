@@ -63,6 +63,11 @@ const storeTicketTemplateSchema = Joi.object({
   'object.missing': 'Los campos company_id y trip_type son obligatorios',
 });
 
+const systemTicketTemplateSchema = Joi.object({
+  name: nameSchema.required(),
+  config: configSchema,
+});
+
 const updateTicketTemplateSchema = Joi.object({
   id: Joi.number().integer().positive().required().messages({
     'number.base': 'El campo id debe ser un número entero',
@@ -129,6 +134,7 @@ const ticketTemplateDefaultsSchema = Joi.object({
 
 module.exports = {
   storeTicketTemplateSchema,
+  systemTicketTemplateSchema,
   updateTicketTemplateSchema,
   idTicketTemplateSchema,
   ticketTemplateCompanySchema,

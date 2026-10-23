@@ -181,12 +181,14 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
       price: template.price,
       saleMode: getTemplateSaleMode(template),
       trip_template_id: template.id,
+      ticket_template_id: template.ticket_template_id ?? null,
     };
 
     const trip = await TripRepository.create(tripData, { transaction });
 
     const templateTripStops = mapTripStops(template);
     const templateTripFares = mapTripFares(template);
+    const generatedTripRouteStopIds = new Set();
 
     if (templateTripStops.length > 0) {
       for (const item of templateTripStops) {
@@ -229,6 +231,7 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
         );
 
         await TripStopRepository.create(tripStopPayload, { transaction });
+        generatedTripRouteStopIds.add(routeStopId);
       }
     }
 
@@ -270,6 +273,20 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
         if (Number(fareSegment.route_id) !== Number(template.route_id)) {
           logger.warn(
             `TripTemplateController->processTemplateGeneration: tarifa ignorada; FareSegmentTicketTypeRouteMismatch:${fareSegmentTicketTypeId}`
+          );
+          continue;
+        }
+
+        const originRouteStopId = Number(fareSegment.origin_route_stop_id);
+        const destinationRouteStopId = Number(
+          fareSegment.destination_route_stop_id
+        );
+        if (
+          !generatedTripRouteStopIds.has(originRouteStopId) ||
+          !generatedTripRouteStopIds.has(destinationRouteStopId)
+        ) {
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada porque sus paradas no pertenecen al viaje; FareSegmentTicketTypeTripStopsMismatch:${fareSegmentTicketTypeId}`
           );
           continue;
         }
@@ -375,6 +392,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         route_code: template.route?.code ?? null,
         schedule: template.schedule,
@@ -440,6 +458,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         schedule: template.schedule,
         duration: template.duration,
@@ -617,6 +636,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         route_code: template.route?.code ?? null,
         schedule: template.schedule,
@@ -760,6 +780,7 @@ const TripTemplateController = {
         branch_id: template.branch_id,
         vehicle_id: template.vehicle_id,
         route_id: template.route_id,
+        ticket_template_id: template.ticket_template_id ?? null,
         routeCode: template.route?.code ?? null,
         route_code: template.route?.code ?? null,
         schedule: template.schedule,
@@ -960,6 +981,7 @@ const TripTemplateController = {
               price: template.price,
               saleMode: getTemplateSaleMode(template),
               trip_template_id: template.id,
+              ticket_template_id: template.ticket_template_id ?? null,
             };
 
             const trip = await TripRepository.create(tripData, { transaction });

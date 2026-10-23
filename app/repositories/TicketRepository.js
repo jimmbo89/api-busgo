@@ -22,10 +22,32 @@ const {
   Company,
   Worker,
   TripWorker,
+  TicketTemplate,
   sequelize,
 } = require("../models");
 const ImageService = require("../services/ImageService");
 const logger = require("../../config/logger"); // Logger para seguimiento
+
+const resolveTicketTemplateConfig = async (tripId, options = {}) => {
+  if (tripId === undefined || tripId === null || tripId === "") {
+    return null;
+  }
+
+  const trip = await Trip.findByPk(tripId, {
+    attributes: ["id", "ticket_template_id"],
+    include: [
+      {
+        model: TicketTemplate,
+        as: "ticketTemplate",
+        attributes: ["config"],
+        required: false,
+      },
+    ],
+    transaction: options.transaction || null,
+  });
+
+  return trip?.ticketTemplate?.config ?? null;
+};
 
 const fareSegmentTicketInclude = [
   {
@@ -262,6 +284,7 @@ const TicketRepository = {
         "qr",
         "barcode",
         "promotions",
+        "ticket_template_config",
         'tickettypes'
       ],
       include: [
@@ -344,6 +367,7 @@ const TicketRepository = {
         "barcode",
         "print",
         "promotions",
+        "ticket_template_config",
         "tickettypes",
         [sequelize.fn("DATE_FORMAT", sequelize.col("Ticket.createdAt"), "%H:%i"), "saleTime"],
       ],
@@ -457,6 +481,7 @@ const TicketRepository = {
         "sequenceNumber",
         "print",
         "promotions",
+        "ticket_template_config",
         "tickettypes",
         [sequelize.fn("DATE_FORMAT", sequelize.col("Ticket.createdAt"), "%H:%i"), "saleTime"],
       ],
@@ -628,6 +653,7 @@ const TicketRepository = {
         "qr_status",
         "sequenceNumber",
         "promotions",
+        "ticket_template_config",
         "tickettypes",
       ],
       where: {
@@ -724,6 +750,7 @@ const TicketRepository = {
         "print",
         "promotions",
         "tickettypes",
+        "ticket_template_config",
         "sequenceNumber"
       ],
       include: [
@@ -815,6 +842,7 @@ const TicketRepository = {
       "print",
       "promotions",
       "tickettypes",
+      "ticket_template_config",
       "sequenceNumber" // Recomendado agregarlo a los attributes si lo vas a usar
     ],
     include: [
@@ -901,6 +929,8 @@ const TicketRepository = {
     } = body;
 
     try {
+      const ticketTemplateConfig = await resolveTicketTemplateConfig(trip_id, options);
+
       const ticket = await Ticket.create({
         branch_id,
         user_id,
@@ -919,6 +949,7 @@ const TicketRepository = {
         transactionStatus,
         sequenceNumber,
         extraData,
+        ticket_template_config: ticketTemplateConfig,
         transactionTip,
         transactionCashback,
         promotions,
@@ -2049,6 +2080,7 @@ const TicketRepository = {
         "minors",
         "pay",
         "sequenceNumber",
+        "ticket_template_config",
         "createdAt",
       ],
       include: [

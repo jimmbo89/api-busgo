@@ -30,6 +30,8 @@ const TripFareRepository = require('./TripFareRepository');
 const TicketItemRepository = require('./TicketItemRepository');
 const TripLocationRepository = require('./TripLocationRepository');
 const VehicleRoutePreferenceRepository = require('./VehicleRoutePreferenceRepository');
+const TicketTemplateRepository = require('./TicketTemplateRepository');
+const TicketTemplateDefaultRepository = require('./TicketTemplateDefaultRepository');
 
 module.exports = {
     DeviceRepository,
@@ -63,5 +65,7 @@ module.exports = {
     TripFareRepository,
     TicketItemRepository,
     TripLocationRepository,
-    VehicleRoutePreferenceRepository
+    VehicleRoutePreferenceRepository,
+    TicketTemplateRepository,
+    TicketTemplateDefaultRepository
 };

@@ -5,6 +5,7 @@ const {
   RouteStop,
   Location,
 } = require('../models');
+const { Op } = require('sequelize');
 
 const fareSegmentTicketTypeInclude = [
   {
@@ -55,6 +56,26 @@ const FareSegmentTicketTypeRepository = {
 
   async findById(id, options = {}) {
     return await FareSegmentTicketType.findByPk(id, {
+      include: fareSegmentTicketTypeInclude,
+      ...options,
+    });
+  },
+
+  async findByIds(ids, options = {}) {
+    const normalizedIds = Array.from(
+      new Set(
+        (Array.isArray(ids) ? ids : [])
+          .map((id) => Number(id))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      )
+    );
+
+    if (normalizedIds.length === 0) {
+      return [];
+    }
+
+    return await FareSegmentTicketType.findAll({
+      where: { id: { [Op.in]: normalizedIds } },
       include: fareSegmentTicketTypeInclude,
       ...options,
     });

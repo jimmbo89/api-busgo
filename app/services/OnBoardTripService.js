@@ -1,5 +1,6 @@
 'use strict';
 
+const { Op } = require('sequelize');
 const {
   sequelize,
   TripWorker,
@@ -107,7 +108,12 @@ const initializeTrip = async ({ trip, estimatedMinutes, transaction }) => {
   return trip;
 };
 
-const createRouteConfiguration = async ({ tripId, routeId, transaction }) => {
+const createRouteConfiguration = async ({
+  tripId,
+  routeId,
+  currentDate,
+  transaction,
+}) => {
   const routeStops = await RouteStop.findAll({
     where: {
       route_id: routeId,
@@ -121,9 +127,43 @@ const createRouteConfiguration = async ({ tripId, routeId, transaction }) => {
     where: {
       route_id: routeId,
       active: true,
+      [Op.and]: [
+        {
+          [Op.or]: [
+            { valid_from: null },
+            { valid_from: { [Op.lte]: currentDate } },
+          ],
+        },
+        {
+          [Op.or]: [
+            { valid_to: null },
+            { valid_to: { [Op.gte]: currentDate } },
+          ],
+        },
+      ],
     },
     attributes: ['id', 'company_id'],
     include: [
+      {
+        model: RouteStop,
+        as: 'originRouteStop',
+        attributes: ['id'],
+        where: {
+          route_id: routeId,
+          active: true,
+        },
+        required: true,
+      },
+      {
+        model: RouteStop,
+        as: 'destinationRouteStop',
+        attributes: ['id'],
+        where: {
+          route_id: routeId,
+          active: true,
+        },
+        required: true,
+      },
       {
         model: FareSegmentTicketType,
         as: 'fareSegmentTicketTypes',
@@ -243,6 +283,7 @@ const createOnBoardTripWithContext = async ({
   const { tripStops, tripFares } = await createRouteConfiguration({
     tripId: trip.id,
     routeId,
+    currentDate,
     transaction,
   });
 
@@ -252,7 +293,16 @@ const createOnBoardTripWithContext = async ({
     transaction,
   });
 
-  return { trip, tripWorker, tripStops, tripFares };
+  const tripWithTicketTemplate = await TripRepository.findById(trip.id, {
+    transaction,
+  });
+
+  return {
+    trip: tripWithTicketTemplate || trip,
+    tripWorker,
+    tripStops,
+    tripFares,
+  };
 };
 
 const OnBoardTripService = {

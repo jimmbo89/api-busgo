@@ -16,12 +16,14 @@ const {
   TicketItem,
   Worker,
   Ticket,
+  TicketTemplate,
   Device,
   Structure,
   Company,
   sequelize,
 } = require("../models");
 const logger = require("../../config/logger"); // Logger para seguimiento
+const TicketTemplateDefaultRepository = require("./TicketTemplateDefaultRepository");
 
 const formatTripDateCode = (tripDate) => {
   if (!tripDate) {
@@ -231,6 +233,7 @@ const tripFareDetailInclude = [
 const segmentTicketInclude = {
   model: Ticket,
   as: "tickets",
+  separate: true,
   attributes: [
     "id",
     "branch_id",
@@ -251,6 +254,7 @@ const segmentTicketInclude = {
     "qr_status",
     "sequenceNumber",
     "promotions",
+    "ticket_template_config",
     "tickettypes",
   ],
   required: false,
@@ -533,12 +537,19 @@ const TripRepository = {
         "saleMode",
         "trip_template_id",
         "finish_method",
+        "ticket_template_id",
       ],
       include: [
         {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
+        },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
         },
         {
           model: Vehicle,
@@ -628,6 +639,7 @@ const TripRepository = {
         "saleMode",
         "trip_template_id",
         "finish_method",
+        "ticket_template_id",
       ],
       where: whereClause, // Usar el objeto `where` construido dinámicamente
        order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -636,6 +648,12 @@ const TripRepository = {
           model: Branch,
           as: "branch",
           attributes: ["id", "name"],
+        },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
         },
         {
           model: Vehicle,
@@ -859,6 +877,7 @@ const TripRepository = {
         "price",
         "saleMode",
         "trip_template_id",
+        "ticket_template_id",
       ],
       where: whereClause,
       order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -1030,6 +1049,7 @@ const TripRepository = {
         "price",
         "saleMode",
         "trip_template_id",
+        "ticket_template_id",
       ],
       where: {
         branch_id: branchId,
@@ -1144,6 +1164,7 @@ const TripRepository = {
         "saleMode",
         "trip_template_id",
         "finish_method",
+        "ticket_template_id",
       ],
       where: {
         branch_id: branchId,
@@ -1183,6 +1204,12 @@ const TripRepository = {
               attributes: ["id", "address", "image"],
             },
           ],
+        },
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
         },
       ],
     });
@@ -1358,7 +1385,15 @@ const TripRepository = {
           },
         ],
       },
-      ...buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate),
+      {
+        model: TicketTemplate,
+        as: "ticketTemplate",
+        attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+        required: false,
+      },
+      ...(options.includeFullTripFares
+        ? buildSegmentTripFareInclude(originLocationId, destinationLocationId, searchDate)
+        : buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate)),
     ];
 
     if (options.includeTickets) {
@@ -1380,11 +1415,30 @@ const TripRepository = {
         "price",
         "saleMode",
         "trip_template_id",
+        "ticket_template_id",
       ],
       where: whereClause,
       order: [['date', 'ASC'], ['schedule', 'ASC']],
       include,
     });
+  },
+
+  async findExpressTemplateIdsByBranchDate(branchId, currentDate) {
+    const searchDate = currentDate || new Date().toISOString().slice(0, 10);
+    const trips = await Trip.findAll({
+      attributes: ["trip_template_id"],
+      where: {
+        branch_id: branchId,
+        date: { [Op.eq]: searchDate },
+        saleMode: "express",
+        trip_template_id: { [Op.ne]: null },
+      },
+      raw: true,
+    });
+
+    return trips
+      .map((trip) => Number(trip.trip_template_id))
+      .filter((templateId) => Number.isFinite(templateId) && templateId > 0);
   },
 
   async getSegmentTripFaresByTripIds(tripIds, originLocationId, destinationLocationId, currentDate) {
@@ -1514,6 +1568,7 @@ const TripRepository = {
       "price",
       "saleMode",
       "trip_template_id",
+      "ticket_template_id",
     ],
     where: whereClause,
     order: [['date', 'ASC'], ['schedule', 'ASC']],
@@ -1585,8 +1640,15 @@ const TripRepository = {
         "saleMode",
         "trip_template_id",
         "finish_method",
+        "ticket_template_id",
       ],
       include: [
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
+        },
         {
           model: Branch,
           as: "branch",
@@ -1643,8 +1705,15 @@ const TripRepository = {
         "saleMode",
         "trip_template_id",
         "finish_method",
+        "ticket_template_id",
       ],
       include: [
+        {
+          model: TicketTemplate,
+          as: "ticketTemplate",
+          attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
+          required: false,
+        },
         {
           model: Branch,
           as: "branch",
@@ -1775,6 +1844,12 @@ const TripRepository = {
           ],
         },
         {
+          model: TicketTemplate,
+          as: 'ticketTemplate',
+          attributes: ['id', 'company_id', 'name', 'trip_type', 'status', 'config'],
+          required: false,
+        },
+        {
           model: Branch,
           as: 'branch',
           attributes: ['id', 'name', 'image', 'address'],
@@ -1835,6 +1910,23 @@ const TripRepository = {
     const ownsTransaction = !options.transaction;
 
     try {
+      const branch = await Branch.findByPk(branch_id, {
+        attributes: ["id", "company_id"],
+        transaction,
+      });
+      if (!branch) {
+        const error = new Error("BranchNotFound");
+        error.code = "BranchNotFound";
+        throw error;
+      }
+
+      const ticketTemplateId = await TicketTemplateDefaultRepository.resolveForTrip({
+        companyId: branch.company_id,
+        tripType: body.trip_type ?? body.tripType ?? saleMode,
+        ticketTemplateId: body.ticket_template_id ?? body.ticketTemplateId,
+        transaction,
+      });
+
       const trip = await Trip.create({
         date,
         schedule,
@@ -1849,6 +1941,7 @@ const TripRepository = {
         saleMode,
         trip_template_id: trip_template_id ?? null,
         finish_method: finish_method ?? null,
+        ticket_template_id: ticketTemplateId,
       }, { ...options, transaction });
 
       const sequence = await reserveTripSequence(date, transaction);
@@ -1866,6 +1959,7 @@ const TripRepository = {
         await transaction.rollback();
       }
       logger.error(`Error creando el viaje: ${error.message}`);
+      if (error.code) throw error;
       throw new Error("Error creando el viaje");
     }
   },
@@ -1883,6 +1977,7 @@ const TripRepository = {
       "price",
       "saleMode",
       "trip_template_id",
+      "ticket_template_id",
     ];
 
     const normalizedBody = { ...body };
@@ -1891,6 +1986,37 @@ const TripRepository = {
       delete normalizedBody.sale_mode;
     } else if (Object.prototype.hasOwnProperty.call(body, "saleMode")) {
       normalizedBody.saleMode = normalizeSaleMode(body.saleMode);
+    }
+
+    const associationChanged = [
+      "branch_id",
+      "saleMode",
+      "sale_mode",
+      "trip_type",
+      "tripType",
+      "ticket_template_id",
+      "ticketTemplateId",
+    ].some((field) => Object.prototype.hasOwnProperty.call(body, field));
+
+    if (associationChanged) {
+      const branch = await Branch.findByPk(normalizedBody.branch_id ?? trip.branch_id, {
+        attributes: ["id", "company_id"],
+        transaction: options.transaction,
+      });
+      if (!branch) {
+        const error = new Error("BranchNotFound");
+        error.code = "BranchNotFound";
+        throw error;
+      }
+
+      normalizedBody.ticket_template_id = await TicketTemplateDefaultRepository.resolveForTrip({
+        companyId: branch.company_id,
+        tripType: body.trip_type ?? body.tripType ?? normalizedBody.saleMode ?? trip.saleMode,
+        ticketTemplateId: Object.prototype.hasOwnProperty.call(body, "ticket_template_id")
+          ? body.ticket_template_id
+          : body.ticketTemplateId ?? trip.ticket_template_id,
+        transaction: options.transaction,
+      });
     }
 
     const updatedData = Object.keys(normalizedBody)
@@ -2086,6 +2212,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           "price",
           "saleMode",
           "trip_template_id",
+          "ticket_template_id",
         ],
         where: whereClause,
         include: [
@@ -2186,6 +2313,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           "price",
           "saleMode",
           "trip_template_id",
+          "ticket_template_id",
         ],
         where: whereClause,
         include: [
@@ -2288,6 +2416,7 @@ async existsByUpdatedFields(trip, updatedFields) {
         "price",
         "saleMode",
         "trip_template_id",
+        "ticket_template_id",
       ],
       include: [
         {
@@ -2373,6 +2502,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           "price",
           "saleMode",
           "trip_template_id",
+          "ticket_template_id",
         ],
         where: whereClause,
         order: [["date", "ASC"], ["schedule", "ASC"], ["id", "ASC"]],

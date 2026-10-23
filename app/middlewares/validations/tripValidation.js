@@ -1,12 +1,33 @@
 const Joi = require("joi");
 
 const saleModeSchema = Joi.string()
-  .valid("normal", "express")
+  .valid("normal", "express", "on_board")
   .allow(null)
   .optional()
   .messages({
-    "any.only": "El campo saleMode debe ser normal o express",
+    "any.only": "El campo saleMode debe ser normal, express u on_board",
     "string.base": "El campo saleMode debe ser un texto",
+  });
+
+const tripTypeSchema = Joi.string()
+  .trim()
+  .valid("normal", "express", "on_board")
+  .allow(null)
+  .optional()
+  .messages({
+    "any.only": "El campo trip_type debe ser normal, express u on_board",
+    "string.base": "El campo trip_type debe ser un texto",
+  });
+
+const ticketTemplateIdSchema = Joi.number()
+  .integer()
+  .positive()
+  .allow(null)
+  .optional()
+  .messages({
+    "number.base": "El campo ticket_template_id debe ser un número entero",
+    "number.integer": "El campo ticket_template_id debe ser un número entero",
+    "number.positive": "El campo ticket_template_id debe ser positivo",
   });
 
 const storeTripSchema = Joi.object({
@@ -74,6 +95,10 @@ const storeTripSchema = Joi.object({
   trip_template_id: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo trip_template_id debe ser un numero entero",
   }),
+  ticket_template_id: ticketTemplateIdSchema,
+  ticketTemplateId: ticketTemplateIdSchema,
+  trip_type: tripTypeSchema,
+  tripType: tripTypeSchema,
   workers: Joi.array()
     .items(
       Joi.object({
@@ -163,6 +188,10 @@ const updateTripSchema = Joi.object({
   trip_template_id: Joi.number().integer().allow(null).optional().messages({
     "number.base": "El campo trip_template_id debe ser un numero entero",
   }),
+  ticket_template_id: ticketTemplateIdSchema,
+  ticketTemplateId: ticketTemplateIdSchema,
+  trip_type: tripTypeSchema,
+  tripType: tripTypeSchema,
   workers: Joi.array()
     .items(
       Joi.object({

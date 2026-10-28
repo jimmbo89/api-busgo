@@ -27,6 +27,19 @@ const {
 } = require("../models");
 const ImageService = require("../services/ImageService");
 const logger = require("../../config/logger"); // Logger para seguimiento
+const TicketTemplateDefaultRepository = require("./TicketTemplateDefaultRepository");
+
+const ticketTemplateFallbackErrors = new Set([
+  "TicketTemplateDefaultNotConfigured",
+  "TicketTemplateTripTypeNotSupported",
+  "TicketTemplateInactive",
+  "TicketTemplateCompanyMismatch",
+  "TicketTemplateTripTypeMismatch",
+]);
+
+const hasTicketTemplateConfig = (value) => (
+  value !== undefined && value !== null
+);
 
 const resolveTicketTemplateConfig = async (tripId, options = {}) => {
   if (tripId === undefined || tripId === null || tripId === "") {
@@ -47,6 +60,42 @@ const resolveTicketTemplateConfig = async (tripId, options = {}) => {
   });
 
   return trip?.ticketTemplate?.config ?? null;
+};
+
+const resolveDefaultTicketTemplateConfigForTicket = async (ticket, options = {}) => {
+  if (hasTicketTemplateConfig(ticket?.ticket_template_config)) {
+    return ticket.ticket_template_config;
+  }
+
+  const companyId = ticket?.branch?.company?.id;
+  const tripType = ticket?.trip?.saleMode ?? ticket?.trip?.sale_mode;
+
+  if (companyId === undefined || companyId === null || !tripType) {
+    return null;
+  }
+
+  try {
+    const ticketTemplateId = await TicketTemplateDefaultRepository.resolveForTrip({
+      companyId,
+      tripType,
+      transaction: options.transaction,
+    });
+    const ticketTemplate = await TicketTemplate.findByPk(ticketTemplateId, {
+      attributes: ["config"],
+      transaction: options.transaction,
+    });
+
+    return ticketTemplate?.config ?? null;
+  } catch (error) {
+    if (ticketTemplateFallbackErrors.has(error?.code)) {
+      logger.warn(
+        `No se pudo resolver la plantilla predeterminada para el ticket ${ticket?.id ?? "sin id"}: ${error.code}`
+      );
+      return null;
+    }
+
+    throw error;
+  }
 };
 
 const fareSegmentTicketInclude = [
@@ -812,8 +861,8 @@ const TicketRepository = {
     });
   },
 
-  async findByIdOrSequence(searchValue) {
-  return await Ticket.findOne({
+  async findByIdOrSequence(searchValue, options = {}) {
+  const ticket = await Ticket.findOne({
     where: {
       [Op.or]: [
         { id: searchValue },
@@ -902,6 +951,26 @@ const TicketRepository = {
         ...ticketItemInclude,
       ],
     });
+
+    if (
+      options.includeDefaultTemplate &&
+      !hasTicketTemplateConfig(ticket?.ticket_template_config)
+    ) {
+      const ticketTemplateConfig = await resolveDefaultTicketTemplateConfigForTicket(
+        ticket,
+        options
+      );
+
+      if (ticketTemplateConfig !== null && ticketTemplateConfig !== undefined) {
+        if (typeof ticket?.setDataValue === "function") {
+          ticket.setDataValue("ticket_template_config", ticketTemplateConfig);
+        } else if (ticket) {
+          ticket.ticket_template_config = ticketTemplateConfig;
+        }
+      }
+    }
+
+    return ticket;
   },
 
   async create(body, options = {}) {

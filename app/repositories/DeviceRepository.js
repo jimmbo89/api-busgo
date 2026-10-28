@@ -90,7 +90,33 @@ const  DeviceRepository = {
             attributes: ['id', 'name', 'mac', 'version', 'image', 'serial', 'status', 'maintenance', 'acquisition', 'notes', 'branch_id'],
             include: {
                 model: Branch, as: 'branch',
-                attributes: ['id', 'name'],
+                attributes: ['id', 'name', 'company_id'],
+            },
+        });
+    },
+
+    async findByIds(ids = [], options = {}) {
+        const normalizedIds = [...new Set(
+            (Array.isArray(ids) ? ids : [])
+                .map((id) => Number(id))
+                .filter((id) => Number.isInteger(id) && id > 0)
+        )];
+
+        if (normalizedIds.length === 0) {
+            return [];
+        }
+
+        return await Device.findAll({
+            ...options,
+            where: {
+                ...(options.where || {}),
+                id: { [Op.in]: normalizedIds },
+            },
+            attributes: ['id', 'name', 'mac', 'version', 'image', 'serial', 'status', 'maintenance', 'acquisition', 'notes', 'branch_id'],
+            include: {
+                model: Branch,
+                as: 'branch',
+                attributes: ['id', 'name', 'company_id'],
             },
         });
     },

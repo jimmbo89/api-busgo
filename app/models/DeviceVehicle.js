@@ -39,6 +39,7 @@ module.exports = (sequelize, DataTypes) => {
       device_id: {
         type: DataTypes.BIGINT,
         allowNull: false,
+        unique: 'unique_device_assignment',
         validate: {
           notNull: {
             msg: 'El campo device_id es obligatorio',

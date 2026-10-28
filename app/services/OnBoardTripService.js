@@ -16,6 +16,7 @@ const {
   RouteRepository,
   BranchVehicleRepository,
   BranchRouteRepository,
+  TripSegmentRepository,
 } = require('../repositories');
 const OnBoardContextService = require('./OnBoardContextService');
 
@@ -142,7 +143,17 @@ const createRouteConfiguration = async ({
         },
       ],
     },
-    attributes: ['id', 'company_id'],
+    attributes: [
+      'id',
+      'company_id',
+      'origin_route_stop_id',
+      'destination_route_stop_id',
+      'currency',
+      'valid_from',
+      'valid_to',
+      'priority',
+      'active',
+    ],
     include: [
       {
         model: RouteStop,
@@ -169,7 +180,7 @@ const createRouteConfiguration = async ({
         as: 'fareSegmentTicketTypes',
         where: { active: true },
         required: true,
-        attributes: ['id', 'base_price'],
+        attributes: ['id', 'ticket_type_id', 'base_price'],
         include: [
           {
             model: TicketType,
@@ -189,6 +200,9 @@ const createRouteConfiguration = async ({
       company_id: routeStop.company_id,
       trip_id: tripId,
       route_stop_id: routeStop.id,
+      location_id: routeStop.location_id,
+      distance_km: routeStop.distance_km,
+      minutes_from_origin: routeStop.minutes_from_origin,
       stop_order: routeStop.stop_order,
       arrival_time: null,
       departure_time: null,
@@ -200,14 +214,61 @@ const createRouteConfiguration = async ({
     { transaction }
   );
 
+  const tripStopsByRouteStopId = new Map(
+    tripStops.map((tripStop) => [Number(tripStop.route_stop_id), tripStop])
+  );
+  const tripSegmentsByFareSegmentId = new Map();
   const tripFarePayload = [];
+
   for (const fareSegment of fareSegments) {
+    const originTripStop = tripStopsByRouteStopId.get(
+      Number(fareSegment.origin_route_stop_id)
+    );
+    const destinationTripStop = tripStopsByRouteStopId.get(
+      Number(fareSegment.destination_route_stop_id)
+    );
+
+    if (!originTripStop || !destinationTripStop) {
+      throw new Error('OnBoardTripConfigurationInvalid');
+    }
+
     for (const fareSegmentTicketType of fareSegment.fareSegmentTicketTypes || []) {
+      const ticketTypeId = normalizeId(
+        fareSegmentTicketType.ticket_type_id ?? fareSegmentTicketType.ticketType?.id
+      );
+      if (!ticketTypeId) {
+        throw new Error('OnBoardTripConfigurationInvalid');
+      }
+
+      let tripSegment = tripSegmentsByFareSegmentId.get(Number(fareSegment.id));
+      if (!tripSegment) {
+        tripSegment = await TripSegmentRepository.create(
+          {
+            company_id: fareSegment.company_id,
+            trip_id: tripId,
+            origin_trip_stop_id: originTripStop.id,
+            destination_trip_stop_id: destinationTripStop.id,
+            source_fare_segment_id: fareSegment.id,
+            currency: fareSegment.currency || 'CLP',
+            valid_from: fareSegment.valid_from ?? null,
+            valid_to: fareSegment.valid_to ?? null,
+            priority: fareSegment.priority ?? 0,
+            active: fareSegment.active,
+            source_type: 'auto',
+          },
+          { transaction }
+        );
+        tripSegmentsByFareSegmentId.set(Number(fareSegment.id), tripSegment);
+      }
+
       const basePrice = Number(fareSegmentTicketType.base_price || 0);
       tripFarePayload.push({
         company_id: fareSegment.company_id,
         trip_id: tripId,
+        // Se conserva la relación legacy para no romper consumidores existentes.
         fare_segment_ticket_type_id: fareSegmentTicketType.id,
+        trip_segment_id: tripSegment.id,
+        ticket_type_id: ticketTypeId,
         base_price: basePrice,
         price: basePrice,
         active: true,
@@ -218,7 +279,11 @@ const createRouteConfiguration = async ({
 
   const tripFares = await TripFare.bulkCreate(tripFarePayload, { transaction });
 
-  return { tripStops, tripFares };
+  return {
+    tripStops,
+    tripSegments: Array.from(tripSegmentsByFareSegmentId.values()),
+    tripFares,
+  };
 };
 
 const createOnBoardTripWithContext = async ({
@@ -280,7 +345,7 @@ const createOnBoardTripWithContext = async ({
     { transaction }
   );
 
-  const { tripStops, tripFares } = await createRouteConfiguration({
+  const { tripStops, tripSegments, tripFares } = await createRouteConfiguration({
     tripId: trip.id,
     routeId,
     currentDate,
@@ -301,6 +366,7 @@ const createOnBoardTripWithContext = async ({
     trip: tripWithTicketTemplate || trip,
     tripWorker,
     tripStops,
+    tripSegments,
     tripFares,
   };
 };

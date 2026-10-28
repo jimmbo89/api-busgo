@@ -1,6 +1,36 @@
 const logger = require('../../config/logger');
 const { TripStop, Company, Trip, RouteStop, Location, Route, Branch } = require('../models');
 
+const valuesAreEqual = (currentValue, incomingValue) => {
+  if (currentValue === null || currentValue === undefined || incomingValue === null || incomingValue === undefined) {
+    return (currentValue === null || currentValue === undefined) &&
+      (incomingValue === null || incomingValue === undefined);
+  }
+
+  if (currentValue instanceof Date || incomingValue instanceof Date) {
+    const currentTime = new Date(currentValue).getTime();
+    const incomingTime = new Date(incomingValue).getTime();
+    if (Number.isFinite(currentTime) && Number.isFinite(incomingTime)) {
+      return currentTime === incomingTime;
+    }
+  }
+
+  if (typeof currentValue === 'boolean' || typeof incomingValue === 'boolean') {
+    return Boolean(currentValue) === Boolean(incomingValue);
+  }
+
+  const currentNumber = Number(currentValue);
+  const incomingNumber = Number(incomingValue);
+  const areNumeric = [currentValue, incomingValue].every((value) =>
+    typeof value === 'number' ||
+    (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value)))
+  );
+
+  return areNumeric
+    ? currentNumber === incomingNumber
+    : String(currentValue) === String(incomingValue);
+};
+
 const TripStopRepository = {
   async findAll() {
     return await TripStop.findAll({
@@ -34,6 +64,11 @@ const TripStopRepository = {
               attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
             },
           ],
+        },
+        {
+          model: Location,
+          as: 'location',
+          attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'],
         },
       ],
       order: [['trip_id', 'ASC'], ['stop_order', 'ASC']],
@@ -73,6 +108,11 @@ const TripStopRepository = {
             },
           ],
         },
+        {
+          model: Location,
+          as: 'location',
+          attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'],
+        },
       ],
     });
   },
@@ -110,6 +150,11 @@ const TripStopRepository = {
               attributes: ['id', 'name', 'origin_id', 'destination_id', 'distance', 'estimated', 'status'],
             },
           ],
+        },
+        {
+          model: Location,
+          as: 'location',
+          attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'],
         },
       ],
       order: [['stop_order', 'ASC']],
@@ -151,6 +196,11 @@ const TripStopRepository = {
             },
           ],
         },
+        {
+          model: Location,
+          as: 'location',
+          attributes: ['id', 'latitude', 'longitude', 'address', 'country', 'city', 'image', 'active'],
+        },
       ],
       order: [['trip_id', 'ASC'], ['stop_order', 'ASC']],
     });
@@ -161,6 +211,9 @@ const TripStopRepository = {
       company_id,
       trip_id,
       route_stop_id,
+      location_id,
+      distance_km,
+      minutes_from_origin,
       stop_order,
       arrival_time,
       departure_time,
@@ -173,7 +226,10 @@ const TripStopRepository = {
     return await TripStop.create({
       company_id,
       trip_id,
-      route_stop_id,
+      route_stop_id: route_stop_id ?? null,
+      location_id: location_id ?? null,
+      distance_km: distance_km ?? 0,
+      minutes_from_origin: minutes_from_origin ?? 0,
       stop_order,
       arrival_time: arrival_time ?? null,
       departure_time: departure_time ?? null,
@@ -189,6 +245,9 @@ const TripStopRepository = {
       'company_id',
       'trip_id',
       'route_stop_id',
+      'location_id',
+      'distance_km',
+      'minutes_from_origin',
       'stop_order',
       'arrival_time',
       'departure_time',
@@ -198,10 +257,16 @@ const TripStopRepository = {
       'source_type',
     ];
 
-    const updatedData = Object.keys(body)
+    const requestedData = Object.keys(body)
       .filter(key => fieldsToUpdate.includes(key) && body[key] !== undefined)
       .reduce((obj, key) => {
         obj[key] = body[key];
+        return obj;
+      }, {});
+    const updatedData = Object.keys(requestedData)
+      .filter((key) => !valuesAreEqual(tripStop.get(key), requestedData[key]))
+      .reduce((obj, key) => {
+        obj[key] = requestedData[key];
         return obj;
       }, {});
 

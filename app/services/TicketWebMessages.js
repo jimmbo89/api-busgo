@@ -27,6 +27,17 @@ const TICKET_WEB_ERROR_MESSAGES = Object.freeze({
   FareSegmentNotFound: 'La tarifa seleccionada ya no está disponible. Actualiza la información del viaje.',
   FareSegmentRouteMismatch: 'La tarifa seleccionada no corresponde a la ruta del viaje.',
   FareSegmentCompanyMismatch: 'La tarifa seleccionada no está disponible para esta sucursal.',
+  TripFareRequired: 'Debes seleccionar una tarifa válida para continuar con la venta.',
+  TripFareNotIncluded: 'La tarifa seleccionada no está asociada al viaje indicado.',
+  TripFareInactive: 'La tarifa seleccionada está inactiva para este viaje.',
+  TripFareUnavailable: 'La tarifa seleccionada no está disponible para este viaje.',
+  TripSegmentInactive: 'El tramo seleccionado está inactivo para este viaje.',
+  FareSegmentInactive: 'El tramo tarifario seleccionado está inactivo.',
+  FareSegmentOutOfValidity: 'La tarifa seleccionada no está vigente para la fecha del viaje.',
+  TripStopsUnavailable: 'Las paradas de la tarifa no están disponibles para este viaje.',
+  TripOriginStopUnavailable: 'La parada de origen no está habilitada para subir pasajeros.',
+  TripDestinationStopUnavailable: 'La parada de destino no está habilitada para bajar pasajeros.',
+  TripSegmentOrderInvalid: 'El destino debe estar después del origen dentro del viaje.',
 });
 
 const TUU_PAYMENT_METHOD_UNSUPPORTED = 'Device settings do not support the payment method entered.';

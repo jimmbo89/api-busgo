@@ -92,6 +92,10 @@ const errorDetails = {
     'La tarifa seleccionada está inactiva.',
   OnBoardTicketFareUnavailable:
     'La tarifa o el tipo de pasajero seleccionado no está disponible.',
+  OnBoardTicketSegmentInactive:
+    'El tramo seleccionado está inactivo y no está disponible para venta.',
+  OnBoardTicketFareOutOfValidity:
+    'La tarifa seleccionada no está vigente para la fecha del viaje.',
   OnBoardTicketPassengerTypeMismatch:
     'El tipo de pasajero no corresponde a la tarifa seleccionada.',
   OnBoardTicketItemQuantityInvalid:
@@ -127,6 +131,10 @@ const humanizedErrors = {
     'La parada seleccionada no está habilitada como punto de subida.',
   OnBoardTicketDestinationStopUnavailable:
     'La parada seleccionada no está habilitada como destino.',
+  OnBoardTicketSegmentInactive:
+    'El tramo seleccionado está inactivo y no está disponible para venta.',
+  OnBoardTicketFareOutOfValidity:
+    'La tarifa seleccionada no está vigente para la fecha del viaje.',
   OnBoardTicketSegmentOrderInvalid:
     'El destino debe estar después del origen en la ruta.',
   OnBoardTicketRouteRequired:

@@ -56,7 +56,7 @@ const BranchVehicleRepository = {
                 {
                     model: Branch,
                     as: 'branch',
-                    attributes: ['id', 'name', 'image', 'address']
+                    attributes: ['id', 'name', 'image', 'address', 'company_id']
                 },
                 {
                     model: Vehicle,

@@ -37,7 +37,10 @@ const findAuthorizedBranches = async (req) => {
       .map((relation) => relation.branch_id ?? relation.branch?.id)
       .filter(Boolean);
 
-    return BranchRepository.findByIds(branchIds, { includeRoutes: true });
+    return BranchRepository.findByIds(branchIds, {
+      includeRoutes: true,
+      includeDevices: true,
+    });
   }
 
   if (worker.role?.type === ROLE_TYPES.COMPANY) {
@@ -48,7 +51,7 @@ const findAuthorizedBranches = async (req) => {
 
     return BranchRepository.findByCompanyIds(
       companies.map((company) => company.id),
-      { includeRoutes: true }
+      { includeRoutes: true, includeDevices: true }
     );
   }
 
@@ -82,6 +85,13 @@ const mapRoute = (route) => ({
     : null,
 });
 
+const mapDevice = (device) => ({
+  id: device.id,
+  name: device.name,
+  serial: device.serial,
+  mac: device.mac,
+});
+
 const mapBranch = (branch) => ({
   id: branch.id,
   name: branch.name,
@@ -93,6 +103,7 @@ const mapBranch = (branch) => ({
   companyName: branch.company?.name,
   companyImage: branch.company?.image,
   routes: Array.isArray(branch.routes) ? branch.routes.map(mapRoute) : [],
+  devices: Array.isArray(branch.devices) ? branch.devices.map(mapDevice) : [],
 });
 
 const StructureController = {

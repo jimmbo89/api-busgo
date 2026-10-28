@@ -1,7 +1,10 @@
 const logger = require('../../config/logger'); // Logger para seguimiento
-const { Worker, Role, Company } = require('../models');
+const { Worker, Role } = require('../models');
 const { BranchRepository, BranchWorkerRepository, CompanyRepository } = require('../repositories');
 const { ROLE_TYPES } = require('../constants/roleTypes');
+
+// Compatible con usuarios raíz cuyos roles históricos aún tienen tipo Sistema.
+const LEGACY_SYSTEM_ROLE_TYPE = 'Sistema';
 
 const findAuthenticatedWorker = async (userId) => {
     if (!userId) {
@@ -34,15 +37,11 @@ const findAuthorizedBranches = async (req) => {
             .filter(Boolean);
     }
 
-    if (worker.role?.type === ROLE_TYPES.COMPANY) {
-        const companies = await Company.findAll({
-            where: { user_id: userId },
-            attributes: ['id'],
-        });
-
-        return BranchRepository.findByCompanyIds(
-            companies.map((company) => company.id)
-        );
+    if (
+        worker.role?.type === ROLE_TYPES.COMPANY ||
+        worker.role?.type === LEGACY_SYSTEM_ROLE_TYPE
+    ) {
+        return BranchRepository.findAll();
     }
 
     return [];

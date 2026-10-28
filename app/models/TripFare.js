@@ -18,6 +18,16 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'fare_segment_ticket_type_id',
         as: 'fareSegmentTicketType',
       });
+
+      TripFare.belongsTo(models.TripSegment, {
+        foreignKey: 'trip_segment_id',
+        as: 'tripSegment',
+      });
+
+      TripFare.belongsTo(models.TicketType, {
+        foreignKey: 'ticket_type_id',
+        as: 'ticketType',
+      });
       TripFare.hasMany(models.TicketItem, {
         foreignKey: 'trip_fare_id',
         as: 'ticketItems',
@@ -51,11 +61,15 @@ module.exports = (sequelize, DataTypes) => {
       },
       fare_segment_ticket_type_id: {
         type: DataTypes.BIGINT,
-        allowNull: false,
-        validate: {
-          notNull: { msg: 'El campo fare_segment_ticket_type_id es obligatorio' },
-          isInt: { msg: 'El campo fare_segment_ticket_type_id debe ser un número entero' },
-        },
+        allowNull: true,
+      },
+      trip_segment_id: {
+        type: DataTypes.BIGINT,
+        allowNull: true,
+      },
+      ticket_type_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
       },
       base_price: {
         type: DataTypes.DECIMAL(14, 2),
@@ -92,6 +106,18 @@ module.exports = (sequelize, DataTypes) => {
       modelName: 'TripFare',
       tableName: 'trip_fares',
       timestamps: true,
+      validate: {
+        sourceRequired() {
+          const hasLegacy = Boolean(this.fare_segment_ticket_type_id);
+          const hasDirect = Boolean(this.trip_segment_id) || Boolean(this.ticket_type_id);
+          if (!hasLegacy && !hasDirect) {
+            throw new Error('TripFareSourceRequired');
+          }
+          if (hasDirect && (!this.trip_segment_id || !this.ticket_type_id)) {
+            throw new Error('TripFareDirectSourceIncomplete');
+          }
+        },
+      },
     }
   );
 

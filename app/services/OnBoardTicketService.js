@@ -17,6 +17,9 @@ const OnBoardContextService = require('./OnBoardContextService');
 const OnBoardTripService = require('./OnBoardTripService');
 
 const isActive = (value) => value === true || Number(value) === 1;
+const isActiveOrUnset = (value) => (
+  value === undefined || value === null || isActive(value)
+);
 
 const roundMoney = (value) => Number(Number(value || 0).toFixed(2));
 
@@ -41,6 +44,25 @@ const getCurrentDate = () => {
   }
 
   return `${values.year}-${values.month}-${values.day}`;
+};
+
+const normalizeDate = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+};
+
+const isFareSegmentValidForTripDate = (fareSegment, tripDate) => {
+  if (!isActive(fareSegment?.active)) return false;
+
+  const currentDate = normalizeDate(tripDate);
+  const validFrom = normalizeDate(fareSegment?.valid_from);
+  const validTo = normalizeDate(fareSegment?.valid_to);
+
+  if (currentDate && validFrom && currentDate < validFrom) return false;
+  if (currentDate && validTo && currentDate > validTo) return false;
+
+  return true;
 };
 
 const normalizePaymentMethod = (value) => {
@@ -91,19 +113,56 @@ const resolveTripFare = (trip, item) => {
     throw new Error('OnBoardTicketFareInactive');
   }
 
+  const directSegment = tripFare.tripSegment;
   const fareSegmentTicketType = tripFare.fareSegmentTicketType;
-  const fareSegment = fareSegmentTicketType?.fareSegment;
-  const ticketType = fareSegmentTicketType?.ticketType;
+  const fareSegment = fareSegmentTicketType?.fareSegment || (
+    directSegment
+      ? {
+          id: directSegment.source_fare_segment_id ?? -Math.abs(Number(directSegment.id)),
+          currency: directSegment.currency,
+        }
+      : null
+  );
+  const ticketType = tripFare.ticketType || fareSegmentTicketType?.ticketType;
+  const ticketTypeId = Number(
+    tripFare.ticket_type_id ?? fareSegmentTicketType?.ticket_type_id ?? ticketType?.id
+  );
 
-  if (
-    !fareSegmentTicketType ||
-    !isActive(fareSegmentTicketType.active) ||
-    !fareSegment ||
-    !isActive(fareSegment.active) ||
-    !ticketType ||
-    !isActive(ticketType.active)
-  ) {
-    throw new Error('OnBoardTicketFareUnavailable');
+  if (directSegment) {
+    if (
+      !isActive(directSegment.active) ||
+      !ticketType ||
+      !isActive(ticketType.active) ||
+      !Number.isInteger(ticketTypeId) ||
+      ticketTypeId <= 0
+    ) {
+      if (!isActive(directSegment.active)) {
+        throw new Error('OnBoardTicketSegmentInactive');
+      }
+      throw new Error('OnBoardTicketFareUnavailable');
+    }
+
+    if (!isFareSegmentValidForTripDate(directSegment, trip.date)) {
+      throw new Error('OnBoardTicketFareOutOfValidity');
+    }
+  } else {
+    if (
+      !fareSegmentTicketType ||
+      !isActive(fareSegmentTicketType.active) ||
+      !fareSegment ||
+      !ticketType ||
+      !isActive(ticketType.active)
+    ) {
+      throw new Error('OnBoardTicketFareUnavailable');
+    }
+
+    if (!isActive(fareSegment.active)) {
+      throw new Error('OnBoardTicketSegmentInactive');
+    }
+
+    if (!isFareSegmentValidForTripDate(fareSegment, trip.date)) {
+      throw new Error('OnBoardTicketFareOutOfValidity');
+    }
   }
 
   const requestedTicketTypeId = Number(
@@ -111,7 +170,7 @@ const resolveTripFare = (trip, item) => {
   );
   if (
     requestedTicketTypeId > 0 &&
-    requestedTicketTypeId !== Number(fareSegmentTicketType.ticket_type_id)
+    requestedTicketTypeId !== ticketTypeId
   ) {
     throw new Error('OnBoardTicketPassengerTypeMismatch');
   }
@@ -121,6 +180,7 @@ const resolveTripFare = (trip, item) => {
     fareSegmentTicketType,
     fareSegment,
     ticketType,
+    ticketTypeId,
   };
 };
 
@@ -128,6 +188,7 @@ const normalizeTicketItems = (trip, rawItems) => {
   const normalizedByTripFare = new Map();
   let fareSegmentId = null;
   let fareSegment = null;
+  let tripFare = null;
 
   for (const rawItem of rawItems) {
     const item = rawItem || {};
@@ -137,6 +198,7 @@ const normalizeTicketItems = (trip, rawItems) => {
     }
 
     const resolved = resolveTripFare(trip, item);
+    tripFare = tripFare || resolved.tripFare;
     const currentFareSegmentId = Number(resolved.fareSegment.id);
     if (!fareSegmentId) {
       fareSegmentId = currentFareSegmentId;
@@ -148,14 +210,14 @@ const normalizeTicketItems = (trip, rawItems) => {
     const tripFareId = Number(resolved.tripFare.id);
     const basePrice = Number(
       resolved.tripFare.base_price ??
-        resolved.fareSegmentTicketType.base_price ??
+        resolved.fareSegmentTicketType?.base_price ??
         resolved.tripFare.price ??
         0
     );
     const unitPrice = Number(
       resolved.tripFare.price ??
         resolved.tripFare.base_price ??
-        resolved.fareSegmentTicketType.base_price ??
+        resolved.fareSegmentTicketType?.base_price ??
         0
     );
 
@@ -173,7 +235,7 @@ const normalizeTicketItems = (trip, rawItems) => {
 
     normalizedByTripFare.set(tripFareId, {
       id: null,
-      ticket_type_id: Number(resolved.fareSegmentTicketType.ticket_type_id),
+      ticket_type_id: resolved.ticketTypeId,
       trip_fare_id: tripFareId,
       ticket_type_name: resolved.ticketType.name,
       ticket_type_description: resolved.ticketType.description,
@@ -190,6 +252,7 @@ const normalizeTicketItems = (trip, rawItems) => {
   return {
     fareSegmentId,
     fareSegment,
+    tripFare,
     ticketItems: Array.from(normalizedByTripFare.values()),
   };
 };
@@ -201,26 +264,34 @@ const getTripStopByRouteStopId = (trip, routeStopId) => {
   );
 };
 
-const validateSegmentProgress = async ({ trip, fareSegment, transaction }) => {
-  const originTripStop = getTripStopByRouteStopId(
-    trip,
-    fareSegment?.origin_route_stop_id
-  );
-  const destinationTripStop = getTripStopByRouteStopId(
-    trip,
-    fareSegment?.destination_route_stop_id
-  );
+const validateSegmentProgress = async ({ trip, tripFare, fareSegment, transaction }) => {
+  const directSegment = tripFare?.tripSegment;
+  const originTripStop = directSegment
+    ? (Array.isArray(trip.tripStops) ? trip.tripStops : []).find(
+        (tripStop) => Number(tripStop.id) === Number(directSegment.origin_trip_stop_id)
+      )
+    : getTripStopByRouteStopId(trip, fareSegment?.origin_route_stop_id);
+  const destinationTripStop = directSegment
+    ? (Array.isArray(trip.tripStops) ? trip.tripStops : []).find(
+        (tripStop) => Number(tripStop.id) === Number(directSegment.destination_trip_stop_id)
+      )
+    : getTripStopByRouteStopId(trip, fareSegment?.destination_route_stop_id);
 
   if (!originTripStop || !destinationTripStop) {
     throw new Error('OnBoardTicketStopsUnavailable');
   }
 
-  if (!isActive(originTripStop.active) || !isActive(originTripStop.can_board)) {
+  if (
+    !isActive(originTripStop.active) ||
+    !isActiveOrUnset(directSegment ? originTripStop.location?.active : originTripStop.routeStop?.active) ||
+    !isActive(originTripStop.can_board)
+  ) {
     throw new Error('OnBoardTicketOriginStopUnavailable');
   }
 
   if (
     !isActive(destinationTripStop.active) ||
+    !isActiveOrUnset(directSegment ? destinationTripStop.location?.active : destinationTripStop.routeStop?.active) ||
     !isActive(destinationTripStop.can_alight)
   ) {
     throw new Error('OnBoardTicketDestinationStopUnavailable');
@@ -427,13 +498,14 @@ const OnBoardTicketService = {
           throw new Error('OnBoardTicketItemsRequired');
         }
 
-        const { fareSegmentId, fareSegment, ticketItems } = normalizeTicketItems(
+        const { fareSegmentId, fareSegment, tripFare, ticketItems } = normalizeTicketItems(
           trip,
           rawItems
         );
 
         await validateSegmentProgress({
           trip,
+          tripFare,
           fareSegment,
           transaction,
         });

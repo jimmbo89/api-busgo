@@ -211,6 +211,7 @@ const OnBoardTripController = {
         trip: result.trip,
         tripWorker: result.tripWorker,
         tripStops: result.tripStops,
+        tripSegments: result.tripSegments || [],
         tripFares: result.tripFares,
       });
     } catch (error) {

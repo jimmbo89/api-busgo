@@ -9,6 +9,7 @@ const {
   TripWorker,
   TripStop,
   TripFare,
+  TripSegment,
   RouteStop,
   FareSegment,
   FareSegmentTicketType,
@@ -76,6 +77,48 @@ const reserveTripSequence = async (tripDate, transaction) => {
   return nextSequence;
 };
 
+const directTripSegmentInclude = {
+  model: TripSegment,
+  as: "tripSegment",
+  required: false,
+  include: [
+    {
+      model: TripStop,
+      as: "originTripStop",
+      include: [
+        { model: Location, as: "location" },
+        { model: RouteStop, as: "routeStop" },
+      ],
+    },
+    {
+      model: TripStop,
+      as: "destinationTripStop",
+      include: [
+        { model: Location, as: "location" },
+        { model: RouteStop, as: "routeStop" },
+      ],
+    },
+  ],
+};
+const tripSegmentsInclude = {
+  ...directTripSegmentInclude,
+  as: "tripSegments",
+  attributes: [
+    "id",
+    "company_id",
+    "trip_id",
+    "origin_trip_stop_id",
+    "destination_trip_stop_id",
+    "source_fare_segment_id",
+    "currency",
+    "valid_from",
+    "valid_to",
+    "priority",
+    "active",
+    "source_type",
+  ],
+};
+
 const tripFareInclude = [
   {
     model: TripFare,
@@ -85,6 +128,8 @@ const tripFareInclude = [
       "company_id",
       "trip_id",
       "fare_segment_ticket_type_id",
+      "trip_segment_id",
+      "ticket_type_id",
       "base_price",
       "price",
       "active",
@@ -121,28 +166,23 @@ const tripFareInclude = [
               {
                 model: RouteStop,
                 as: "originRouteStop",
-                include: [
-                  {
-                    model: Location,
-                    as: "location",
-                    attributes: ["id", "address", "country", "city", "image", "active"],
-                  },
-                ],
+                include: [{ model: Location, as: "location" }],
               },
               {
                 model: RouteStop,
                 as: "destinationRouteStop",
-                include: [
-                  {
-                    model: Location,
-                    as: "location",
-                    attributes: ["id", "address", "country", "city", "image", "active"],
-                  },
-                ],
+                include: [{ model: Location, as: "location" }],
               },
             ],
           },
         ],
+      },
+      directTripSegmentInclude,
+      {
+        model: TicketType,
+        as: "ticketType",
+        required: false,
+        attributes: ["id", "name", "description", "active"],
       },
     ],
   },
@@ -171,6 +211,11 @@ const tripStopDetailInclude = [
         attributes: ["id", "address", "country", "city", "image", "active"],
       },
     ],
+  },
+  {
+    model: Location,
+    as: "location",
+    attributes: ["id", "latitude", "longitude", "address", "country", "city", "image", "active"],
   },
 ];
 
@@ -205,28 +250,23 @@ const tripFareDetailInclude = [
           {
             model: RouteStop,
             as: "originRouteStop",
-            include: [
-              {
-                model: Location,
-                as: "location",
-                attributes: ["id", "address", "country", "city", "image", "active"],
-              },
-            ],
+            include: [{ model: Location, as: "location" }],
           },
           {
             model: RouteStop,
             as: "destinationRouteStop",
-            include: [
-              {
-                model: Location,
-                as: "location",
-                attributes: ["id", "address", "country", "city", "image", "active"],
-              },
-            ],
+            include: [{ model: Location, as: "location" }],
           },
         ],
       },
     ],
+  },
+  directTripSegmentInclude,
+  {
+    model: TicketType,
+    as: "ticketType",
+    required: false,
+    attributes: ["id", "name", "description", "active"],
   },
 ];
 
@@ -328,7 +368,18 @@ const segmentTicketInclude = {
         {
           model: TripFare,
           as: "tripFare",
-          attributes: ["id", "company_id", "trip_id", "fare_segment_ticket_type_id", "base_price", "price", "active", "source_type"],
+          attributes: [
+            "id",
+            "company_id",
+            "trip_id",
+            "fare_segment_ticket_type_id",
+            "trip_segment_id",
+            "ticket_type_id",
+            "base_price",
+            "price",
+            "active",
+            "source_type",
+          ],
           include: tripFareDetailInclude,
         },
       ],
@@ -1237,6 +1288,9 @@ const TripRepository = {
         "company_id",
         "trip_id",
         "route_stop_id",
+        "location_id",
+        "distance_km",
+        "minutes_from_origin",
         "stop_order",
         "arrival_time",
         "departure_time",
@@ -1269,6 +1323,60 @@ const TripRepository = {
     return tripStopsByTripId;
   },
 
+  async getTripSegmentsByTripIds(tripIds) {
+    const normalizedTripIds = Array.from(
+      new Set(
+        (Array.isArray(tripIds) ? tripIds : [])
+          .map((tripId) => Number(tripId))
+          .filter((tripId) => Number.isFinite(tripId) && tripId > 0)
+      )
+    );
+
+    if (normalizedTripIds.length === 0) {
+      return new Map();
+    }
+
+    const tripSegments = await TripSegment.findAll({
+      where: {
+        trip_id: { [Op.in]: normalizedTripIds },
+      },
+      attributes: [
+        "id",
+        "company_id",
+        "trip_id",
+        "origin_trip_stop_id",
+        "destination_trip_stop_id",
+        "source_fare_segment_id",
+        "currency",
+        "valid_from",
+        "valid_to",
+        "priority",
+        "active",
+        "source_type",
+      ],
+      include: directTripSegmentInclude.include,
+      order: [
+        ["trip_id", "ASC"],
+        ["id", "ASC"],
+      ],
+    });
+
+    const tripSegmentsByTripId = new Map(
+      normalizedTripIds.map((tripId) => [tripId, []])
+    );
+
+    for (const tripSegment of tripSegments) {
+      const tripId = Number(tripSegment.trip_id);
+      if (!tripSegmentsByTripId.has(tripId)) {
+        tripSegmentsByTripId.set(tripId, []);
+      }
+
+      tripSegmentsByTripId.get(tripId).push(tripSegment);
+    }
+
+    return tripSegmentsByTripId;
+  },
+
   async getTripFaresByTripIds(tripIds) {
     const normalizedTripIds = Array.from(
       new Set(
@@ -1282,29 +1390,40 @@ const TripRepository = {
       return new Map();
     }
 
-    const tripFares = await TripFare.findAll({
-      where: {
-        trip_id: { [Op.in]: normalizedTripIds },
-      },
-      attributes: [
-        "id",
-        "company_id",
-        "trip_id",
-        "fare_segment_ticket_type_id",
-        "base_price",
-        "price",
-        "active",
-        "source_type",
-      ],
-      include: tripFareDetailInclude,
-      order: [
-        ["trip_id", "ASC"],
-        ["id", "ASC"],
-      ],
-    });
+    const [tripFares, directSegments] = await Promise.all([
+      TripFare.findAll({
+        where: {
+          trip_id: { [Op.in]: normalizedTripIds },
+        },
+        attributes: [
+          "id",
+          "company_id",
+          "trip_id",
+          "fare_segment_ticket_type_id",
+          "trip_segment_id",
+          "ticket_type_id",
+          "base_price",
+          "price",
+          "active",
+          "source_type",
+        ],
+        include: tripFareDetailInclude,
+        order: [
+          ["trip_id", "ASC"],
+          ["id", "ASC"],
+        ],
+      }),
+      TripSegment.findAll({
+        where: { trip_id: { [Op.in]: normalizedTripIds } },
+        attributes: ['id', 'trip_id'],
+      }),
+    ]);
 
     const tripFaresByTripId = new Map(
       normalizedTripIds.map((tripId) => [tripId, []])
+    );
+    const directTripIds = new Set(
+      directSegments.map((segment) => Number(segment.trip_id))
     );
 
     for (const tripFare of tripFares) {
@@ -1314,6 +1433,16 @@ const TripRepository = {
       }
 
       tripFaresByTripId.get(tripId).push(tripFare);
+    }
+
+    // Un viaje puede conservar filas legacy durante la transición. Cuando ya
+    // existe al menos un tramo directo, ese conjunto es la fuente autoritativa
+    // y no se mezcla con los fares derivados de la ruta.
+    for (const [tripId, fares] of tripFaresByTripId.entries()) {
+      const directFares = fares.filter((tripFare) => tripFare.tripSegment);
+      if (directTripIds.has(Number(tripId))) {
+        tripFaresByTripId.set(tripId, directFares);
+      }
     }
 
     return tripFaresByTripId;
@@ -1391,16 +1520,13 @@ const TripRepository = {
         attributes: ["id", "company_id", "name", "trip_type", "status", "config"],
         required: false,
       },
-      ...(options.includeFullTripFares
-        ? buildSegmentTripFareInclude(originLocationId, destinationLocationId, searchDate)
-        : buildSegmentTripFareFilterInclude(originLocationId, destinationLocationId, searchDate)),
     ];
 
     if (options.includeTickets) {
       include.push(segmentTicketInclude);
     }
 
-    return await Trip.findAll({
+    const trips = await Trip.findAll({
       attributes: [
         "id",
         "code",
@@ -1420,6 +1546,22 @@ const TripRepository = {
       where: whereClause,
       order: [['date', 'ASC'], ['schedule', 'ASC']],
       include,
+    });
+
+    // La consulta base no filtra por la ruta: así los viajes con configuración
+    // directa también participan. El filtro final respeta la prioridad del
+    // tripSegment y usa la relación de ruta únicamente como fallback.
+    const faresByTripId = await TripRepository.getSegmentTripFaresByTripIds(
+      trips.map((trip) => trip.id),
+      originLocationId,
+      destinationLocationId,
+      searchDate
+    );
+
+    return trips.filter((trip) => {
+      const fares = faresByTripId.get(Number(trip.id)) || [];
+      trip.setDataValue('tripFares', fares);
+      return fares.length > 0;
     });
   },
 
@@ -1454,26 +1596,61 @@ const TripRepository = {
       return new Map();
     }
 
-    const trips = await Trip.findAll({
-      attributes: ["id"],
-      where: {
-        id: { [Op.in]: normalizedTripIds },
-      },
-      include: buildSegmentTripFareInclude(originLocationId, destinationLocationId, currentDate),
-      order: [["id", "ASC"]],
-    });
-
     const faresByTripId = new Map(
       normalizedTripIds.map((tripId) => [tripId, []])
     );
 
-    for (const trip of trips) {
-      const tripId = Number(trip.id);
-      if (!faresByTripId.has(tripId)) {
-        faresByTripId.set(tripId, []);
-      }
+    const faresByTrip = await TripRepository.getTripFaresByTripIds(normalizedTripIds);
+    const normalizeDate = (value) => value ? String(value).slice(0, 10) : null;
+    const searchDate = normalizeDate(currentDate);
+    const isValidForDate = (segment) => {
+      if (segment?.active === false) return false;
+      const validFrom = normalizeDate(segment?.valid_from);
+      const validTo = normalizeDate(segment?.valid_to);
+      return (!searchDate || !validFrom || searchDate >= validFrom) &&
+        (!searchDate || !validTo || searchDate <= validTo);
+    };
+    const getStopLocationId = (stop) => Number(
+      stop?.location_id ??
+        stop?.location?.id ??
+        stop?.routeStop?.location_id ??
+        stop?.routeStop?.location?.id ??
+        NaN
+    );
 
-      faresByTripId.get(tripId).push(...(Array.isArray(trip.tripFares) ? trip.tripFares : []));
+    for (const tripId of normalizedTripIds) {
+      const fares = faresByTrip.get(tripId) || [];
+      const hasDirectConfiguration = fares.some((tripFare) => tripFare.tripSegment);
+      const faresToEvaluate = hasDirectConfiguration
+        ? fares.filter((tripFare) => tripFare.tripSegment)
+        : fares;
+      faresByTripId.set(tripId, faresToEvaluate.filter((tripFare) => {
+        if (tripFare.active === false) return false;
+        const directSegment = tripFare.tripSegment;
+        if (directSegment) {
+          const originId = getStopLocationId(directSegment.originTripStop);
+          const destinationId = getStopLocationId(directSegment.destinationTripStop);
+          return originId === Number(originLocationId) &&
+            destinationId === Number(destinationLocationId) &&
+            isValidForDate(directSegment);
+        }
+
+        const fareSegment = tripFare.fareSegmentTicketType?.fareSegment;
+        const originId = Number(
+          fareSegment?.originRouteStop?.location_id ??
+            fareSegment?.originRouteStop?.location?.id ??
+            NaN
+        );
+        const destinationId = Number(
+          fareSegment?.destinationRouteStop?.location_id ??
+            fareSegment?.destinationRouteStop?.location?.id ??
+            NaN
+        );
+        return originId === Number(originLocationId) &&
+          destinationId === Number(destinationLocationId) &&
+          tripFare.fareSegmentTicketType?.active !== false &&
+          isValidForDate(fareSegment);
+      }));
     }
 
     return faresByTripId;
@@ -1754,7 +1931,10 @@ const TripRepository = {
             "id",
             "company_id",
             "trip_id",
-            "route_stop_id",
+          "route_stop_id",
+          "location_id",
+          "distance_km",
+          "minutes_from_origin",
             "stop_order",
             "arrival_time",
             "departure_time",
@@ -1787,8 +1967,14 @@ const TripRepository = {
                 },
               ],
             },
+            {
+              model: Location,
+              as: "location",
+              attributes: ["id", "latitude", "longitude", "address", "country", "city", "image", "active"],
+            },
           ],
         },
+        tripSegmentsInclude,
         {
           model: Ticket,
           as: "tickets",
@@ -2119,9 +2305,12 @@ async existsByUpdatedFields(trip, updatedFields) {
     const existingTrip = await Trip.findOne({ where: whereClause });
     return existingTrip;
 },
-  async updateTripWorkers(trip, body) {
+  async updateTripWorkers(trip, body, options = {}) {
     try {
-      let { id: trip_id, branch_id, date, workers } = body; // Extraer los datos necesarios del body
+      let { id: trip_id, branch_id, date, workers } = body;
+      const transaction = options.transaction;
+      trip_id = trip_id ?? trip.id;
+      workers = Array.isArray(workers) ? workers : [];
       if (!date) {
         date = trip.date;
       }
@@ -2132,6 +2321,7 @@ async existsByUpdatedFields(trip, updatedFields) {
       const currentWorkers = await TripWorker.findAll({
         where: { trip_id, branch_id, date },
         attributes: ["id", "worker_id"], // Incluye el ID de la relación
+        ...(transaction ? { transaction } : {}),
       });
 
       // Crear un mapa: { worker_id: id }
@@ -2141,11 +2331,14 @@ async existsByUpdatedFields(trip, updatedFields) {
       }, {});
 
       // Obtener los IDs de los trabajadores del array recibido
-      const newWorkerIds = workers.map((worker) => worker.worker_id);
+      const newWorkerIds = workers
+        .map((worker) => Number(worker.worker_id))
+        .filter((workerId) => Number.isInteger(workerId) && workerId > 0);
+      const newWorkerIdSet = new Set(newWorkerIds);
 
       // Determinar los `worker_id` a eliminar (presentes en la base de datos, pero no en el array recibido)
       const workersToRemove = Object.keys(currentWorkerMap)
-        .filter((worker_id) => !newWorkerIds.includes(parseInt(worker_id)))
+        .filter((worker_id) => !newWorkerIdSet.has(parseInt(worker_id)))
         .map((worker_id) => currentWorkerMap[worker_id]); // Obtener el ID de la relación
 
       // Determinar los `worker_id` a agregar (presentes en el array recibido, pero no en la base de datos)
@@ -2159,6 +2352,7 @@ async existsByUpdatedFields(trip, updatedFields) {
           where: {
             id: workersToRemove, // Elimina por ID directamente
           },
+          ...(transaction ? { transaction } : {}),
         });
       }
 
@@ -2170,12 +2364,15 @@ async existsByUpdatedFields(trip, updatedFields) {
           date,
           worker_id,
         }));
-        await TripWorker.bulkCreate(newRelations);
+        await TripWorker.bulkCreate(newRelations, {
+          ...(transaction ? { transaction } : {}),
+        });
       }
 
       logger.info("Trip workers actualizado correctamente.");
     } catch (error) {
       logger.error("Error actualizando trip workers:", error);
+      throw error;
     }
   },
 

@@ -33,6 +33,11 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'fare_segment_id',
         as: 'fareSegmentTicketTypes',
       });
+
+      FareSegment.hasMany(models.TripSegment, {
+        foreignKey: 'source_fare_segment_id',
+        as: 'tripSegments',
+      });
     }
   }
 

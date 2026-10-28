@@ -1,4 +1,4 @@
-const { Op } = require('sequelize');
+const { Op, Transaction } = require('sequelize');
 const {
   DeviceVehicle,
   Device,
@@ -25,17 +25,28 @@ const relationInclude = [
   },
 ];
 
+const deviceRelationInclude = [{
+  model: Device,
+  as: 'device',
+  attributes: ['id', 'name', 'serial', 'mac'],
+}];
+
+const deviceAssignmentInclude = [{
+  model: Vehicle,
+  as: 'vehicle',
+  attributes: ['id', 'plate'],
+}];
+
 const normalizeId = (value) => {
   const id = Number(value);
   return Number.isInteger(id) && id > 0 ? id : null;
 };
 
-const findActiveConflict = async ({ deviceId, excludeId = null, transaction }) => {
+const findAssignmentConflict = async ({ deviceId, excludeId = null, transaction }) => {
   const normalizedDeviceId = normalizeId(deviceId);
   const normalizedExcludeId = normalizeId(excludeId);
 
   const where = {
-    active: true,
     device_id: normalizedDeviceId,
   };
 
@@ -46,7 +57,7 @@ const findActiveConflict = async ({ deviceId, excludeId = null, transaction }) =
   return DeviceVehicle.findOne({
     where,
     transaction,
-    lock: transaction?.LOCK?.UPDATE,
+    lock: transaction ? Transaction.LOCK.UPDATE : undefined,
   });
 };
 
@@ -86,6 +97,26 @@ const DeviceVehicleRepository = {
       },
       order: options.order || [['active', 'DESC'], ['updatedAt', 'DESC']],
       include: options.include || relationInclude,
+    });
+  },
+
+  async findByVehicles(vehicleIds, options = {}) {
+    const normalizedVehicleIds = (Array.isArray(vehicleIds) ? vehicleIds : [])
+      .map(normalizeId)
+      .filter(Boolean);
+
+    if (normalizedVehicleIds.length === 0) {
+      return [];
+    }
+
+    return DeviceVehicle.findAll({
+      ...options,
+      where: {
+        ...(options.where || {}),
+        vehicle_id: { [Op.in]: normalizedVehicleIds },
+      },
+      order: options.order || [['vehicle_id', 'ASC'], ['updatedAt', 'DESC']],
+      include: options.include || deviceRelationInclude,
     });
   },
 
@@ -136,6 +167,26 @@ const DeviceVehicleRepository = {
     });
   },
 
+  async findByDevices(deviceIds, options = {}) {
+    const normalizedDeviceIds = (Array.isArray(deviceIds) ? deviceIds : [])
+      .map(normalizeId)
+      .filter(Boolean);
+
+    if (normalizedDeviceIds.length === 0) {
+      return [];
+    }
+
+    return DeviceVehicle.findAll({
+      ...options,
+      where: {
+        ...(options.where || {}),
+        device_id: { [Op.in]: normalizedDeviceIds },
+      },
+      order: options.order || [['device_id', 'ASC'], ['updatedAt', 'DESC']],
+      include: options.include || deviceAssignmentInclude,
+    });
+  },
+
   async create(body, options = {}) {
     const deviceId = normalizeId(body.device_id);
     const vehicleId = normalizeId(body.vehicle_id);
@@ -146,15 +197,13 @@ const DeviceVehicleRepository = {
     const ownsTransaction = !options.transaction;
 
     try {
-      if (active) {
-        const conflict = await findActiveConflict({
-          deviceId,
-          transaction,
-        });
+      const conflict = await findAssignmentConflict({
+        deviceId,
+        transaction,
+      });
 
-        if (conflict) {
-          throw new Error('ActiveDeviceVehicleConflict');
-        }
+      if (conflict) {
+        throw new Error('ActiveDeviceVehicleConflict');
       }
 
       const relation = await DeviceVehicle.create(
@@ -182,22 +231,19 @@ const DeviceVehicleRepository = {
 
   async update(relation, body, options = {}) {
     const nextDeviceId = body.device_id ?? relation.device_id;
-    const nextActive = body.active ?? relation.active;
 
     const transaction = options.transaction || await sequelize.transaction();
     const ownsTransaction = !options.transaction;
 
     try {
-      if (nextActive) {
-        const conflict = await findActiveConflict({
-          deviceId: nextDeviceId,
-          excludeId: relation.id,
-          transaction,
-        });
+      const conflict = await findAssignmentConflict({
+        deviceId: nextDeviceId,
+        excludeId: relation.id,
+        transaction,
+      });
 
-        if (conflict) {
-          throw new Error('ActiveDeviceVehicleConflict');
-        }
+      if (conflict) {
+        throw new Error('ActiveDeviceVehicleConflict');
       }
 
       const fieldsToUpdate = ['device_id', 'vehicle_id', 'branch_id', 'active'];

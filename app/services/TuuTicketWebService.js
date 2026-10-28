@@ -1,6 +1,9 @@
 const crypto = require('node:crypto');
 const { STATUS_CODES, STATUS_NAMES } = require('./TuuRemotePaymentContract');
 const { ticketWebPaymentMessage } = require('./TicketWebMessages');
+const {
+  validateTripSaleAvailability,
+} = require('./TripSaleAvailabilityService');
 
 const LIVE_STATES = ['RESERVED', 'DISPATCHING', 'UNKNOWN', 'PENDING'];
 const TERMINAL_STATES = ['FAILED', 'COMPLETED'];
@@ -237,6 +240,18 @@ function createTuuTicketWebService(overrides = {}) {
       }
 
       const snapshot = prepareCardSale(saleBody, trip, userId);
+      const tripSaleAvailabilityError = validateTripSaleAvailability({
+        trip,
+        ticketItems: snapshot.ticketItems,
+        fareSegmentIds: snapshot.fare_segment_ids,
+      });
+      if (tripSaleAvailabilityError) {
+        throw new TicketWebPaymentError(
+          400,
+          tripSaleAvailabilityError.code,
+          tripSaleAvailabilityError.details
+        );
+      }
       if (snapshot.amount === 0) {
         throw new TicketWebPaymentError(400, 'TuuPaymentNotRequired');
       }

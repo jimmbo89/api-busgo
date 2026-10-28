@@ -327,10 +327,14 @@ const TicketTemplateDefaultRepository = {
       template = await TicketTemplate.findByPk(ticketTemplateId, { transaction });
       if (!template) throw domainError('TicketTemplateNotFound');
       if (template.status !== 'active') throw domainError('TicketTemplateInactive');
-      if (normalizeCompanyId(template.company_id) !== normalizedCompanyId) {
+      const isActiveSystemTemplate = (
+        normalizeCompanyId(template.company_id) === null &&
+        normalizeTemplateTripType(template) === SYSTEM_TEMPLATE_TRIP_TYPE
+      );
+      if (!isActiveSystemTemplate && normalizeCompanyId(template.company_id) !== normalizedCompanyId) {
         throw domainError('TicketTemplateCompanyMismatch');
       }
-      if (normalizeTemplateTripType(template) !== normalizedTripType) {
+      if (!isActiveSystemTemplate && normalizeTemplateTripType(template) !== normalizedTripType) {
         const error = domainError('TicketTemplateTripTypeMismatch');
         error.details = 'La plantilla de ticket seleccionada no coincide con el tipo de viaje.';
         throw error;

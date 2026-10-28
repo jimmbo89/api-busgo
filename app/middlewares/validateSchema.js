@@ -1,6 +1,15 @@
 const logger = require("../../config/logger");
 const Joi = require('joi'); // Asegúrate de usar Joi para validaciones
 
+const getValidationMessage = (detail) => {
+  if (detail.type === "object.unknown") {
+    const field = detail.path?.join(".") || detail.context?.key || "indicado";
+    return `El campo "${field}" no está permitido en esta solicitud.`;
+  }
+
+  return detail.message;
+};
+
 const validateSchema = (schema, options = {}) => {
   return (req, res, next) => {
     // Normalización de valores en req.body
@@ -38,16 +47,16 @@ const validateSchema = (schema, options = {}) => {
     const { error } = schema.validate(req.body, { abortEarly: false });
 
     if (error) {
+      const details = error.details.map(getValidationMessage);
+
       logger.error(
-        `Validation error in ${req.method} ${req.originalUrl} - Body: ${JSON.stringify(req.body)} - Errors: ${error.details
-          .map((err) => err.message)
-          .join(", ")}`
+        `Validation error in ${req.method} ${req.originalUrl} - Body: ${JSON.stringify(req.body)} - Errors: ${details.join(", ")}`
       );
 
       return res.status(400).json({
         ...(options.errorCode ? { error: options.errorCode } : {}),
         msg: "Error de validación",
-        details: error.details.map((err) => err.message),
+        details,
       });
     }
 

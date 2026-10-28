@@ -24,6 +24,7 @@ module.exports = (sequelize, DataTypes) => {
       Trip.hasMany(models.TripWorker, { foreignKey: 'trip_id', as: 'tripworkers' });
       Trip.hasMany(models.TripStop, { foreignKey: 'trip_id', as: 'tripStops' });
       Trip.hasMany(models.TripFare, { foreignKey: 'trip_id', as: 'tripFares' });
+      Trip.hasMany(models.TripSegment, { foreignKey: 'trip_id', as: 'tripSegments' });
       Trip.hasMany(models.TripLocation, { foreignKey: 'trip_id', as: 'gpsLocations' });
     }
   }

@@ -30,6 +30,41 @@ const vehicleBranchesSchema = Joi.array()
         'array.base': 'El campo branches debe ser un arreglo de asociaciones',
     });
 
+const vehicleDeviceActionSchema = Joi.object({
+    association_id: Joi.number().integer().positive().allow(null).optional().messages({
+        'number.base': 'El campo association_id del dispositivo debe ser un número entero',
+        'number.integer': 'El campo association_id del dispositivo debe ser un número entero',
+        'number.positive': 'El campo association_id del dispositivo debe ser mayor que cero',
+    }),
+    vehicle_id: Joi.number().integer().positive().allow(null).optional().messages({
+        'number.base': 'El campo vehicle_id del dispositivo debe ser un número entero',
+        'number.integer': 'El campo vehicle_id del dispositivo debe ser un número entero',
+        'number.positive': 'El campo vehicle_id del dispositivo debe ser mayor que cero',
+    }),
+    device_id: Joi.number().integer().positive().required().messages({
+        'number.base': 'El campo device_id es obligatorio y debe ser un número entero',
+        'number.integer': 'El campo device_id debe ser un número entero',
+        'number.positive': 'El campo device_id debe ser mayor que cero',
+        'any.required': 'El campo device_id es obligatorio',
+    }),
+    action: Joi.string()
+        .valid('associate', 'delete')
+        .insensitive()
+        .required()
+        .messages({
+            'any.only': 'La acción del dispositivo debe ser associate o delete',
+            'any.required': 'El campo action del dispositivo es obligatorio',
+        }),
+});
+
+const vehicleDevicesSchema = Joi.array()
+    .items(vehicleDeviceActionSchema)
+    .allow(null)
+    .optional()
+    .messages({
+        'array.base': 'El campo devices debe ser un arreglo de asociaciones',
+    });
+
 const vehicleRoutePreferenceActionSchema = Joi.object({
     association_id: Joi.number().integer().positive().allow(null).optional().messages({
         'number.base': 'El campo association_id de la preferencia debe ser un número entero',
@@ -82,6 +117,7 @@ const storeVehicleSchema = Joi.object({
             'string.pattern.base': 'El campo image debe ser una imagen válida (jpg, jpeg, png, gif)',
         }),
     branches: vehicleBranchesSchema,
+    devices: vehicleDevicesSchema,
     route_preferences: vehicleRoutePreferencesSchema,
 });
 
@@ -103,6 +139,7 @@ const updateVehicleSchema = Joi.object({
             'string.pattern.base': 'El campo image debe ser una imagen válida (jpg, jpeg, png, gif)',
         }),
     branches: vehicleBranchesSchema,
+    devices: vehicleDevicesSchema,
     route_preferences: vehicleRoutePreferencesSchema,
 });
 
@@ -111,6 +148,10 @@ const parseVehicleBranches = (req, res, next) => {
         {
             name: 'branches',
             message: 'El campo branches debe contener un JSON válido',
+        },
+        {
+            name: 'devices',
+            message: 'El campo devices debe contener un JSON válido',
         },
         {
             name: 'route_preferences',

@@ -11,7 +11,7 @@ const {
 } = require("../models");
 const moment = require('moment');
 const logger = require("../../config/logger");
-const { VehicleRepository, RouteRepository, BranchRepository, BranchVehicleRepository, BranchRouteRepository, VehicleWorkerRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, RouteStopRepository, TripFareRepository, FareSegmentTicketTypeRepository } = require("../repositories");
+const { VehicleRepository, RouteRepository, BranchRepository, BranchVehicleRepository, BranchRouteRepository, VehicleWorkerRepository, TripWorkerRepository, TripRepository, TripTemplateRepository, TripStopRepository, TripSegmentRepository, RouteStopRepository, TripFareRepository, FareSegmentTicketTypeRepository } = require("../repositories");
 
 const parseJsonArray = (value) => {
   if (Array.isArray(value)) return value;
@@ -91,7 +91,13 @@ const buildGeneratedTripStopPayload = (trip, companyId, item, routeStop) => ({
   source_type: item.source_type ?? "auto",
 });
 
-const buildGeneratedTripFarePayload = (trip, companyId, item, fareSegmentTicketType) => {
+const buildGeneratedTripFarePayload = (
+  trip,
+  companyId,
+  item,
+  fareSegmentTicketType,
+  tripSegment = null
+) => {
   const basePrice = Number(fareSegmentTicketType.base_price ?? 0);
   const hasPrice = item.price !== undefined && item.price !== null && item.price !== "";
 
@@ -99,6 +105,8 @@ const buildGeneratedTripFarePayload = (trip, companyId, item, fareSegmentTicketT
     company_id: companyId,
     trip_id: trip.id,
     fare_segment_ticket_type_id: fareSegmentTicketType.id,
+    trip_segment_id: tripSegment?.id ?? null,
+    ticket_type_id: tripSegment ? fareSegmentTicketType.ticket_type_id : null,
     base_price: basePrice,
     price: hasPrice ? Number(item.price) : basePrice,
     active: item.active ?? true,
@@ -291,11 +299,26 @@ const processTemplateGeneration = async (template, formattedToday, options = {})
           continue;
         }
 
+        const tripSegment = await TripSegmentRepository.findOrCreateFromFareSegment({
+          tripId: trip.id,
+          companyId: template.branch.company_id,
+          fareSegment,
+          transaction,
+        });
+
+        if (!tripSegment) {
+          logger.warn(
+            `TripTemplateController->processTemplateGeneration: tarifa ignorada porque no se pudieron resolver sus paradas; FareSegmentTicketTypeTripStopsMismatch:${fareSegmentTicketTypeId}`
+          );
+          continue;
+        }
+
         const tripFarePayload = buildGeneratedTripFarePayload(
           trip,
           template.branch.company_id,
           item,
-          fareSegmentTicketType
+          fareSegmentTicketType,
+          tripSegment
         );
 
         await TripFareRepository.create(tripFarePayload, { transaction });
@@ -1044,11 +1067,25 @@ const TripTemplateController = {
                   throw new Error("FareSegmentTicketTypeRouteMismatch");
                 }
 
+                const tripSegment = await TripSegmentRepository.findOrCreateFromFareSegment({
+                  tripId: trip.id,
+                  companyId: template.branch.company_id,
+                  fareSegment,
+                  transaction,
+                });
+
+                if (!tripSegment) {
+                  throw new Error(
+                    `FareSegmentTicketTypeTripStopsMismatch:${fareSegmentTicketTypeId}`
+                  );
+                }
+
                 const tripFarePayload = buildGeneratedTripFarePayload(
                   trip,
                   template.branch.company_id,
                   item,
-                  fareSegmentTicketType
+                  fareSegmentTicketType,
+                  tripSegment
                 );
 
                 await TripFareRepository.create(tripFarePayload, { transaction });

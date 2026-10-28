@@ -2,6 +2,9 @@ const { Ticket, Trip, sequelize } = require("../models");
 const { Transaction } = require("sequelize");
 const logger = require("../../config/logger"); // Logger para seguimiento
 const TuuTicketWebService = require("../services/TuuTicketWebService");
+const {
+  validateTripSaleAvailability,
+} = require("../services/TripSaleAvailabilityService");
 const { ticketWebErrorMessage } = require("../services/TicketWebMessages");
 const {
   TicketRepository,
@@ -17,6 +20,7 @@ const {
   TripTemplateRepository,
   RouteStopRepository,
   TripStopRepository,
+  TripSegmentRepository,
   FareSegmentTicketTypeRepository,
   TripFareRepository,
   } = require("../repositories");
@@ -332,7 +336,11 @@ const resolveTripFareById = (trip, tripFareId) => {
   );
 };
 
-const resolveFareSegmentIdsFromTicketItems = (trip, ticketItems = []) => {
+const resolveFareSegmentIdsFromTicketItems = (
+  trip,
+  ticketItems = [],
+  fallbackFareSegmentId = null
+) => {
   const tripFares = Array.isArray(trip?.tripFares) ? trip.tripFares : [];
   const tripFareMap = new Map();
   for (const tripFare of tripFares) {
@@ -352,6 +360,15 @@ const resolveFareSegmentIdsFromTicketItems = (trip, ticketItems = []) => {
       seen.add(fareSegmentId);
       fareSegmentIds.push(fareSegmentId);
     }
+  }
+
+  const normalizedFallbackId = Number(fallbackFareSegmentId);
+  if (
+    Number.isInteger(normalizedFallbackId) &&
+    normalizedFallbackId > 0 &&
+    !seen.has(normalizedFallbackId)
+  ) {
+    fareSegmentIds.push(normalizedFallbackId);
   }
 
   return fareSegmentIds;
@@ -702,7 +719,13 @@ const buildTripStopPayloadFromTemplate = (trip, company_id, item, routeStop) => 
   source_type: item.source_type ?? "auto",
 });
 
-const buildTripFarePayloadFromTemplate = (trip, company_id, item, fareSegmentTicketType) => {
+const buildTripFarePayloadFromTemplate = (
+  trip,
+  company_id,
+  item,
+  fareSegmentTicketType,
+  tripSegment = null
+) => {
   const basePrice = Number(fareSegmentTicketType.base_price ?? 0);
   const hasPrice = item.price !== undefined && item.price !== null && item.price !== "";
 
@@ -710,6 +733,8 @@ const buildTripFarePayloadFromTemplate = (trip, company_id, item, fareSegmentTic
     company_id,
     trip_id: trip.id,
     fare_segment_ticket_type_id: fareSegmentTicketType.id,
+    trip_segment_id: tripSegment?.id ?? null,
+    ticket_type_id: tripSegment ? fareSegmentTicketType.ticket_type_id : null,
     base_price: basePrice,
     price: hasPrice ? Number(item.price) : basePrice,
     active: item.active ?? true,
@@ -977,8 +1002,24 @@ async function findOrCreateExpressTripFromTemplate(body, branch, transaction) {
         throw new Error("FareSegmentTicketTypeRouteMismatch");
       }
 
+      const tripSegment = await TripSegmentRepository.findOrCreateFromFareSegment({
+        tripId: trip.id,
+        companyId: branch.company_id,
+        fareSegment,
+        transaction,
+      });
+      if (!tripSegment) {
+        throw new Error("FareSegmentTicketTypeTripStopsMismatch");
+      }
+
       const createdTripFare = await TripFareRepository.create(
-        buildTripFarePayloadFromTemplate(trip, branch.company_id, item, fareSegmentTicketType),
+        buildTripFarePayloadFromTemplate(
+          trip,
+          branch.company_id,
+          item,
+          fareSegmentTicketType,
+          tripSegment
+        ),
         { transaction }
       );
       createdTripFare.setDataValue("fareSegmentTicketType", fareSegmentTicketType);
@@ -1424,8 +1465,25 @@ const TicketController = {
 
       const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
         trip,
-        normalizedTicketItems ?? []
+        normalizedTicketItems ?? [],
+        req.body.fare_segment_id
       );
+
+      const tripSaleAvailabilityError = validateTripSaleAvailability({
+        trip,
+        ticketItems: normalizedTicketItems ?? [],
+        fareSegmentIds: fareSegmentIdsForValidation,
+        requireFare: normalizedTicketItems !== null,
+      });
+      if (tripSaleAvailabilityError) {
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({
+          msg: tripSaleAvailabilityError.code,
+          details: tripSaleAvailabilityError.details,
+        });
+      }
 
       const lockedTrip = await Trip.findByPk(trip_id, {
         transaction: t,
@@ -1652,8 +1710,25 @@ const TicketController = {
       }
       const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
         saleValidationTrip,
-        zeroCostCardSale?.ticketItems ?? normalizedTicketItems ?? []
+        zeroCostCardSale?.ticketItems ?? normalizedTicketItems ?? [],
+        req.body.fare_segment_id
       );
+
+      const tripSaleAvailabilityError = validateTripSaleAvailability({
+        trip: saleValidationTrip,
+        ticketItems: zeroCostCardSale?.ticketItems ?? normalizedTicketItems ?? [],
+        fareSegmentIds: fareSegmentIdsForValidation,
+        requireFare: normalizedTicketItems !== null || Boolean(zeroCostCardSale),
+      });
+      if (tripSaleAvailabilityError) {
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json(ticketWebErrorBody(
+          tripSaleAvailabilityError.code,
+          tripSaleAvailabilityError.details
+        ));
+      }
 
       // Las ventas sin cargo también validan las reservas de pago y los tickets existentes.
       if (method === "Efectivo" || zeroCostCardSale) {
@@ -1905,8 +1980,25 @@ const TicketController = {
 
       const fareSegmentIdsForValidation = resolveFareSegmentIdsFromTicketItems(
         trip,
-        normalizedTicketItems ?? []
+        normalizedTicketItems ?? [],
+        req.body.fare_segment_id
       );
+
+      const tripSaleAvailabilityError = validateTripSaleAvailability({
+        trip,
+        ticketItems: normalizedTicketItems ?? [],
+        fareSegmentIds: fareSegmentIdsForValidation,
+        requireFare: normalizedTicketItems !== null,
+      });
+      if (tripSaleAvailabilityError) {
+        if (!t.finished) {
+          await t.rollback();
+        }
+        return res.status(400).json({
+          msg: tripSaleAvailabilityError.code,
+          details: tripSaleAvailabilityError.details,
+        });
+      }
 
       for (const fareSegmentId of fareSegmentIdsForValidation) {
         const fareSegmentValidation = await validateFareSegmentForTrip(
@@ -2014,7 +2106,9 @@ const TicketController = {
     logger.info(`${req.user.name} - Busca un ticket con ID ${req.body.id}`);
 
     try {
-      const ticket = await TicketRepository.findByIdOrSequence(req.body.id);
+      const ticket = await TicketRepository.findByIdOrSequence(req.body.id, {
+        includeDefaultTemplate: true,
+      });
 
       if (!ticket) {
         return res.status(404).json({ msg: "TicketNotFound" });

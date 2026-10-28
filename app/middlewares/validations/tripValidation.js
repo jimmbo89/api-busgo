@@ -30,6 +30,121 @@ const ticketTemplateIdSchema = Joi.number()
     "number.positive": "El campo ticket_template_id debe ser positivo",
   });
 
+const tripStopSchema = Joi.object({
+  id: Joi.number().integer().positive().allow(null).optional(),
+  client_key: Joi.string().trim().min(1).max(100).optional(),
+  route_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  location_id: Joi.number().integer().positive().allow(null).optional(),
+  distance_km: Joi.number().precision(2).min(0).allow(null).optional(),
+  minutes_from_origin: Joi.number().integer().min(0).allow(null).optional(),
+  stop_order: Joi.number().integer().positive().optional(),
+  arrival_time: Joi.string().allow(null).empty("").optional(),
+  departure_time: Joi.string().allow(null).empty("").optional(),
+  can_board: Joi.boolean().optional(),
+  can_alight: Joi.boolean().optional(),
+  active: Joi.boolean().optional(),
+  source_type: Joi.string().valid("auto", "manual", "override").optional(),
+}).custom((value, helpers) => {
+  const hasRouteStop = value.route_stop_id !== undefined && value.route_stop_id !== null;
+  const hasLocation = value.location_id !== undefined && value.location_id !== null;
+
+  if (!hasRouteStop && !hasLocation) {
+    return helpers.error("tripStop.locationRequired");
+  }
+
+  return value;
+}).messages({
+  "tripStop.locationRequired": "Cada parada debe indicar route_stop_id o location_id",
+});
+
+const tripSegmentSchema = Joi.object({
+  id: Joi.number().integer().positive().allow(null).optional(),
+  client_key: Joi.string().trim().min(1).max(100).optional(),
+  origin_trip_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  destination_trip_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  origin_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  destination_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  origin_stop_key: Joi.string().trim().min(1).max(100).optional(),
+  destination_stop_key: Joi.string().trim().min(1).max(100).optional(),
+  source_fare_segment_id: Joi.number().integer().positive().allow(null).optional(),
+  currency: Joi.string().trim().max(10).optional(),
+  valid_from: Joi.date().iso().allow(null).optional(),
+  valid_to: Joi.date().iso().allow(null).optional(),
+  priority: Joi.number().integer().min(0).optional(),
+  active: Joi.boolean().optional(),
+  source_type: Joi.string().valid("auto", "manual", "override").optional(),
+}).custom((value, helpers) => {
+  const originId = value.origin_trip_stop_id ?? value.origin_stop_id;
+  const destinationId = value.destination_trip_stop_id ?? value.destination_stop_id;
+  const hasIds = originId !== undefined && originId !== null &&
+    destinationId !== undefined && destinationId !== null;
+  const hasKeys = value.origin_stop_key !== undefined &&
+    value.destination_stop_key !== undefined;
+
+  if (!hasIds && !hasKeys) {
+    return helpers.error("tripSegment.stopsRequired");
+  }
+  if ((hasIds && (originId === null || destinationId === null)) ||
+      (hasKeys && (!value.origin_stop_key || !value.destination_stop_key))) {
+    return helpers.error("tripSegment.stopsRequired");
+  }
+
+  return value;
+}).messages({
+  "tripSegment.stopsRequired":
+    "Cada tramo debe indicar los IDs de sus paradas o origin_stop_key y destination_stop_key",
+});
+
+const tripFareSchema = Joi.object({
+  id: Joi.number().integer().positive().allow(null).optional(),
+  fare_segment_ticket_type_id: Joi.number().integer().positive().allow(null).optional(),
+  trip_segment_id: Joi.number().integer().positive().allow(null).optional(),
+  segment_key: Joi.string().trim().min(1).max(100).optional(),
+  origin_trip_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  destination_trip_stop_id: Joi.number().integer().positive().allow(null).optional(),
+  origin_stop_key: Joi.string().trim().min(1).max(100).optional(),
+  destination_stop_key: Joi.string().trim().min(1).max(100).optional(),
+  ticket_type_id: Joi.number().integer().positive().allow(null).optional(),
+  base_price: Joi.number().precision(2).min(0).allow(null).optional(),
+  price: Joi.number().precision(2).min(0).allow(null).optional(),
+  currency: Joi.string().trim().max(10).optional(),
+  valid_from: Joi.date().iso().allow(null).optional(),
+  valid_to: Joi.date().iso().allow(null).optional(),
+  priority: Joi.number().integer().min(0).optional(),
+  active: Joi.boolean().optional(),
+  source_type: Joi.string().valid("auto", "manual", "override").optional(),
+}).custom((value, helpers) => {
+  const hasLegacy = value.fare_segment_ticket_type_id !== undefined &&
+    value.fare_segment_ticket_type_id !== null;
+  const hasDirectSegment = value.trip_segment_id !== undefined &&
+    value.trip_segment_id !== null;
+  const hasSegmentKey = value.segment_key !== undefined;
+  const hasDirectStops = value.origin_trip_stop_id !== undefined ||
+    value.destination_trip_stop_id !== undefined ||
+    value.origin_stop_key !== undefined || value.destination_stop_key !== undefined;
+  const isDirect = hasDirectSegment || hasSegmentKey || hasDirectStops ||
+    value.ticket_type_id !== undefined;
+
+  if (!hasLegacy && !isDirect) {
+    return helpers.error("tripFare.sourceRequired");
+  }
+  if (isDirect && (value.ticket_type_id === undefined || value.ticket_type_id === null)) {
+    return helpers.error("tripFare.ticketTypeRequired");
+  }
+  if (isDirect && !hasDirectSegment && !hasSegmentKey && !hasDirectStops) {
+    return helpers.error("tripFare.segmentRequired");
+  }
+
+  return value;
+}).messages({
+  "tripFare.sourceRequired":
+    "Cada tarifa debe indicar fare_segment_ticket_type_id o una referencia directa",
+  "tripFare.ticketTypeRequired":
+    "Cada tarifa directa debe indicar ticket_type_id",
+  "tripFare.segmentRequired":
+    "Cada tarifa directa debe indicar trip_segment_id, segment_key o las paradas del tramo",
+});
+
 const storeTripSchema = Joi.object({
   branch_id: Joi.number().required().messages({
     "number.base": "El campo branch_id debe ser un numero entero",
@@ -107,31 +222,12 @@ const storeTripSchema = Joi.object({
     )
     .optional(),
   tripStops: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        route_stop_id: Joi.number().integer().required(),
-        stop_order: Joi.number().integer().optional(),
-        arrival_time: Joi.string().allow(null).empty("").optional(),
-        departure_time: Joi.string().allow(null).empty("").optional(),
-        can_board: Joi.boolean().optional(),
-        can_alight: Joi.boolean().optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(tripStopSchema)
     .optional(),
+  tripSegments: Joi.array().items(tripSegmentSchema).optional(),
+  tripFareSegments: Joi.array().items(tripSegmentSchema).optional(),
   tripFares: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        fare_segment_ticket_type_id: Joi.number().integer().required(),
-        base_price: Joi.number().precision(2).allow(null).optional(),
-        price: Joi.number().precision(2).allow(null).optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(tripFareSchema)
     .optional(),
 });
 
@@ -200,31 +296,12 @@ const updateTripSchema = Joi.object({
     )
     .optional(),
   tripStops: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        route_stop_id: Joi.number().integer().required(),
-        stop_order: Joi.number().integer().optional(),
-        arrival_time: Joi.string().allow(null).empty("").optional(),
-        departure_time: Joi.string().allow(null).empty("").optional(),
-        can_board: Joi.boolean().optional(),
-        can_alight: Joi.boolean().optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(tripStopSchema)
     .optional(),
+  tripSegments: Joi.array().items(tripSegmentSchema).optional(),
+  tripFareSegments: Joi.array().items(tripSegmentSchema).optional(),
   tripFares: Joi.array()
-    .items(
-      Joi.object({
-        id: Joi.number().integer().optional(),
-        fare_segment_ticket_type_id: Joi.number().integer().required(),
-        base_price: Joi.number().precision(2).allow(null).optional(),
-        price: Joi.number().precision(2).allow(null).optional(),
-        active: Joi.boolean().optional(),
-        source_type: Joi.string().valid("auto", "manual", "override").optional(),
-      })
-    )
+    .items(tripFareSchema)
     .optional(),
 });
 

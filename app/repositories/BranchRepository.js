@@ -1,13 +1,13 @@
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs');
-const { Branch, Company, Route, Location } = require('../models');
+const { Branch, Company, Route, Location, Device } = require('../models');
 const ImageService = require('../services/ImageService');
 const logger = require('../../config/logger'); // Logger para seguimiento
 
 const BranchRepository = {
   // Obtener todas las sucursales
-  async findAll({ includeRoutes = false, where } = {}) {
+  async findAll({ includeRoutes = false, includeDevices = false, where } = {}) {
     const include = [{
       model: Company,
       as: 'company',
@@ -44,6 +44,16 @@ const BranchRepository = {
       });
     }
 
+    if (includeDevices) {
+      include.push({
+        model: Device,
+        as: 'devices',
+        attributes: ['id', 'name', 'serial', 'mac'],
+        // Evita multiplicar filas al combinar los dispositivos con las rutas.
+        separate: true,
+      });
+    }
+
     return await Branch.findAll({
       where,
       attributes: ['id', 'name', 'address', 'image', 'rut', 'phone', 'company_id'],
@@ -52,9 +62,10 @@ const BranchRepository = {
   },
 
   // Buscar una sucursal por ID
-  async findById(id) {
+  async findById(id, options = {}) {
     return await Branch.findByPk(id, {
-    attributes: ['id', 'name', 'address', 'image', 'rut', 'phone', 'company_id'],
+      ...options,
+      attributes: ['id', 'name', 'address', 'image', 'rut', 'phone', 'company_id'],
       include: {
         model: Company,
         as: 'company',
@@ -86,7 +97,10 @@ const BranchRepository = {
     });
   },
 
-  async findByCompanyIds(company_ids = [], { includeRoutes = false } = {}) {
+  async findByCompanyIds(
+    company_ids = [],
+    { includeRoutes = false, includeDevices = false } = {}
+  ) {
     const companyIds = [...new Set(
       (company_ids || [])
         .map((companyId) => Number(companyId))
@@ -99,11 +113,15 @@ const BranchRepository = {
 
     return await this.findAll({
       includeRoutes,
+      includeDevices,
       where: { company_id: { [Op.in]: companyIds } },
     });
   },
 
-  async findByIds(branch_ids = [], { includeRoutes = false } = {}) {
+  async findByIds(
+    branch_ids = [],
+    { includeRoutes = false, includeDevices = false } = {}
+  ) {
     const branchIds = [...new Set(
       (branch_ids || [])
         .map((branchId) => Number(branchId))
@@ -116,6 +134,7 @@ const BranchRepository = {
 
     return await this.findAll({
       includeRoutes,
+      includeDevices,
       where: { id: { [Op.in]: branchIds } },
     });
   },

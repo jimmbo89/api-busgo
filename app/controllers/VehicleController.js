@@ -7,6 +7,7 @@ const {
     VehicleRepository,
     StructureRepository,
     BranchVehicleRepository,
+    DeviceVehicleRepository,
     BranchRouteRepository,
     VehicleRoutePreferenceRepository,
 } = require('../repositories');
@@ -85,11 +86,30 @@ const mapRoutePreference = (preference) => ({
     route: mapRoute(preference.route),
 });
 
+const mapDevice = (deviceVehicle) => {
+    const device = deviceVehicle.device;
+
+    if (!device) {
+        return null;
+    }
+
+    return {
+        id: device.id,
+        device_id: device.id,
+        vehicle_id: deviceVehicle.vehicle_id,
+        association_id: deviceVehicle.id,
+        name: device.name,
+        serial: device.serial,
+        mac: device.mac,
+    };
+};
+
 const mapVehicle = ({
     vehicle,
     branchVehicles = [],
     branchRoutes = [],
     preferences = [],
+    devices = [],
 }) => {
     const routesByBranch = mapRoutesByBranch(branchRoutes);
 
@@ -108,6 +128,7 @@ const mapVehicle = ({
     structureId: vehicle.structure_id,
     branches: branchVehicles.map((branch) => mapBranch(branch, routesByBranch)),
     route_preferences: preferences.map(mapRoutePreference),
+    devices: devices.map(mapDevice).filter(Boolean),
     };
 };
 
@@ -154,6 +175,38 @@ const vehicleAssociationErrorDetails = {
         'La ruta indicada no existe.',
     VehicleRoutePreferenceRouteNotAvailableForBranch:
         'La ruta indicada no está asociada a ninguna sucursal actualmente asociada al vehículo.',
+    VehicleDeviceActionsInvalid:
+        'El campo devices debe contener una lista válida de asociaciones.',
+    VehicleDeviceActionInvalid:
+        'Cada dispositivo debe indicar una acción válida: associate o delete.',
+    VehicleDeviceCreateActionInvalid:
+        'Al crear un vehículo solo se permite la acción associate para los dispositivos.',
+    VehicleDeviceAssociationIdNotAllowed:
+        'La acción associate no debe incluir association_id para un dispositivo.',
+    VehicleDeviceAssociationIdRequired:
+        'La acción delete requiere association_id para un dispositivo.',
+    VehicleDeviceAssociationIdInvalid:
+        'El association_id del dispositivo no es válido.',
+    VehicleDeviceVehicleIdInvalid:
+        'El vehicle_id del dispositivo no es válido.',
+    VehicleDeviceVehicleIdNotAllowed:
+        'El vehicle_id no debe enviarse al asociar dispositivos durante la creación.',
+    VehicleDeviceVehicleIdMismatch:
+        'El vehicle_id del dispositivo no corresponde al vehículo editado.',
+    VehicleDeviceDuplicateOperation:
+        'No se puede procesar más de una acción para el mismo dispositivo en una solicitud.',
+    VehicleDevicesRequireBranch:
+        'No se pueden asociar dispositivos a un vehículo sin sucursales.',
+    VehicleDeviceNotFound:
+        'Uno de los dispositivos indicados no existe.',
+    VehicleDeviceBranchNotAvailable:
+        'El dispositivo no pertenece a una sucursal asociada al vehículo.',
+    VehicleDeviceAssociationNotFound:
+        'La asociación del dispositivo no existe o no pertenece al vehículo editado.',
+    VehicleDeviceAssociationVehicleMismatch:
+        'La asociación del dispositivo no pertenece al vehículo editado.',
+    VehicleDeviceAssociationDeviceMismatch:
+        'El dispositivo no corresponde a la asociación indicada.',
 };
 
 const isRoutePreferenceError = (message) =>
@@ -171,6 +224,15 @@ const getVehicleMutationStatus = (error) => {
         return 409;
     }
 
+    if (error.message === 'VehicleDeviceAlreadyAssociated' ||
+        error.name === 'SequelizeUniqueConstraintError') {
+        return 409;
+    }
+
+    if (error.message === 'VehicleDeviceNotFound') {
+        return 404;
+    }
+
     if (isRoutePreferenceError(error.message)) {
         if (error.message === 'VehicleRoutePreferenceRouteNotFound') {
             return 404;
@@ -183,7 +245,23 @@ const getVehicleMutationStatus = (error) => {
         return 400;
     }
 
+    if (error.message.startsWith('VehicleDevice')) {
+        return 422;
+    }
+
     return 500;
+};
+
+const getVehicleDeviceConflictPayload = (error) => {
+    if (error.message !== 'VehicleDeviceAlreadyAssociated') {
+        return null;
+    }
+
+    return {
+        message: `El dispositivo ${error.deviceId} ya está asociado al vehículo ${error.assignedVehiclePlate || error.assignedVehicleId}.`,
+        device_id: error.deviceId,
+        assigned_vehicle_id: error.assignedVehicleId,
+    };
 };
 
 const VehicleController = {
@@ -199,9 +277,12 @@ const VehicleController = {
             }
 
             const vehicleIds = vehicles.map((vehicle) => vehicle.id);
-            const [branchVehicles, routePreferences] = await Promise.all([
+            const [branchVehicles, routePreferences, deviceVehicles] = await Promise.all([
                 BranchVehicleRepository.findByVehicles(vehicleIds),
                 VehicleRoutePreferenceRepository.findByVehicles(vehicleIds),
+                DeviceVehicleRepository.findByVehicles(vehicleIds, {
+                    where: { active: true },
+                }),
             ]);
             const branchRoutes = await BranchRouteRepository.findByBranches(
                 [...new Set(branchVehicles.map((relation) => Number(relation.branch_id)))]
@@ -215,6 +296,14 @@ const VehicleController = {
                 preferencesByVehicle.set(vehicleId, preferences);
             });
 
+            const devicesByVehicle = new Map();
+            deviceVehicles.forEach((deviceVehicle) => {
+                const vehicleId = Number(deviceVehicle.vehicle_id);
+                const devices = devicesByVehicle.get(vehicleId) || [];
+                devices.push(deviceVehicle);
+                devicesByVehicle.set(vehicleId, devices);
+            });
+
             const mappedVehicles = vehicles.map((vehicle) =>
                 mapVehicle({
                     vehicle,
@@ -224,6 +313,7 @@ const VehicleController = {
                     ),
                     branchRoutes,
                     preferences: preferencesByVehicle.get(Number(vehicle.id)) || [],
+                    devices: devicesByVehicle.get(Number(vehicle.id)) || [],
                 })
             );
 
@@ -277,10 +367,12 @@ const VehicleController = {
 
             const mappedVehicle = mapVehicle(result);
             res.status(201).json({
+                message: 'Vehículo creado correctamente.',
                 msg: 'VehicleCreated',
                 vehicle: mappedVehicle,
                 // Se conserva el campo anterior para no romper consumidores actuales.
                 branches: mappedVehicle.branches,
+                cleared_device_ids: result.clearedDeviceIds || [],
             });
         } catch (error) {
             const errorMsg = error.details
@@ -291,13 +383,17 @@ const VehicleController = {
             const status = getVehicleMutationStatus(error);
             const friendlyDetails =
                 vehicleAssociationErrorDetails[error.message] || errorMsg;
+            const conflictPayload = getVehicleDeviceConflictPayload(error);
             return res.status(status).json({
-                error: status === 500
+                error: conflictPayload
+                    ? 'VehicleDeviceAlreadyAssociated'
+                    : status === 500
                     ? 'Error interno del servidor'
                     : isRoutePreferenceError(error.message)
                         ? friendlyDetails
                         : 'No se pudo procesar la asociación del vehículo con las sucursales.',
-                details: friendlyDetails,
+                details: conflictPayload || friendlyDetails,
+                ...(conflictPayload || {}),
             });
         }
     },
@@ -313,9 +409,12 @@ const VehicleController = {
                 return res.status(404).json({ msg: 'VehicleNotFound' });
             }
 
-            const [branchVehicles, preferences] = await Promise.all([
+            const [branchVehicles, preferences, deviceVehicles] = await Promise.all([
                 BranchVehicleRepository.findByVehicles([vehicle.id]),
                 VehicleRoutePreferenceRepository.findByVehicle(vehicle.id),
+                DeviceVehicleRepository.findByVehicles([vehicle.id], {
+                    where: { active: true },
+                }),
             ]);
             const branchRoutes = await BranchRouteRepository.findByBranches(
                 [...new Set(branchVehicles.map((relation) => Number(relation.branch_id)))]
@@ -325,6 +424,7 @@ const VehicleController = {
                 branchVehicles,
                 branchRoutes,
                 preferences,
+                devices: deviceVehicles,
             });
 
             res.status(200).json({ vehicle: mappedVehicle });
@@ -387,10 +487,12 @@ const VehicleController = {
 
             const mappedVehicle = mapVehicle(result);
             res.status(200).json({
+                message: 'Vehículo actualizado correctamente.',
                 msg: 'VehicleUpdated',
                 vehicle: mappedVehicle,
                 // Se conserva el campo anterior para no romper consumidores actuales.
                 branches: mappedVehicle.branches,
+                cleared_device_ids: result.clearedDeviceIds || [],
             });
         } catch (error) {
             const errorMsg = error.details
@@ -401,13 +503,17 @@ const VehicleController = {
             const status = getVehicleMutationStatus(error);
             const friendlyDetails =
                 vehicleAssociationErrorDetails[error.message] || errorMsg;
+            const conflictPayload = getVehicleDeviceConflictPayload(error);
             return res.status(status).json({
-                error: status === 500
+                error: conflictPayload
+                    ? 'VehicleDeviceAlreadyAssociated'
+                    : status === 500
                     ? 'Error interno del servidor'
                     : isRoutePreferenceError(error.message)
                         ? friendlyDetails
                         : 'No se pudo procesar la asociación del vehículo con las sucursales.',
-                details: friendlyDetails,
+                details: conflictPayload || friendlyDetails,
+                ...(conflictPayload || {}),
             });
         }
     },

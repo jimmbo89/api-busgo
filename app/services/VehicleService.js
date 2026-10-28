@@ -1,9 +1,12 @@
 'use strict';
 
+const { Transaction } = require('sequelize');
 const { sequelize, Route } = require('../models');
 const {
   BranchRepository,
   BranchVehicleRepository,
+  DeviceRepository,
+  DeviceVehicleRepository,
   VehicleRepository,
   BranchRouteRepository,
   VehicleRoutePreferenceRepository,
@@ -80,6 +83,81 @@ const parseRoutePreferences = (routePreferences) => {
   });
 };
 
+const updateLock = Transaction.LOCK.UPDATE;
+
+const parseDeviceOperations = (devices) => {
+  if (devices === undefined || devices === null) {
+    return [];
+  }
+
+  let parsedDevices = devices;
+  if (typeof devices === 'string') {
+    try {
+      parsedDevices = JSON.parse(devices);
+    } catch (error) {
+      throw new Error('VehicleDeviceActionsInvalid');
+    }
+  }
+
+  if (!Array.isArray(parsedDevices)) {
+    throw new Error('VehicleDeviceActionsInvalid');
+  }
+
+  const deviceIds = new Set();
+
+  return parsedDevices.map((item) => {
+    const deviceId = normalizeId(item?.device_id);
+    const hasAssociationId =
+      item?.association_id !== undefined &&
+      item?.association_id !== null &&
+      item?.association_id !== '';
+    const associationId =
+      item?.association_id === undefined ||
+      item?.association_id === null ||
+      item?.association_id === ''
+        ? null
+        : normalizeId(item.association_id);
+    const hasVehicleId =
+      item?.vehicle_id !== undefined &&
+      item?.vehicle_id !== null &&
+      item?.vehicle_id !== '';
+    const vehicleId =
+      item?.vehicle_id === undefined ||
+      item?.vehicle_id === null ||
+      item?.vehicle_id === ''
+        ? null
+        : normalizeId(item.vehicle_id);
+    const action = String(item?.action || '').trim().toLowerCase();
+
+    if (!deviceId || !['associate', 'delete'].includes(action)) {
+      throw new Error('VehicleDeviceActionInvalid');
+    }
+
+    if (hasAssociationId && !associationId) {
+      throw new Error('VehicleDeviceAssociationIdInvalid');
+    }
+
+    if (hasVehicleId && !vehicleId) {
+      throw new Error('VehicleDeviceVehicleIdInvalid');
+    }
+
+    if (deviceIds.has(deviceId)) {
+      throw new Error('VehicleDeviceDuplicateOperation');
+    }
+    deviceIds.add(deviceId);
+
+    if (action === 'associate' && associationId !== null) {
+      throw new Error('VehicleDeviceAssociationIdNotAllowed');
+    }
+
+    if (action === 'delete' && !associationId) {
+      throw new Error('VehicleDeviceAssociationIdRequired');
+    }
+
+    return { deviceId, associationId, vehicleId, action };
+  });
+};
+
 const normalizeOperations = (branches) => {
   if (branches === undefined || branches === null) {
     return [];
@@ -142,6 +220,201 @@ const ensureBranchesExist = async (operations, transaction) => {
     throw new Error('BranchNotFound');
   }
 };
+
+const validateCreateDeviceOperations = (operations) => {
+  if (operations.some((operation) => operation.action !== 'associate')) {
+    throw new Error('VehicleDeviceCreateActionInvalid');
+  }
+
+  if (operations.some((operation) => operation.associationId !== null)) {
+    throw new Error('VehicleDeviceAssociationIdNotAllowed');
+  }
+
+  if (operations.some((operation) => operation.vehicleId !== null)) {
+    throw new Error('VehicleDeviceVehicleIdNotAllowed');
+  }
+};
+
+const validateDeviceVehicleIds = (vehicleId, operations) => {
+  operations.forEach((operation) => {
+    if (operation.vehicleId !== null && operation.vehicleId !== vehicleId) {
+      throw new Error('VehicleDeviceVehicleIdMismatch');
+    }
+  });
+};
+
+const createDeviceConflictError = (deviceId, relation) => {
+  const error = new Error('VehicleDeviceAlreadyAssociated');
+  error.deviceId = deviceId;
+  error.assignedVehicleId = Number(relation.vehicle_id);
+  error.assignedVehiclePlate = relation.vehicle?.plate || null;
+  return error;
+};
+
+const validateDeviceOperations = async ({
+  vehicleId,
+  operations,
+  finalBranchIds,
+  existingRelations = [],
+  transaction,
+}) => {
+  if (operations.length === 0) {
+    return new Map();
+  }
+
+  const associationOperations = operations.filter(
+    (operation) => operation.action === 'associate'
+  );
+
+  if (associationOperations.length > 0 && finalBranchIds.size === 0) {
+    throw new Error('VehicleDevicesRequireBranch');
+  }
+
+  validateDeviceVehicleIds(vehicleId, operations);
+
+  const relationById = new Map(
+    existingRelations.map((relation) => [Number(relation.id), relation])
+  );
+  operations
+    .filter((operation) => operation.action === 'delete')
+    .forEach((operation) => {
+      const relation = relationById.get(operation.associationId);
+      if (!relation) {
+        throw new Error('VehicleDeviceAssociationNotFound');
+      }
+
+      if (Number(relation.vehicle_id) !== vehicleId) {
+        throw new Error('VehicleDeviceAssociationVehicleMismatch');
+      }
+
+      if (Number(relation.device_id) !== operation.deviceId) {
+        throw new Error('VehicleDeviceAssociationDeviceMismatch');
+      }
+    });
+
+  const deviceIds = [...new Set(operations.map((operation) => operation.deviceId))];
+  const devices = await DeviceRepository.findByIds(deviceIds, {
+    transaction,
+    lock: updateLock,
+  });
+  const deviceById = new Map(
+    devices.map((device) => [Number(device.id), device])
+  );
+
+  for (const deviceId of deviceIds) {
+    if (!deviceById.has(deviceId)) {
+      const error = new Error('VehicleDeviceNotFound');
+      error.deviceId = deviceId;
+      throw error;
+    }
+  }
+
+  const existingDeviceRelations = await DeviceVehicleRepository.findByDevices(
+    deviceIds,
+    { transaction, lock: updateLock }
+  );
+  const relationByDeviceId = new Map();
+  existingDeviceRelations.forEach((relation) => {
+    const deviceId = Number(relation.device_id);
+    if (!relationByDeviceId.has(deviceId)) {
+      relationByDeviceId.set(deviceId, relation);
+    }
+  });
+
+  for (const operation of associationOperations) {
+    const device = deviceById.get(operation.deviceId);
+    const deviceBranchId = normalizeId(device.branch_id);
+
+    if (!finalBranchIds.has(deviceBranchId)) {
+      const error = new Error('VehicleDeviceBranchNotAvailable');
+      error.deviceId = operation.deviceId;
+      error.branchId = deviceBranchId;
+      throw error;
+    }
+
+    const existingRelation = relationByDeviceId.get(operation.deviceId);
+    if (existingRelation) {
+      throw createDeviceConflictError(operation.deviceId, existingRelation);
+    }
+  }
+
+  return deviceById;
+};
+
+const deleteDeviceRelation = async (relation, transaction) => {
+  if (relation.active) {
+    await DeviceVehicleRepository.update(
+      relation,
+      { active: false },
+      { transaction }
+    );
+  }
+
+  await DeviceVehicleRepository.delete(relation, { transaction });
+};
+
+const applyCreateDeviceOperations = async ({
+  vehicleId,
+  operations,
+  deviceById,
+  transaction,
+}) => {
+  for (const operation of operations) {
+    const device = deviceById.get(operation.deviceId);
+    await DeviceVehicleRepository.create(
+      {
+        device_id: operation.deviceId,
+        vehicle_id: vehicleId,
+        branch_id: device.branch_id,
+        active: true,
+      },
+      { transaction }
+    );
+  }
+};
+
+const applyUpdateDeviceOperations = async ({
+  operations,
+  relationById,
+  deviceById,
+  vehicleId,
+  transaction,
+}) => {
+  for (const operation of operations) {
+    const relation = relationById.get(operation.associationId);
+
+    if (operation.action === 'delete') {
+      await deleteDeviceRelation(relation, transaction);
+      continue;
+    }
+
+    const device = deviceById.get(operation.deviceId);
+    await DeviceVehicleRepository.create(
+      {
+        device_id: operation.deviceId,
+        vehicle_id: vehicleId,
+        branch_id: device.branch_id,
+        active: true,
+      },
+      { transaction }
+    );
+  }
+};
+
+const getAutomaticallyClearedDeviceRelations = ({
+  existingRelations,
+  finalBranchIds,
+  explicitDeleteIds,
+}) => existingRelations.filter((relation) => {
+  if (explicitDeleteIds.has(Number(relation.id))) {
+    return false;
+  }
+
+  const deviceBranchId = normalizeId(
+    relation.device?.branch_id ?? relation.branch_id
+  );
+  return !finalBranchIds.has(deviceBranchId);
+});
 
 const validateCreateOperations = (operations) => {
   if (operations.some((operation) => operation.action !== 'associate')) {
@@ -361,6 +634,12 @@ const applyPreferenceOperations = async ({
 const getVehiclePreferences = (vehicleId, transaction) =>
   VehicleRoutePreferenceRepository.findByVehicle(vehicleId, { transaction });
 
+const getVehicleDevices = (vehicleId, transaction) =>
+  DeviceVehicleRepository.findByVehicles([vehicleId], {
+    transaction,
+    where: { active: true },
+  });
+
 const getBranchRoutes = (branchVehicles, transaction) =>
   BranchRouteRepository.findByBranches(
     branchVehicles.map((relation) => Number(relation.branch_id)),
@@ -370,9 +649,15 @@ const getBranchRoutes = (branchVehicles, transaction) =>
 const VehicleService = {
   async create({ body, file }) {
     const operations = normalizeOperations(body.branches);
+    const deviceOperations = parseDeviceOperations(body.devices);
     const preferenceOperations = parseRoutePreferences(body.route_preferences);
     validateCreateOperations(operations);
+    validateCreateDeviceOperations(deviceOperations);
     validateCreatePreferenceOperations(preferenceOperations);
+
+    if (deviceOperations.length > 0 && operations.length === 0) {
+      throw new Error('VehicleDevicesRequireBranch');
+    }
 
     return sequelize.transaction(async (transaction) => {
       await ensureBranchesExist(operations, transaction);
@@ -394,6 +679,18 @@ const VehicleService = {
       const finalBranchIds = new Set(
         branchVehicles.map((relation) => Number(relation.branch_id))
       );
+      const deviceById = await validateDeviceOperations({
+        vehicleId: Number(vehicle.id),
+        operations: deviceOperations,
+        finalBranchIds,
+        transaction,
+      });
+      await applyCreateDeviceOperations({
+        vehicleId: vehicle.id,
+        operations: deviceOperations,
+        deviceById,
+        transaction,
+      });
       await validatePreferenceOperations({
         vehicleId: Number(vehicle.id),
         operations: preferenceOperations,
@@ -414,18 +711,22 @@ const VehicleService = {
       );
       const branchRoutes = await getBranchRoutes(savedBranchVehicles, transaction);
       const preferences = await getVehiclePreferences(vehicle.id, transaction);
+      const devices = await getVehicleDevices(vehicle.id, transaction);
 
       return {
         vehicle,
         branchVehicles: savedBranchVehicles,
         branchRoutes,
         preferences,
+        devices,
+        clearedDeviceIds: [],
       };
     });
   },
 
   async update({ id, body, file }) {
     const operations = normalizeOperations(body.branches);
+    const deviceOperations = parseDeviceOperations(body.devices);
     const preferenceOperations = parseRoutePreferences(body.route_preferences);
 
     return sequelize.transaction(async (transaction) => {
@@ -444,6 +745,30 @@ const VehicleService = {
       validateUpdateOperations({ operations, existingRelations });
 
       const finalBranchIds = getFinalBranchIds(existingRelations, operations);
+      const existingDeviceRelations = await DeviceVehicleRepository.findByVehicle(
+        vehicle.id,
+        { transaction, lock: updateLock }
+      );
+      const deviceById = await validateDeviceOperations({
+        vehicleId: Number(vehicle.id),
+        operations: deviceOperations,
+        finalBranchIds,
+        existingRelations: existingDeviceRelations,
+        transaction,
+      });
+      const relationByDeviceAssociationId = new Map(
+        existingDeviceRelations.map((relation) => [Number(relation.id), relation])
+      );
+      const explicitDeleteIds = new Set(
+        deviceOperations
+          .filter((operation) => operation.action === 'delete')
+          .map((operation) => operation.associationId)
+      );
+      const automaticallyClearedRelations = getAutomaticallyClearedDeviceRelations({
+        existingRelations: existingDeviceRelations,
+        finalBranchIds,
+        explicitDeleteIds,
+      });
       const existingPreferences = await getVehiclePreferences(
         vehicle.id,
         transaction
@@ -460,6 +785,17 @@ const VehicleService = {
         vehicleId: vehicle.id,
         operations,
         existingRelations,
+        transaction,
+      });
+
+      for (const relation of automaticallyClearedRelations) {
+        await deleteDeviceRelation(relation, transaction);
+      }
+      await applyUpdateDeviceOperations({
+        operations: deviceOperations,
+        relationById: relationByDeviceAssociationId,
+        deviceById,
+        vehicleId: vehicle.id,
         transaction,
       });
 
@@ -481,8 +817,22 @@ const VehicleService = {
       );
       const branchRoutes = await getBranchRoutes(branchVehicles, transaction);
       const preferences = await getVehiclePreferences(vehicle.id, transaction);
+      const devices = await getVehicleDevices(vehicle.id, transaction);
 
-      return { vehicle: updatedVehicle, branchVehicles, branchRoutes, preferences };
+      return {
+        vehicle: updatedVehicle,
+        branchVehicles,
+        branchRoutes,
+        preferences,
+        devices,
+        clearedDeviceIds: [
+          ...new Set(
+            automaticallyClearedRelations.map(
+              (relation) => Number(relation.device_id)
+            )
+          ),
+        ],
+      };
     });
   },
 };

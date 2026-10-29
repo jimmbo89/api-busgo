@@ -40,26 +40,49 @@ const hasGlobalBranchAccess = (roleType) => (
 );
 
 const BranchAccessService = {
-  async findAuthorizedBranches(userId, options = {}) {
+  async getBranchAccessScope(userId) {
     const worker = await findAuthenticatedWorker(userId);
 
     if (!worker) {
-      return [];
+      return {
+        canManageAllBranches: false,
+        branchIds: [],
+      };
+    }
+
+    if (hasGlobalBranchAccess(worker.role?.type)) {
+      return {
+        canManageAllBranches: true,
+        branchIds: [],
+      };
     }
 
     if (worker.role?.type === ROLE_TYPES.BRANCH) {
       const relations = await BranchWorkerRepository.findByWorker(worker.id);
-      return BranchRepository.findByIds(
-        normalizeBranchIds(relations),
-        options
-      );
+      return {
+        canManageAllBranches: false,
+        branchIds: normalizeBranchIds(relations),
+      };
     }
 
-    if (hasGlobalBranchAccess(worker.role?.type)) {
+    return {
+      canManageAllBranches: false,
+      branchIds: [],
+    };
+  },
+
+  async findAuthorizedBranches(userId, options = {}) {
+    const accessScope = await this.getBranchAccessScope(userId);
+
+    if (accessScope.canManageAllBranches) {
       return BranchRepository.findAll(options);
     }
 
-    return [];
+    if (accessScope.branchIds.length === 0) {
+      return [];
+    }
+
+    return BranchRepository.findByIds(accessScope.branchIds, options);
   },
 };
 

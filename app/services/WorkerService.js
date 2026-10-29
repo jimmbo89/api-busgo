@@ -69,20 +69,17 @@ const ensureBranchesExist = async (
   operations,
   existingRelations,
   transaction,
-  allowedCompanyIds = []
+  branchAccess = {}
 ) => {
   const branchIds = [...new Set(operations.map((operation) => operation.branchId))];
   if (branchIds.length === 0) {
     return;
   }
 
-  const authorizedCompanyIds = new Set(
-    (allowedCompanyIds || []).map(normalizeId).filter(Boolean)
+  const allowedBranchIds = new Set(
+    (branchAccess.branchIds || []).map(normalizeId).filter(Boolean)
   );
-
-  if (authorizedCompanyIds.size === 0) {
-    throw new Error('WorkerBranchCompanyMismatch');
-  }
+  const canManageAllBranches = branchAccess.canManageAllBranches === true;
 
   const branches = await Branch.findAll({
     where: { id: branchIds },
@@ -108,23 +105,17 @@ const ensureBranchesExist = async (
     throw new Error('WorkerBranchCompanyMismatch');
   }
 
-  const workerCompanyIds = new Set(
-    authorizedCompanyIds
-  );
   const scopedCompanyIds = existingCompanyIds.size > 0
     ? existingCompanyIds
-    : workerCompanyIds.size > 0
-      ? workerCompanyIds
-      : operationCompanyIds;
+    : operationCompanyIds;
 
-  if (workerCompanyIds.size > 0 && branches.some((branch) => {
-    const companyId = normalizeId(branch.company_id);
-    return companyId && !workerCompanyIds.has(companyId);
-  })) {
-    throw new Error('WorkerBranchCompanyMismatch');
+  if (!canManageAllBranches && branches.some((branch) => (
+    !allowedBranchIds.has(normalizeId(branch.id))
+  ))) {
+    throw new Error('WorkerBranchNotAuthorized');
   }
 
-  if (existingCompanyIds.size === 0 && workerCompanyIds.size === 0 && operationCompanyIds.size > 1) {
+  if (existingCompanyIds.size === 0 && operationCompanyIds.size > 1) {
     throw new Error('WorkerBranchCompanyMismatch');
   }
 
@@ -287,14 +278,14 @@ const applyUpdateOperations = async ({
 };
 
 const WorkerService = {
-  async create({ body, file, allowedCompanyIds = [] }) {
+  async create({ body, file, branchAccess = {} }) {
     const roleId = normalizeId(body.role_id);
     const operations = normalizeOperations(body.branches);
 
     return sequelize.transaction(async (transaction) => {
       const role = await ensureRoleExists(roleId, transaction);
       validateCreateOperations(operations, role.type);
-      await ensureBranchesExist(operations, [], transaction, allowedCompanyIds);
+      await ensureBranchesExist(operations, [], transaction, branchAccess);
 
       const worker = await WorkerRepository.create(body, file, transaction);
       await applyCreateOperations({
@@ -313,7 +304,7 @@ const WorkerService = {
     });
   },
 
-  async update({ id, body, file, allowedCompanyIds = [] }) {
+  async update({ id, body, file, branchAccess = {} }) {
     const operations = normalizeOperations(body.branches);
 
     return sequelize.transaction(async (transaction) => {
@@ -335,7 +326,7 @@ const WorkerService = {
         operations,
         existingRelations,
         transaction,
-        allowedCompanyIds
+        branchAccess
       );
 
       validateUpdateOperations({

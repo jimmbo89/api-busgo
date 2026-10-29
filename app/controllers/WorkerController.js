@@ -3,10 +3,11 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const authConfig = require('../../config/auth');
-const { Worker, User, Role, Company, sequelize } = require('../models'); // Importar los modelos necesarios
+const { Worker, User, Role, sequelize } = require('../models'); // Importar los modelos necesarios
 const logger = require('../../config/logger'); // Logger para seguimiento
 const { RoleRepository, WorkerRepository } = require('../repositories');
 const WorkerService = require('../services/WorkerService');
+const BranchAccessService = require('../services/BranchAccessService');
 
 const duplicateWorkerResponse = (res, conflictField = 'worker') => {
     const fieldName = conflictField.charAt(0).toUpperCase() + conflictField.slice(1);
@@ -51,21 +52,9 @@ const workerBranchErrorDetails = {
     WorkerBranchDuplicateBranch: 'El trabajador ya está asociado a una de las sucursales indicadas.',
     WorkerBranchAlreadyAssociated: 'El trabajador ya está asociado a la sucursal indicada.',
     WorkerBranchCompanyMismatch: 'Las sucursales asociadas deben pertenecer a la misma empresa del trabajador.',
+    WorkerBranchNotAuthorized: 'No tiene permisos para asociar una o más de las sucursales indicadas.',
     WorkerBranchRequiredForBranchRole: 'Un trabajador con rol de tipo Sucursal debe tener al menos una sucursal autorizada.',
     WorkerBranchNotAllowedForCompanyRole: 'Un trabajador con rol de tipo Empresa no debe tener sucursales autorizadas.',
-};
-
-const findUserCompanyIds = async (userId) => {
-    if (!userId) {
-        return [];
-    }
-
-    const companies = await Company.findAll({
-        where: { user_id: userId },
-        attributes: ['id'],
-    });
-
-    return companies.map((company) => company.id);
 };
 
 const getWorkerMutationStatus = (error) => {
@@ -176,11 +165,11 @@ const WorkerController = {
             }
 
         try {
-            const allowedCompanyIds = await findUserCompanyIds(req.user?.id);
+            const branchAccess = await BranchAccessService.getBranchAccessScope(req.user?.id);
             const result = await WorkerService.create({
                 body: req.body,
                 file: req.file,
-                allowedCompanyIds,
+                branchAccess,
             });
 
             res.status(201).json({
@@ -294,13 +283,13 @@ const WorkerController = {
             }
 
         try {
-            const allowedCompanyIds = await findUserCompanyIds(req.user?.id);
+            const branchAccess = await BranchAccessService.getBranchAccessScope(req.user?.id);
 
             const result = await WorkerService.update({
                 id,
                 body: req.body,
                 file: req.file,
-                allowedCompanyIds,
+                branchAccess,
             });
 
             res.status(200).json({

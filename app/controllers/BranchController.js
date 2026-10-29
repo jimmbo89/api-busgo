@@ -1,51 +1,6 @@
 const logger = require('../../config/logger'); // Logger para seguimiento
-const { Worker, Role } = require('../models');
-const { BranchRepository, BranchWorkerRepository, CompanyRepository } = require('../repositories');
-const { ROLE_TYPES } = require('../constants/roleTypes');
-
-// Compatible con usuarios raíz cuyos roles históricos aún tienen tipo Sistema.
-const LEGACY_SYSTEM_ROLE_TYPE = 'Sistema';
-
-const findAuthenticatedWorker = async (userId) => {
-    if (!userId) {
-        return null;
-    }
-
-    return Worker.findOne({
-        where: { user_id: userId },
-        attributes: ['id', 'role_id'],
-        include: [{
-            model: Role,
-            as: 'role',
-            attributes: ['type'],
-        }],
-    });
-};
-
-const findAuthorizedBranches = async (req) => {
-    const userId = req.user?.id;
-    const worker = await findAuthenticatedWorker(userId);
-
-    if (!worker) {
-        return [];
-    }
-
-    if (worker.role?.type === ROLE_TYPES.BRANCH) {
-        const relations = await BranchWorkerRepository.findByWorker(worker.id);
-        return relations
-            .map((relation) => relation.branch)
-            .filter(Boolean);
-    }
-
-    if (
-        worker.role?.type === ROLE_TYPES.COMPANY ||
-        worker.role?.type === LEGACY_SYSTEM_ROLE_TYPE
-    ) {
-        return BranchRepository.findAll();
-    }
-
-    return [];
-};
+const { BranchRepository, CompanyRepository } = require('../repositories');
+const BranchAccessService = require('../services/BranchAccessService');
 
 const BranchController = {
     // Obtener todas las sucursales
@@ -82,7 +37,7 @@ const BranchController = {
         logger.info(`${req.user.name} - Entra a buscar las sucursales`);
 
         try {
-            const branches = await findAuthorizedBranches(req);
+            const branches = await BranchAccessService.findAuthorizedBranches(req.user?.id);
 
             if (!branches.length) {
                 return res.status(204).json({ msg: 'BranchesNotFound' });

@@ -1,19 +1,6 @@
 const logger = require('../../config/logger'); // Importa el logger
-const { RoleRepository, BranchRepository } = require('../repositories');
-const { Company } = require('../models');
-
-const findAuthenticatedUserCompanyIds = async (userId) => {
-    if (!userId) {
-        return [];
-    }
-
-    const companies = await Company.findAll({
-        where: { user_id: userId },
-        attributes: ['id'],
-    });
-
-    return companies.map((company) => company.id);
-};
+const { RoleRepository } = require('../repositories');
+const BranchAccessService = require('../services/BranchAccessService');
 
 const RoleController = {
     // Listar roles
@@ -114,10 +101,9 @@ const RoleController = {
 
         try {
           const { type } = req.body; // Supongamos que el tipo viene como parámetro en la URL
-          const allowedCompanyIds = await findAuthenticatedUserCompanyIds(req.user?.id);
           const [roles, branches] = await Promise.all([
             RoleRepository.findByType(type),
-            BranchRepository.findByCompanyIds(allowedCompanyIds),
+            BranchAccessService.findAuthorizedBranches(req.user?.id),
           ]);
       
           if (!roles || roles.length === 0) {

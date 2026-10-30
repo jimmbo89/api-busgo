@@ -6,7 +6,8 @@ const session = require('express-session');
 const { sequelize } = require('./models/index');
 const cors = require('cors');
 const logger = require('../config/logger');
-const scheduler = require('../config/scheduler'); 
+const scheduler = require('../config/scheduler');
+
 
 // Configuración de sesión
 app.use(session({
@@ -57,7 +58,7 @@ const server = app.listen(PORT, () => {
     logger.info('Conexión a la base de datos exitosa');
     await scheduler.runStartupRecovery();
     scheduler.startRecoveryMonitor();
-    scheduler.startTuuPaymentReconciliationMonitor();
+    //scheduler.startTuuPaymentReconciliationMonitor();
   }).catch((error) => {
     logger.error('Error al conectar a la base de datos:', error);
     process.exit(1); // Sale si no puede conectar con la DB
@@ -67,7 +68,6 @@ const server = app.listen(PORT, () => {
 // Maneja la señal SIGINT para cerrar conexiones y el servidor
 process.on('SIGINT', async () => {
   try {
-    scheduler.stopTuuPaymentReconciliationMonitor();
     logger.info('Cerrando la conexión a la base de datos...');
     await sequelize.close(); // Cierra la conexión a la base de datos
     logger.info('Conexión a la base de datos cerrada.');

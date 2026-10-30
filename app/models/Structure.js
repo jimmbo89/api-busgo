@@ -19,6 +19,12 @@ module.exports = (sequelize, DataTypes) => {
     }
   }
   Structure.init({
+    id: {
+      type: DataTypes.BIGINT,
+      allowNull: false,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     name: DataTypes.STRING,
     description: DataTypes.STRING,
     seatCount: DataTypes.INTEGER,

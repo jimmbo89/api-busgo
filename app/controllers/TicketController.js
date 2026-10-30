@@ -645,7 +645,9 @@ async function resolveMonthlySalesScope(type, branchId, companyId) {
     return { companyId: branch.company_id, branchIds };
   }
 
-  return { error: "CompanyNotFound" };
+  // Un usuario sin compañía todavía no tiene un alcance de ventas.
+  // Se devuelve un resultado vacío en lugar de tratarlo como un error.
+  return { empty: true };
 }
 
 function getChileDateParts(date = new Date()) {
@@ -2610,6 +2612,15 @@ async verifyEncryptedQR(req, res) {
     try {
       const { month, type, branch_id, company_id } = req.body;
       const scope = await resolveMonthlySalesScope(type, branch_id, company_id);
+      if (scope.empty) {
+        return res.status(200).json({
+          sales: [],
+          salesYear: [],
+          trips: [],
+          incidents: [],
+        });
+      }
+
       if (scope.error) {
         logger.error(
           `TicketController->getMonthlySales: ${

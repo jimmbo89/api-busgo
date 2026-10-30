@@ -228,8 +228,9 @@ const AuthController = {
         }
       );
       } else {
-        // Asignar la primera compañía a companyData
-        companyData = user.companies ? user.companies[0] : [];
+        // Asignar la primera compañía; un usuario root puede existir sin
+        // compañía mientras termina el proceso inicial de configuración.
+        companyData = user.companies?.[0] || null;
         /*if (!companyData) {
           return res.status(400).json({ msg: "No es usuario de esta Empresa" });
         }*/
@@ -243,8 +244,10 @@ const AuthController = {
           const allCompanies = await Company.findAll({ 
             attributes: ['id', 'name', 'rut', 'address', 'phone', 'image'] 
           });
-          companyData = allCompanies[0].get({ plain: true });
-          logger.info(`Usuario sin compañía asignada. Usando compañía única del sistema: ${companyData.name}`);
+          if (allCompanies.length > 0) {
+            companyData = allCompanies[0].get({ plain: true });
+            logger.info(`Usuario sin compañía asignada. Usando compañía única del sistema: ${companyData.name}`);
+          }
           /*if (!allowedSystemRoles.includes(roleName)) {
             return res.status(400).json({ msg: "No tiene acceso: no pertenece a ninguna empresa y su rol no permite acceso global." });
           }*/

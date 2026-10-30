@@ -3,18 +3,26 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    await queryInterface.addColumn('tickets', 'qr', {
-      type: Sequelize.STRING,
-      allowNull: true, // o false si es obligatorio
-    });
-    await queryInterface.addColumn('tickets', 'barcode', {
-      type: Sequelize.STRING,
-      allowNull: true, // o false si es obligatorio
-    });
+    // Estas columnas ya forman parte de create-ticket en instalaciones nuevas.
+    // Solo se agregan si faltan para conservar compatibilidad con esquemas antiguos.
+    const columns = await queryInterface.describeTable('tickets');
+
+    if (!columns.qr) {
+      await queryInterface.addColumn('tickets', 'qr', {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      });
+    }
+
+    if (!columns.barcode) {
+      await queryInterface.addColumn('tickets', 'barcode', {
+        type: Sequelize.TEXT,
+        allowNull: true,
+      });
+    }
   },
 
-  down: async (queryInterface, Sequelize) => {
-    await queryInterface.removeColumn('tickets', 'qr');
-    await queryInterface.removeColumn('tickets', 'barcode');
-  }
+  // qr y barcode pertenecen al esquema base de tickets; no se eliminan al
+  // revertir esta migración para no borrar columnas creadas por create-ticket.
+  down: async () => {}
 };

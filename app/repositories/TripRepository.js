@@ -77,10 +77,14 @@ const reserveTripSequence = async (tripDate, transaction) => {
   return nextSequence;
 };
 
-const directTripSegmentInclude = {
+// Sequelize normalizes include objects in place. Each parent path therefore
+// needs a new object graph; sharing this definition caused duplicate SQL aliases
+// when tripSegments and tripFares.tripSegment were loaded together.
+const createTripSegmentInclude = ({ as = "tripSegment", attributes } = {}) => ({
   model: TripSegment,
-  as: "tripSegment",
+  as,
   required: false,
+  ...(attributes ? { attributes } : {}),
   include: [
     {
       model: TripStop,
@@ -99,9 +103,8 @@ const directTripSegmentInclude = {
       ],
     },
   ],
-};
-const tripSegmentsInclude = {
-  ...directTripSegmentInclude,
+});
+const tripSegmentsInclude = createTripSegmentInclude({
   as: "tripSegments",
   attributes: [
     "id",
@@ -117,7 +120,7 @@ const tripSegmentsInclude = {
     "active",
     "source_type",
   ],
-};
+});
 
 const tripFareInclude = [
   {
@@ -177,7 +180,7 @@ const tripFareInclude = [
           },
         ],
       },
-      directTripSegmentInclude,
+      createTripSegmentInclude(),
       {
         model: TicketType,
         as: "ticketType",
@@ -261,7 +264,7 @@ const tripFareDetailInclude = [
       },
     ],
   },
-  directTripSegmentInclude,
+  createTripSegmentInclude(),
   {
     model: TicketType,
     as: "ticketType",
@@ -1354,7 +1357,7 @@ const TripRepository = {
         "active",
         "source_type",
       ],
-      include: directTripSegmentInclude.include,
+      include: createTripSegmentInclude().include,
       order: [
         ["trip_id", "ASC"],
         ["id", "ASC"],
